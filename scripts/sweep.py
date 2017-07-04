@@ -10,6 +10,28 @@ import save_pkl
 import logging
 import plotting
 
+def optimize(target, *params, initial_simplex=None, maxfun=200):
+	from scipy.optimize import fmin
+	x0 = [p[1] for p in params]
+	print(x0)
+	def tfunc(x):
+		for xi, p in zip(x, params):
+			if len(p)>2 and p[2]:
+				if xi*p[1] < p[2]:
+					xi = p[2]/p[1]
+			if len(p)>3 and p[3]:
+				if xi*p[1] > p[3]:
+					xi = p[3]/p[1]
+			p[0](xi*p[1]) # set current parameter
+		f = target()
+		print (x*x0, f)
+		return f
+	if initial_simplex:
+		initial_simplex = np.asarray(initial_simplex)/x0
+	solution = fmin(tfunc, np.ones(len(x0)), maxfun=maxfun, initial_simplex=initial_simplex)*x0
+	score = tfunc(solution/x0)
+	return solution, score
+
 def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True):
 	'''
 	Performs a n-d parametric sweep.
@@ -32,9 +54,9 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	point_types = measurer.get_dtype()
 	meas_opts = measurer.get_opts()
 	points = measurer.get_points() # should return dict of meas_name:points
-	point_dim_names = {mname:tuple([cname      for cname, cvals in mxvals]) for mname, mxvals in points.items()}
-	point_dim       = {mname:tuple([len(cvals) for cname, cvals in mxvals]) for mname, mxvals in points.items()}
-	point_dim_vals  = {mname:tuple([cvals      for cname, cvals in mxvals]) for mname, mxvals in points.items()}
+	point_dim_names = {mname:tuple([cname	   for cname, cvals in mxvals]) for mname, mxvals in points.items()}
+	point_dim		= {mname:tuple([len(cvals) for cname, cvals in mxvals]) for mname, mxvals in points.items()}
+	point_dim_vals	= {mname:tuple([cvals	   for cname, cvals in mxvals]) for mname, mxvals in points.items()}
 	#point_dim = {mname:tuple([len(mxvals[cname]) for cname in point_dim_names[mname]]) for mname, mxvals in points.items()}
 	#point_dim_vals = {mname:tuple([mxvals[1] for cname in point_dim_names[mname]]) for mname, mxvals in points.items()}
 	# initializing empty ndarrays for measurment results

@@ -248,7 +248,7 @@ class Agilent_N9030A(Instrument):
 		return {'Power':[('Frequency',self.get_freqpoints())]}
 		
 	def get_dtype(self):
-		return {'Power':np.float}
+		return {'Power':numpy.float}
 		
 	def get_opts(self):
 		return {'Power':{'log': None}}

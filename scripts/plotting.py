@@ -11,6 +11,7 @@
 
 from matplotlib import pyplot as plt
 import numpy as np
+import numbers
 
 # high level function. You give the data, it plots everything that can be relatively easily plotted.
 # puts complex into separate windows
@@ -44,6 +45,8 @@ def plot_measurement(measurement, name=None, save=False, annotation=None):
 		else:											filter_phase = lambda x: np.unwrap(np.angle(x))
 		
 		if len(dims)>2:
+			continue
+		if not isinstance(data[2].ravel()[0], numbers.Number):
 			continue
 		
 		plot_name = mname

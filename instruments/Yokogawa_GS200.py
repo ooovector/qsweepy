@@ -277,7 +277,6 @@ class Yokogawa_GS210(Instrument):
         self._visainstrument.write("*CLS")
 
 
-
     # TODO:
     #       Дописать переключение режимов CURRENT/VOLTAGE
     #       Дописать недостающие команды и параметры в кострукторе для напряжения ( add_parameter('voltage', ...) и операции do_set_voltage и иже с ним)

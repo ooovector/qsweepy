@@ -120,14 +120,24 @@ class awg_iq:
 	
 	def _calibrate_cw_sa(self, sa, num_sidebands = 7):
 		from scipy.optimize import fmin
+		import time
 		dc = self._calibrate_zero_sa(sa)
-		sa.set_centerfreq(self.lo.get_frequency())
-		sa.set_span((num_sidebands-1)*self.get_if())
-		sa.set_nop(num_sidebands)
-		sa.set_detector('POS')
-		sa.set_res_bw(1e5)
-		sa.set_video_bw(1e4)
-		self.set_trigger_mode('CONT')
+		res_bw = 1e5
+		video_bw = 1e4
+		if hasattr(sa, 'set_nop'):
+			sa.set_centerfreq(self.lo.get_frequency())
+			sa.set_span((num_sidebands-1)*self.get_if())
+			sa.set_nop(num_sidebands)
+			sa.set_detector('POS')
+			sa.set_res_bw(res_bw)
+			sa.set_video_bw(video_bw)
+			self.set_trigger_mode('CONT')
+		else:
+			sa.set_detector('rms')
+			sa.set_res_bw(res_bw)
+			sa.set_video_bw(video_bw)
+			sa.set_span(res_bw)
+			
 		self.lo.set_status(True)
 		sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
 
@@ -144,12 +154,27 @@ class awg_iq:
 					clipping = 0
 				else:
 					clipping = (max_amplitude-1)
-				result = sa.measure()['Power'].ravel()
+				# if we can measure all sidebands in a single sweep, do it
+				if hasattr(sa, 'set_nop'):
+					result = sa.measure()['Power'].ravel()
+				else:
+				# otherwise, sweep through each sideband
+					result = []
+					for sideband_id in range(num_sidebands):
+						sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*self.get_if())
+						print (sa.get_centerfreq())
+						#time.sleep(0.1)
+						#result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
+						result.append(np.log10(np.sum(sa.measure()['Power']))*10)
+						#time.sleep(0.1)
+					result = np.asarray(result)
+					
 				bad_power = np.sum(10**((result[sideband_ids != self.sideband_id])/20))
 				good_power = np.sum(10**((result[sideband_ids==self.sideband_id])/20))
 				bad_power_dbm = np.log10(bad_power)*20
 				good_power_dbm = np.log10(good_power)*20
 				print ('dc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\tB: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}\r'.format(dc, I, Q, bad_power_dbm, good_power_dbm, clipping))
+				print (result)
 				return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping			
 			solution = fmin(tfunc, solution, maxiter=50, xtol=2**(-14))
 			score = tfunc(solution)
@@ -163,24 +188,34 @@ class awg_iq:
 		return self.calibrations[self.cname()]
 			
 	def _calibrate_zero_sa(self, sa):
-		from scipy.optimize import fmin
-		
-		sa.set_centerfreq(self.lo.get_frequency())
-		sa.set_span(0)
-		sa.set_nop(1)
+		import time
+		from scipy.optimize import fmin	
+		print(self.lo.get_frequency())
+		res_bw = 1e5
+		video_bw = 1e4
+		sa.set_res_bw(res_bw)
+		sa.set_video_bw(video_bw)
 		sa.set_detector('rms')
-		sa.set_res_bw(2e5)
-		sa.set_video_bw(4e4)
-		self.set_trigger_mode('CONT')
+		sa.set_centerfreq(self.lo.get_frequency())
+		#time.sleep(0.1)
+		if hasattr(sa, 'set_nop'):
+			sa.set_span(0)
+			sa.set_nop(1)
+			self.set_trigger_mode('CONT')
+		else:
+			sa.set_span(res_bw)	
 		self.lo.set_status(True)
-		
 		def tfunc(x):
 			self.awg_I.stop()
 			self.awg_Q.stop()
 			self._set_dc(x[0]+x[1]*1j)
 			self.awg_I.run()
 			self.awg_Q.run()
-			result = sa.measure()['Power'].ravel()[0]
+			if hasattr(sa, 'set_nop'):
+				result = sa.measure()['Power'].ravel()[0]
+			else:
+				#result = np.log10(np.sum(10**(sa.measure()['Power']/10)))*10
+				result = np.log10(np.sum(sa.measure()['Power']))*10
 			print (x, result)
 			return result
 		

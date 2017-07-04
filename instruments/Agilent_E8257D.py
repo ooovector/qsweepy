@@ -48,7 +48,7 @@ class Agilent_E8257D(Instrument):
         self._visainstrument = visa.ResourceManager().open_resource(self._address)
 
         self.add_parameter('power',
-            flags=Instrument.FLAG_GETSET, units='dBm', minval=-135, maxval=16, type=float)
+            flags=Instrument.FLAG_GETSET, units='dBm', minval=-20, maxval=18, type=float)
         self.add_parameter('phase',
             flags=Instrument.FLAG_GETSET, units='rad', minval=-numpy.pi, maxval=numpy.pi, type=float)
         self.add_parameter('frequency',

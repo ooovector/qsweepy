@@ -6,6 +6,7 @@ import pickle
 from config import get_config
 import numpy as np
 import plotting
+import scipy.io
 
 def mk_dir(path = None, time=True):
 	if (path is None) or (path==''):
@@ -45,7 +46,7 @@ def load_pkl(filename, location=None):
 	f = open('{0}/{1}.pkl'.format(location, filename), "rb")
 	return pickle.load(f)
 	
-def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, location=None, time=True, filename=None):
+def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, location=None, time=True, filename=None, matlab=False):
 	location = mk_dir(path = location, time=time)
 
 	if not filename:
@@ -64,71 +65,6 @@ def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, locatio
 	if plot:
 		plotting.plot_measurement(data, filename, save=location, annotation=annotation)
 	
-	'''
-	if (np.iscomplexobj(data[-1][0])):
-		data.append(np.angle(data[-1]))
-		data[-2] = 20*np.log10(np.abs(data[-2]))
-	if ( (len(data) == 4) and plot):
-		if (len(data[2].shape) == 1):
-			plt.figure(figsize=(8,6))
-			plt.plot(data[0], data[2])
-			if curve_fit != None:
-				plt.plot(curve_fit[0], curve_fit[1])
-			if annotation != None:
-				plt.annotate(annotation, (0.3, 0.1), xycoords='axes fraction', bbox={'alpha':1.0, 'pad':3, 'edgecolor':'black', 'facecolor':'white'})
-			plt.title('{0} {1} abs dB'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.abs dB.png'.format(location, filename))
-			plt.figure(figsize=(8,6))
-			plt.plot(data[0], 10**(data[2]/10))
-			if curve_fit != None:
-				plt.plot(curve_fit[0], 10**(curve_fit[1]/10))
-			if annotation != None:
-				plt.annotate(annotation, (0.3, 0.1), xycoords='axes fraction', bbox={'alpha':1.0, 'pad':3, 'edgecolor':'black', 'facecolor':'white'})
-			plt.title('{0} {1} abs'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.abs.png'.format(location, filename))
-			plt.figure(figsize=(8,6))
-			plt.plot(data[0], data[3])
-			if curve_fit != None:
-				plt.plot(curve_fit[0], curve_fit[2])
-			if annotation != None:
-				plt.annotate(annotation, (0.3, 0.1), xycoords='axes fraction', bbox={'alpha':1.0, 'pad':3, 'edgecolor':'black', 'facecolor':'white'})
-			plt.title('{0} {1} phase'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.phase.png'.format(location, filename))
-
-			plt.figure(figsize=(8,6))
-			plt.plot(data[0], np.unwrap(data[3]))
-			if curve_fit != None:
-				plt.plot(curve_fit[0], np.unwrap(curve_fit[2]))
-			if annotation != None:
-				plt.annotate(annotation, (0.3, 0.1), xycoords='axes fraction', bbox={'alpha':1.0, 'pad':3, 'edgecolor':'black', 'facecolor':'white'})
-			plt.title('{0} {1} unwrapped phase'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.phase_unwrapped.png'.format(location, filename))
-
-			plt.figure(figsize=(8,6))
-			plt.plot((data[0][1:]+data[0][:1])/2, np.diff(np.unwrap(data[3])))
-			if curve_fit != None:
-				plt.plot(curve_fit[0], np.unwrap(curve_fit[2]))
-			if annotation != None:
-				plt.annotate(annotation, (0.3, 0.1), xycoords='axes fraction', bbox={'alpha':1.0, 'pad':3, 'edgecolor':'black', 'facecolor':'white'})
-			plt.title('{0} {1} phase diff'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.phase_diff.png'.format(location, filename))
-
-		if (len(data[2].shape) == 2):
-			plt.figure(figsize=(8,6))
-			plt.pcolor(data[1], data[0], data[2], cmap='RdBu_r')
-			plt.colorbar()
-			plt.title('{0} {1} abs'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.abs.png'.format(location, filename))
-			plt.figure(figsize=(8,6))
-			plt.pcolor(data[1], data[0], data[3], cmap='RdBu_r')
-			plt.colorbar()
-			plt.title('{0} {1} phase'.format(header['type'], header['name']))
-			plt.grid()
-			plt.savefig('{0}/{1}.phase.png'.format(location, filename))
-			'''
+	if matlab:
+		matfilename = '{0}/{1}.mat'.format(location, filename)
+		scipy.io.savemat(matfilename, mdict=data)

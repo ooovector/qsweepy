@@ -1,0 +1,195 @@
+Release Version Notes for the SA/BB programming libraries.
+
+Support contact: aj@signalhound.com
+
+- BB_API Version 3.0.19 (4/2/2017)
+* Real-time mode issue resolved for BB60A units below 1GHz.
+
+- SA_API Version 3.0.18 (2/8/2017)
+* Bug fixes
+* Added the saGetIQUnpacked() function to aid in non-C programming language bindings.
+
+- BB_API Version 3.0.18 (2/8/2017)
+* RBW restrictions lifted for Nuttall windows for sweep mode and real-time. Can now select arbitrary values for RBW when the Nuttall RBW shape is selected.
+* Added the bbGetIQUnpacked() function to aid in non-C programming language bindings.
+
+- SA_API Version 3.0.17 (12/14/2016)
+* Fixed issue where low frequency SNA sweeps did not function properly due to high amplitude 0Hz feed through.
+
+- BB_API Version 3.0.17 (11/21/2016)
+* Resolved issues relating to multiple device GPS time stamping. 
+
+- BB_API Version 3.0.16 (11/10/2016)
+* IQ streaming now uses direct input between 10-16 MHz center frequency.
+* Resolved aliasing issues relating to direct input IQ streaming. (<16 MHz center frequency)
+* Integration for TG timebase adjustments through the Signal Hound Calibration software.
+
+- SA_API Version 3.0.16 (11/10/2016)
+* Integration for TG timebase adjustments through the Signal Hound Calibration software.
+
+- SA_API Version 3.0.15 (10/24/2016)
+* Improved pre-amp response time at maximum sensitivity.
+
+- BB_API Version 3.0.15 (10/11/2016)
+* Addressed performance regression on IQ streaming.
+
+- SA_API Version 3.0.14 (10/11/2016)
+* Fixed issues with CW mode for audio streaming.
+* Improved filter rolloff for low/high pass audio filters.
+* Modified AGC characteristics for SSB/CW audio streaming.
+
+- SA_API Version 3.0.13 (9/2/2016)
+* Internal changes to support timebase adjustments made in the Field Calibration Software.
+
+- BB_API Version 3.0.14 (8/26/2016)
+* Bug fixes related to audio streaming.
+* Narrow span sweeps between 10MHz-16MHz no longer are succeptible to IF overload conditions.
+* Bug fixes for real-time analysis in band zero.
+* Marked bbFetchRaw() and bbQueryTimestamp() as deprecated. This functionality has been superceded by the
+  bbGetIQ() function. 
+  For customers still wanting access to the direct uncalibrated IF, you can still use bbFetchRaw(). 
+  If the device is configured for IQ streaming, the bbFetchRaw() function is routed to bbGetIQ().
+* Bug fixes related to IQ streaming and external triggers.
+
+- SA_API Version 3.0.12 (8/26/2016)
+* Bug fixes related to audio streaming.
+* Bug fixes relating to 200-500kHz spans for SA124B.
+
+- BB_API Version 3.0.13 (6/1/2016)
+* I/Q streaming below 10 MHz now utilizes the direct conversion IF band. 
+  This improves RF performance on I/Q measurements below 10 MHz.
+* Increased max sweep acquisition time to 1000ms.
+* Added new bbGetIQ() function, which provides more flexibility for IQ data streaming.
+  See the API manual for more information on this function.
+
+- SA_API Version 3.0.11 (6/1/2016)
+* Added new saGetIQData() function, provides more flexibility for IQ data streaming.
+  See the API manual for more information on this function.
+
+- BB_API Version 3.0.12 (3/2/2016)
+* Exisiting programs will continue to compile without any changes.
+* Changed rbwType parameter name in bbConfigureSweepCoupling function to rbwShape.
+* Changed the notion of native/non-native RBWs to Nuttall/Flattop respectively. 
+* Added the ability to specify a Gaussian 6dB bandwidth RBW shape through the rbwShape parameter.
+* Added new more descriptive #defines for these new rbwShapes.
+* bbConfigureWindow() is now deprecated. Moving forward the only windows the API will support are the ones 
+  available through the bbCOnfigureSweepCoupling functions, which are Flattop, Nuttall, and Gaussian.
+* Removed old #defines from previously removed functions.
+
+- SA_API Version 3.0.10 (3/2/2016)
+* Added saConfigRBWShape() function which allows the selection of RBW filter. 
+  The two choices are a 3dB Flattop(default) and 6dB Gaussian filter.
+
+- BB_API Version 3.0.11 (2/4/2016)
+* bbQueryStreamInfo() now properly returns the internally used IF bandwidth if it was clamped based on sample rate.
+* Fixed frequency error that appeared in certain circumstances above 3GHz in zero-span mode.
+* Narrow band sweeps between 5.6 and 5.8 GHz should now operate properly.
+
+- SA API Version 3.0.9 (11/9/2015)
+* Added functions for configuring the real-time overlap rate and retrieving the probability of intercept in real-time mode.
+* Added functions for configuring the TG44/TG124 timebase reference.
+* Added functions for configuring the SA124 10MHz timeout out.
+* The timebase reference setting will now reset when you close the device through the saCloseDevice function. 
+
+- BB_API Version 3.0.9 (11/9/2015)
+* Added functions for configuring the real-time overlap rate and retrieving the probability of intercept in real-time mode.
+* Added functions for configuring the TG44/TG124 timebase reference.
+
+- SA_API Version 3.0.8 (10/26/2015)
+* Resolved frequency discrepency issues present at 70MHz center frequency and some low multiples of 70MHz.
+
+- SA_API Version 3.0.7
+* Added support for SA44/SA44B 5MHz RBW
+* Resolved issue where calling saAbort would sometimes hang after initializing large spans.
+
+- BB_API Version 3.0.8
+* Added tracking generator support for the BB60A. (With firmware update 5)
+
+- BB_API Version 3.0.7 (9/8/2015)
+* Detects USB transfer issues when paired with the latest Firmware update. Simply discards sweeps and measurements. Only works when paired with updated FPGA/firmware. Contact Signal Hound for more information.
+* Improved stability so that low RBW, narrow span sweeps do not cause the API to lockup in high CPU scenarios. 
+* Added additional decimation values for I/Q streaming for the BB60C and BB60A. Can now decimate in powers of two from 40MS/s to 4.882kS/s. 
+
+- SA_API Version 3.0.6 (7/22/2015)
+* Added saGetTgFreqAmpl function to retrieve last set TG output configuration.
+* Fixed bug with audio IF bandwidth selection.
+
+- BB_API Version 3.0.6 (7/22/2015)
+* BB60C streaming tune speed has been substantially increased. Required API version 3.0.6 and Firmware version 6. Only for BB60C models.
+* Added bbGetTgFreqAmpl function to retrieve last set TG output configuration.
+* Fixed bug with audio IF bandwidth selection.
+
+- SA_API Version 3.0.5
+* Added the ability to set the calibration folder file path. See the saSetCalFilePath() function in the SA API manual for more information.
+
+- BB_API Version 3.0.5
+* Compiled for 64-bit Linux operating systems
+* Should now detect BB60 devices when non Signal Hound cypress devices are connected to the PC
+
+- SA_API Version 3.0.4
+* Fixed memory leak on saCloseDevice()
+
+- SA_API Version 3.0.3
+* Replaced functionality believed to cause crashes on a select few types of laptops and PCs.
+* Resolved an issue which caused crashes on sweep spans of less than 200kHz. 
+
+- BB_API Version 3.0.4
+* Added tracking generator support for the BB60C, firmware version 5.
+
+- BB_API Version 3.0.2
+* New real-time functionality exposed through API
+
+- SA_API Version 3.0.2
+* New real-time functionality exposed through API
+
+- BB_API Version 3.0.1
+* Removed deprecated functions that were present from the original BB60A API. The functions were deprecated on the release of the BB60C.
+
+- BB_API Version 2.0.6
+* Can now target BB60 devices by serial number when opening. 
+
+- BB_API Version 2.0.5
+* Deprecated a number of redundant functions. Most notably, the zero-span
+  functionality, time-gated sweeps, and the raw-sweep functionality. This 
+  functionality will be removed in a future release. Please contact us if
+  this is undesired.
+
+- BB_API Version 2.0.3
+* Fixed issue which arises when attenuation is manually set to 30dB
+* Fixed IQ bandwidth issues with BB60A. The bandwidth set during
+  bbConfigureIQ() would not get configured properly.
+* The user no longer needs to call bbFetchRaw() fast enough to keep up with the data.
+  If the user does not though, data collected longer than 3/4 seconds prior to the last
+  bbFetchRaw() call will be dropped.
+
+- BB_API version 2.0.1
+* Improved the performance of audio demodulation, expect a CPU reduction of 50% on average
+* Calibration improved at higher internal temperatures (+40C)
+
+- BB_API version 1.2.4
+* The API and software more gracefully handles a situation in which the system falls behind in Real-time and
+  streaming modes.
+* The API now has more robust error reporting on out of memory conditions. One can now expect the API to
+  return error messages when the API has run out of memory during the bbInitiate() routine. Out of memory
+  conditions are most common when using combinations of large spans and low RBW/VBW in the BB_SWEEPING mode.
+* Added two new USB error reporting conditions.
+
+- BB_API version 1.2.2
+* Issues revolving around the streaming time stamps have been corrected. Time stamps are now
+  more accurate when streaming.
+* The API now allows you to retrieve streaming IF/IQ data as 16-bit signed shorts in addition to 32-bit
+  float point digital samples. By retrieving digital samples as 16-bit signed shorts the API does not
+  need to perform the scaling and conversion to 32-bit floats. This may help reduce computational load
+  in certain situations.
+* The interface to the raw sweep loop functionality has been improved. Read the API manual to learn
+  about the changes to raw sweep loop.
+
+- BB_API version 1.1.0
+* Many codebase changes have taken place to prepare for future broadband products
+* The API returns more meaningful errors/strings on configuration routines.
+* Header file/Library/.dll have been renamed to be device neutral.
+* bbUSBTimeout() has been removed from the API.
+* Device specific Limits have been added to the header file.
+* The API .dll should no longer throw OpenMP errors on VS2010 and later.
+* bbQueryStreamingCenter() has been added. Assists in the process of downconversion for
+  our 20MHz IF data stream. Check out the API manual for more information. (Under raw-data mode)

@@ -33,6 +33,17 @@ def mean_reducer(source, src_meas, axis):
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
 	
+def std_reducer(source, src_meas, axis):
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		del new_axes [axis]
+		return new_axes
+	filter = {'filter': lambda x:np.std(x[src_meas], axis=axis),
+			  'get_points': get_points,
+			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_opts': (lambda : source.get_opts()[src_meas])}
+	return filter
+	
 def mean_reducer_noavg(source, src_meas, axis):
 	def get_points():
 		new_axes = source.get_points()[src_meas].copy()
@@ -76,13 +87,28 @@ def mean_reducer_freq(source, src_meas, axis_mean, freq):
 def feature_reducer(source, src_meas, axis_mean, bg, feature):
 	def get_points():
 		new_axes = source.get_points()[src_meas].copy()
-		del new_axes [axis]
+		del new_axes [axis_mean]
 		return new_axes
 	new_feature_shape = [1]*len(source.get_points()[src_meas])
 	new_feature_shape[axis_mean] = len(feature)
 	bg  = np.reshape(bg, new_feature_shape)
 	feature = np.reshape(feature, new_feature_shape)
 	filter = {'filter': lambda x:np.sum((x[src_meas]-bg)*feature, axis=axis_mean),
+			  'get_points': get_points,
+			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_opts': (lambda : source.get_opts()[src_meas])}
+	return filter
+	
+def feature_reducer_binary(source, src_meas, axis_mean, bg, feature):
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		del new_axes [axis_mean]
+		return new_axes
+	new_feature_shape = [1]*len(source.get_points()[src_meas])
+	new_feature_shape[axis_mean] = len(feature)
+	bg  = np.reshape(bg, new_feature_shape)
+	feature = np.reshape(feature, new_feature_shape)
+	filter = {'filter': lambda x:(np.sum((x[src_meas]-bg)*feature, axis=axis_mean)>0)*2-1,
 			  'get_points': get_points,
 			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}

@@ -2,97 +2,86 @@ from scipy.signal import gaussian
 import data_reduce
 import numpy as np
 
-def ex_gauss_hd (amp_x, amp_y, length, sigma, awg_channels, delta):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
-	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
-	gauss = gaussian(int(round(length*iq_ex.get_clock())), sigma*iq_ex.get_clock())
-	gauss_der = np.gradient (gauss)*iq_ex.get_clock()
-	return {'ex': amp_x*gauss - amp_y*gauss_der/2/np.pi/delta,
-			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=np.complex),
-			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
-			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
-def ex_gauss(amplitude, length, sigma, awg_channels):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
-	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
-	return {'ex': amplitude*gaussian(int(round(length*iq_ex.get_clock())), sigma*iq_ex.get_clock()).astype(np.complex),
-			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=np.complex),
-			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
-			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
-
-def ro_rect(amplitude, length, awg_channels):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
-	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
-	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': amplitude*np.ones(int(round(length*iq_ro.get_clock())), dtype=np.complex),
-			'ro_trg':np.hstack([[1, 1, 1, 1],np.zeros(int(round(length*ro_trg.get_clock()-4)), dtype=int)]),
-			'osc_trg':np.hstack([[1, 1, 1, 1],np.zeros(int(round(length*osc_trg.get_clock()-4)), dtype=int)]),}
-
-def ex_rect(amplitude, length, awg_channels):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
-	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
-	return {'ex': amplitude*np.ones(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=np.complex),
-			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
-			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
-
-def pause(length, awg_channels):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
-	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
-	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=np.complex),
-			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
-			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
-
-def set_sequence(pulse_seq, awg_channels):
-	initial_delay = 1e-6
-	final_delay = 1e-6
-	channels = {'ex':awg_channels['iq_ex'], 'ro':awg_channels['iq_ro'], 'ro_trg':awg_channels['ro_trg'], 'osc_trg':awg_channels['osc_trg']}
-	pulse_seq_padded = [pause(initial_delay, awg_channels)]+[p for p in pulse_seq]+[pause(final_delay, awg_channels)]
+class pulses:
+	def __init__(self, channels = {}):
+		self.channels = channels
+		self.settings = {}
 	
-	pulse_shape = {k:[] for k in channels.keys()}
-	for channel, channel_device in channels.items():
-		for pulse in pulse_seq_padded:
-			pulse_shape[channel].extend(pulse[channel])
-		pulse_shape[channel] = np.asarray(pulse_shape[channel])
-	
-		if len(pulse_shape[channel])>channel_device.get_nop():
-			tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
-			tmp = pulse_shape[channel][-channel_device.get_nop():]
-			pulse_shape[channel] = tmp
-			raise(ValueError('pulse sequence too long'))
-		else:
-			tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
-			tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
-			pulse_shape[channel] = tmp
+	## generate waveform of a gaussian pulse with quadrature phase mixin
+	def gauss_hd (self, channel, length, amp_x, amp_y, sigma, alpha=0.):
+		gauss = gaussian(int(round(length*self.channels[channel].get_clock())), sigma*self.channels[channel].get_clock())
+		gauss -= gauss[0]
+		gauss_der = np.gradient (gauss)*self.channels[channel].get_clock()
+		return amp_x*(gauss + 1j*gauss_der*alpha) + 1j*amp_y*(gauss + 1j*gauss_der*alpha)
 		
-		channel_device.set_waveform(pulse_shape[channel])
+	## generate waveform of a rectangular pulse
+	def rect(self, channel, length, amplitude):
+		return amplitude*np.ones(int(round(length*self.channels[channel].get_clock())), dtype=np.complex)
+
+	def pause(self, channel, length):
+		return self.rect(channel, length, 0)
+		
+	def p(self, channel, length, pulse_type=None, *params):
+		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
+		if channel:
+			pulses[channel] = pulse_type(channel, length, *params)
+		return pulses
+		
+	def ps(self, channel, length, pulse_type=None, *params):
+		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
+		if channel:
+			pulses[channel] = pulse_type(channel, length, *params)
+		return pulses
+	
+	def set_seq(self, seq):
+		initial_delay = 1e-6
+		final_delay = 1e-6
+		pulse_seq_padded = [self.p(None, initial_delay, None)]+seq+[self.p(None, final_delay, None)]
+	
+		pulse_shape = {k:[] for k in self.channels.keys()}
+		for channel, channel_device in self.channels.items():
+			for pulse in pulse_seq_padded:
+				pulse_shape[channel].extend(pulse[channel])
+			pulse_shape[channel] = np.asarray(pulse_shape[channel])
+	
+			if len(pulse_shape[channel])>channel_device.get_nop():
+				tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
+				tmp = pulse_shape[channel][-channel_device.get_nop():]
+				pulse_shape[channel] = tmp
+				raise(ValueError('pulse sequence too long'))
+			else:
+				tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
+				tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
+				pulse_shape[channel] = tmp
+		
+			channel_device.set_waveform(pulse_shape[channel])
 
 class sz_measurer:
-	def __init__(self, adc, ex_seq, ro_seq, awg_channels):
+	def __init__(self, adc, ex_seq, ro_seq, pulse_generator):
 		self.adc = adc
 		self.ex_seq = ex_seq
 		self.ro_seq = ro_seq
-		self.awg_channels = awg_channels
+		self.pulse_generator = pulse_generator
+		self.repeat_samples = 2
+		self.save_last_samples = False
 	
 	def calibrate(self):
 		from sklearn.metrics import roc_auc_score, roc_curve
 		
 		# zero sequence
-		set_sequence(self.ro_seq, self.awg_channels)
-		samples_zero = self.adc.measure()['Voltage']
-		# pi pulse sequence
-		set_sequence(self.ex_seq+self.ro_seq, self.awg_channels)
-		samples_one = self.adc.measure()['Voltage']
+		samples_zero = []
+		samples_one = []
+		for i in range(self.repeat_samples):
+			self.pulse_generator.set_seq(self.ro_seq)
+			samples_zero.append(self.adc.measure()['Voltage'])
+			# pi pulse sequence
+			self.pulse_generator.set_seq(self.ex_seq+self.ro_seq)
+			samples_one.append(self.adc.measure()['Voltage'])
+			
+		samples_zero = np.asarray(samples_zero)
+		samples_one  = np.asarray(samples_one )
+		samples_zero = np.reshape(samples_zero, (samples_zero.shape[0]*samples_zero.shape[1], samples_zero.shape[2]))
+		samples_one  = np.reshape(samples_one, (samples_one.shape[0]*samples_one.shape[1], samples_one.shape[2]))
 
 		samples = np.asarray([samples_zero, samples_one])
 		
@@ -141,63 +130,110 @@ class sz_measurer:
 		self.calib_hists = hists
 		
 		roc_curve = roc_curve([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
-		roc_auc_score = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
+		roc_auc = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
+		fidelity = np.mean([np.sqrt(np.mean(self.predictor(predictions[0,:]))), 
+							np.sqrt(np.mean(self.predictor(predictions[1,:])))])
+
+		roc_auc_binary = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], (predictions.ravel()>0)*2-1)
+		fidelity_binary = np.mean([np.sqrt(np.mean(predictions[0,:]<0)), 
+									np.sqrt(np.mean(predictions[1,:]>0))])
 		
 		self.calib_roc_curve = roc_curve
-		self.calib_roc_auc_score = roc_auc_score
+		self.calib_roc_auc = roc_auc
+		self.calib_fidelity = fidelity
+
+		self.calib_roc_auc_binary = roc_auc_binary
+		self.calib_fidelity_binary = fidelity_binary
 		
 		self.filter = filter
+		self.filter_binary = data_reduce.feature_reducer_binary(self.adc, 'Voltage', 1, mean_signal, feature)
 		
+		if self.save_last_samples:
+			self.samples = samples
 		
+		usl = False
+		if usl:
 		# Unsupervised predictions
-		samples = np.fft.fft(np.reshape(samples, (samples.shape[0]*samples.shape[1], samples.shape[2])), axis=1)
+			samples = np.fft.fft(np.reshape(samples, (samples.shape[0]*samples.shape[1], samples.shape[2])), axis=1)
 		
-		psd = np.mean(np.abs(samples)**2,axis=0)
-		mean_psd = np.abs(np.fft.fft(mean_signal))**2
-		#self.calib_usl_filt = np.sqrt(mean_psd/psd) # filter out the fourier components such that the snr in each is equal
-		self.calib_usl_filt = np.sqrt(psd/psd) # filter out the fourier components such that the snr in each is equal
-		self.calib_usl_filt[-50:]=0.
-		self.calib_usl_filt[:50]=0.
-		self.calib_usl_filt = self.calib_usl_filt/np.sqrt(np.mean(self.calib_usl_filt**2))
+			psd = np.mean(np.abs(samples)**2,axis=0)
+			mean_psd = np.abs(np.fft.fft(mean_signal))**2
+			#self.calib_usl_filt = np.sqrt(mean_psd/psd) # filter out the fourier components such that the snr in each is equal
+			self.calib_usl_filt = np.sqrt(psd/psd) # filter out the fourier components such that the snr in each is equal
+			self.calib_usl_filt[-50:]=0.
+			self.calib_usl_filt[:50]=0.
+			self.calib_usl_filt = self.calib_usl_filt/np.sqrt(np.mean(self.calib_usl_filt**2))
 		
-		samples = samples*self.calib_usl_filt
-		samples = np.fft.ifft(samples,axis=1)
+			samples = samples*self.calib_usl_filt
+			samples = np.fft.ifft(samples,axis=1)
 		
-		# create a correlation matrix
-		samples = np.hstack([samples, np.ones((samples.shape[0], 1), dtype=np.complex)])
-		cov = np.einsum('ij,ik->jk', np.conj(samples), samples)/samples.shape[0]
-		self.calib_usl_cov = cov
-		W,V = np.linalg.eigh(cov)
+			# create a correlation matrix
+			samples = np.hstack([samples, np.ones((samples.shape[0], 1), dtype=np.complex)])
+			cov = np.einsum('ij,ik->jk', np.conj(samples), samples)/samples.shape[0]
+			self.calib_usl_cov = cov
+			W,V = np.linalg.eigh(cov)
 		
-		mean_ind = np.argsort(np.abs(W))[-1]
-		diff_ind = np.argsort(np.abs(W))[-2]
+			mean_ind = np.argsort(np.abs(W))[-1]
+			diff_ind = np.argsort(np.abs(W))[-2]
+			
+			scaled_bg = V[:-1,mean_ind]/V[-1,mean_ind]
+			self.calib_usl_bg = scaled_bg
+			self.calib_usl_feature = np.conj(V[:-1,diff_ind])
 		
-		scaled_bg = V[:-1,mean_ind]/V[-1,mean_ind]
-		self.calib_usl_bg = scaled_bg
-		self.calib_usl_feature = np.conj(V[:-1,diff_ind])
-		
-		self.calib_usl_pred = np.dot(np.reshape(samples[:,:-1], predictions.shape+self.calib_usl_feature.shape), self.calib_usl_feature)
-		diff = np.diff(np.mean(self.calib_usl_pred, axis=1))[0]
-		self.calib_usl_feature = self.calib_usl_feature/diff
-		self.calib_usl_pred = self.calib_usl_pred / diff
+			self.calib_usl_pred = np.dot(np.reshape(samples[:,:-1], predictions.shape+self.calib_usl_feature.shape), self.calib_usl_feature)
+			diff = np.diff(np.mean(self.calib_usl_pred, axis=1))[0]
+			self.calib_usl_feature = self.calib_usl_feature/diff
+			self.calib_usl_pred = self.calib_usl_pred / diff
 		
 		return filter
 	
-class tomography:
-	def __init__(self, adc, sz_measurer, awg_channels, proj_seq):
-		self.sz_measurer = sz_measurer
-		self.adc = adc
-		self.awg_channels = awg_channels
-		self.proj_seq = proj_seq
-		
-		self.adc_reducer = data_reduce.data_reduce(adc)
-		self.adc_reducer.filters['SZ'] = self.sz_measurer.filter
+	def get_opts(self):
+		return {'Calibrated ROC AUC binary': {'log': False},
+				'Calibrated ROC AUC': {'log': False},
+				'Calibrated fidelity': {'log': False},
+				'Calibrated fidelity binary': {'log': False} }
+	
+	def measure(self):
+		self.calibrate()
+		meas = {'Calibrated ROC AUC binary': self.calib_roc_auc_binary,
+				'Calibrated ROC AUC': self.calib_roc_auc,
+				'Calibrated fidelity': self.calib_fidelity,
+				'Calibrated fidelity binary': self.calib_fidelity_binary}
+		return meas
 		
 	def get_points(self):
-		return { p:{} for p in self.proj_seq.keys() }
+		return {'Calibrated ROC AUC binary': {},
+				'Calibrated ROC AUC': {},
+				'Calibrated fidelity': {},
+				'Calibrated fidelity binary': {} }
+				
+	def get_dtype(self):
+		return {'Calibrated ROC AUC binary': float,
+				'Calibrated ROC AUC': float,
+				'Calibrated fidelity': float,
+				'Calibrated fidelity binary': float }
+	
+	
+class tomography:
+	def __init__(self, sz_measurer, pulse_generator, proj_seq, reconstruction_basis={}):
+		self.sz_measurer = sz_measurer
+		#self.adc = adc
+		self.pulse_generator = pulse_generator
+		self.proj_seq = proj_seq
+		self.reconstruction_basis=reconstruction_basis
+		
+		self.adc_reducer = data_reduce.data_reduce(self.sz_measurer.adc)
+		self.adc_reducer.filters['SZ'] = self.sz_measurer.filter_binary
+		
+	def get_points(self):
+		points = { p:{} for p in self.proj_seq.keys() }
+		points.update({p:{} for p in self.reconstruction_basis.keys()})
+		return points
 	
 	def get_dtype(self):
-		return { p:float for p in self.proj_seq.keys() }
+		dtypes = { p:float for p in self.proj_seq.keys() }
+		dtypes.update({ p:float for p in self.reconstruction_basis.keys() })
+		return dtypes
 	
 	def set_prepare_seq(self, seq):
 		self.prepare_seq = seq
@@ -205,10 +241,24 @@ class tomography:
 	def measure(self):
 		meas = {}
 		for p in self.proj_seq.keys():
-			set_sequence(self.prepare_seq+self.proj_seq[p], self.awg_channels)
-			meas[p] = np.real(np.mean(self.adc_reducer.measure()['SZ']))
+			self.pulse_generator.set_seq(self.prepare_seq+self.proj_seq[p]['pulses'])
+			meas[p] = np.real(np.mean(self.adc_reducer.measure()['SZ'])/2)
+
+		proj_names = self.proj_seq.keys()
+		basis_axes_names = self.reconstruction_basis.keys()
+		#TODO: fix this norm stuff in accordance with theory
+		basis_vector_norms = np.asarray([np.linalg.norm(self.reconstruction_basis[r]['operator']) for r in basis_axes_names])
+		
+		if len(self.reconstruction_basis.keys()):
+			reconstruction_matrix = np.real(np.asarray([[np.sum(self.proj_seq[p]['operator']*np.conj(self.reconstruction_basis[r]['operator'])) \
+										for r in basis_axes_names] \
+										for p in proj_names]))
+			projections = np.linalg.lstsq(reconstruction_matrix, [meas[p] for p in proj_names])[0]*(basis_vector_norms**2)
+			meas.update({k:v for k,v in zip(basis_axes_names, projections)})
 		return meas
 		
 	def get_opts(self):
-		return { p:{} for p in self.proj_seq.keys()}
+		opts = { p:{} for p in self.proj_seq.keys()}
+		opts.update ({ p:{} for p in self.reconstruction_basis.keys()})
+		return opts
 		
