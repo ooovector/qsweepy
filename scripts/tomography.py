@@ -33,7 +33,7 @@ class pulses:
 			pulses[channel] = pulse_type(channel, length, *params)
 		return pulses
 	
-	def set_seq(self, seq):
+	def set_seq(self, seq, force=True):
 		initial_delay = 1e-6
 		final_delay = 1e-6
 		pulse_seq_padded = [self.p(None, initial_delay, None)]+seq+[self.p(None, final_delay, None)]
@@ -131,19 +131,19 @@ class sz_measurer:
 		
 		roc_curve = roc_curve([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
 		roc_auc = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
-		fidelity = np.mean([np.sqrt(np.mean(self.predictor(predictions[0,:]))), 
-							np.sqrt(np.mean(self.predictor(predictions[1,:])))])
+		fidelity = np.mean([np.mean(self.predictor(predictions[0,:]<0)), 
+							np.mean(self.predictor(predictions[1,:]>0))])
 
-		roc_auc_binary = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], (predictions.ravel()>0)*2-1)
-		fidelity_binary = np.mean([np.sqrt(np.mean(predictions[0,:]<0)), 
-									np.sqrt(np.mean(predictions[1,:]>0))])
+		#roc_auc_binary = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], (predictions.ravel()>0)*2-1)
+		#fidelity_binary = np.mean([np.sqrt(np.mean(predictions[0,:]<0)), 
+		#							np.sqrt(np.mean(predictions[1,:]>0))])
 		
 		self.calib_roc_curve = roc_curve
 		self.calib_roc_auc = roc_auc
 		self.calib_fidelity = fidelity
 
-		self.calib_roc_auc_binary = roc_auc_binary
-		self.calib_fidelity_binary = fidelity_binary
+		#self.calib_roc_auc_binary = roc_auc_binary
+		#self.calib_fidelity_binary = fidelity_binary
 		
 		self.filter = filter
 		self.filter_binary = data_reduce.feature_reducer_binary(self.adc, 'Voltage', 1, mean_signal, feature)
@@ -188,30 +188,30 @@ class sz_measurer:
 		return filter
 	
 	def get_opts(self):
-		return {'Calibrated ROC AUC binary': {'log': False},
+		return {#'Calibrated ROC AUC binary': {'log': False},
 				'Calibrated ROC AUC': {'log': False},
-				'Calibrated fidelity': {'log': False},
-				'Calibrated fidelity binary': {'log': False} }
+				#'Calibrated fidelity binary': {'log': False} ,
+				'Calibrated fidelity': {'log': False}}
 	
 	def measure(self):
 		self.calibrate()
-		meas = {'Calibrated ROC AUC binary': self.calib_roc_auc_binary,
+		meas = {#'Calibrated ROC AUC binary': self.calib_roc_auc_binary,
 				'Calibrated ROC AUC': self.calib_roc_auc,
-				'Calibrated fidelity': self.calib_fidelity,
-				'Calibrated fidelity binary': self.calib_fidelity_binary}
+				#'Calibrated fidelity binary': self.calib_fidelity_binary,
+				'Calibrated fidelity': self.calib_fidelity}
 		return meas
 		
 	def get_points(self):
-		return {'Calibrated ROC AUC binary': {},
+		return {#'Calibrated ROC AUC binary': {},
 				'Calibrated ROC AUC': {},
-				'Calibrated fidelity': {},
-				'Calibrated fidelity binary': {} }
+				#'Calibrated fidelity binary': {},
+				'Calibrated fidelity': {} }
 				
 	def get_dtype(self):
-		return {'Calibrated ROC AUC binary': float,
+		return {#'Calibrated ROC AUC binary': float,
 				'Calibrated ROC AUC': float,
-				'Calibrated fidelity': float,
-				'Calibrated fidelity binary': float }
+				#'Calibrated fidelity binary': float, 
+				'Calibrated fidelity': float}
 	
 	
 class tomography:

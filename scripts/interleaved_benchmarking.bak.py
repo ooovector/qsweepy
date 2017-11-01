@@ -203,10 +203,10 @@ class interleaved_benchmarking:
 								np.mean(np.real(np.sqrt(np.sum([(expected_projections[a] - results[a][2])**2 for a in axes], axis=0)))),
 										[])
 		
-		results['Pulse sequences']=((results[axes[0]][0], 'Gate names'), 
-									(results[axes[0]][1], np.arange(len(interleaved[0]['Gate names']))),
-									np.asarray([i['Gate names'] for i in interleaved]),
-									results[axes[0]][3])
+		results['Pulse sequences']=(results[axes[0]][0],  
+										results[axes[0]][1],
+										np.asarray([i['Gate names'] for i in interleaved]),
+										results[axes[0]][3])
 		
 		results.update({'{0} fit'.format(i):(results[i][0], results[i][1], np.real(expected_projections[i]), results[i][3]) for i in axes})
 		

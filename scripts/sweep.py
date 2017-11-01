@@ -40,6 +40,21 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	
 	Returns: dict of ndarrays each corresponding to a measurment in the sweep
 	'''
+	# kill the annoying warning:
+	#c:\python36\lib\site-packages\matplotlib\backend_bases.py:2445: MatplotlibDeprecationWarning: Using default event loop until function specific to this GUI is implemented
+    #warnings.warn(str, mplDeprecation)
+	
+	import warnings
+	warnings.filterwarnings("ignore",".*Using default event loop until function specific to this GUI is implemented*")
+	
+	try:
+		from ipywidgets import HTML
+		from IPython.display import display
+		sweep_state_widget = HTML()
+		display(sweep_state_widget)
+	except:
+		sweep_state_widget = None
+		
 	print("Started at: ", time.strftime("%b %d %Y %H:%M:%S", time.localtime()))
 	start_time = time.time()
 	
@@ -48,15 +63,18 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	sweep_dim = tuple([len(param[0]) for param in params])
 	sweep_dim_vals = tuple([param[0] for param in params])
 	sweep_dim_names = tuple([param[2] if len(param)>2 else 'param_{0}'.format(param_id) for param_id, param in enumerate(params)])
+	sweep_dim_units = tuple([param[3] if len(param)>3 else '' for param_id, param in enumerate(params)])
 	sweep_dim_setters = tuple(param[1] for param in params)
 	
 	# determining return type of measurer: in could be 2 traces (im, re)
 	point_types = measurer.get_dtype()
 	meas_opts = measurer.get_opts()
 	points = measurer.get_points() # should return dict of meas_name:points
-	point_dim_names = {mname:tuple([cname	   for cname, cvals in mxvals]) for mname, mxvals in points.items()}
-	point_dim		= {mname:tuple([len(cvals) for cname, cvals in mxvals]) for mname, mxvals in points.items()}
-	point_dim_vals	= {mname:tuple([cvals	   for cname, cvals in mxvals]) for mname, mxvals in points.items()}
+	print (points)
+	point_dim_names = {mname:tuple([cname	   for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
+	point_dim		= {mname:tuple([len(cvals) for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
+	point_dim_vals	= {mname:tuple([cvals	   for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
+	point_dim_units	= {mname:tuple([cunits	   for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
 	#point_dim = {mname:tuple([len(mxvals[cname]) for cname in point_dim_names[mname]]) for mname, mxvals in points.items()}
 	#point_dim_vals = {mname:tuple([mxvals[1] for cname in point_dim_names[mname]]) for mname, mxvals in points.items()}
 	# initializing empty ndarrays for measurment results
@@ -72,12 +90,16 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	def non_unity_dim_vals(mname):
 		all_dim_vals = sweep_dim_vals+point_dim_vals[mname]
 		return tuple(dim_name for dim, dim_name in zip(data[mname].shape, all_dim_vals) if dim > 1)
+		
+	def non_unity_dim_units(mname):
+		all_dim_units = sweep_dim_units+point_dim_units[mname]
+		return tuple(dim_name for dim, dim_name in zip(data[mname].shape, all_dim_units) if dim > 1)
 	
 	ascii_files = {mname:None for mname in points.keys()}
 	mk_measurement = lambda x: {mname: (non_unity_dim_names(mname), 
 							non_unity_dim_vals(mname), 
 							np.reshape(data[mname], non_unity_dims(mname)),
-							meas_opts[mname]) for mname in points.keys()}
+							meas_opts[mname], non_unity_dim_units(mname)) for mname in points.keys()}
 	
 	if root_dir is None:
 		data_dir = save_pkl.mk_dir()
@@ -111,7 +133,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	# starting sweep
 	start_time = time.time()
 	try:
-		internal_print("First sweep...")
+		sweep_state_print("First sweep...",sweep_state_widget)
 		# looping over all indeces at the same time
 		all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dim))
 		vals = [None for d in sweep_dim] # set initial parameter vals to None
@@ -163,7 +185,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 			stat_mes_fmt = '\rTime left: {0},\tparameter values: {1},\taverage cycle time: {2:4.2g}s\t'
 			stat_mes = stat_mes_fmt.format(format_time_delta(avg_time*(total_sweeps-done_sweeps)), param_val_mes, avg_time)
 			
-			internal_print(stat_mes)
+			sweep_state_print(stat_mes,sweep_state_widget)
 		print("\nElapsed time: "+format_time_delta(time.time() - start_time))
 	
 	finally:	
@@ -187,10 +209,13 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 def sweep_vna(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True):
 	return sweep(measurer, *params, filename=filename, root_dir=root_dir, plot=plot, header=header, output=output)['S-parameter']
 	
-def internal_print(message):
-	sys.stdout.write(message)
-	sys.stdout.flush()
-	
+def sweep_state_print(message, widget=None):
+	if widget:
+		widget.value = message
+	else:
+		sys.stdout.write(message)
+		sys.stdout.flush()
+
 def format_time_delta(delta):
 	hours, remainder = divmod(delta, 3600)
 	minutes, seconds = divmod(remainder, 60)

@@ -12,6 +12,10 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import numbers
+import matplotlib
+
+from matplotlib.ticker import EngFormatter
+
 
 # high level function. You give the data, it plots everything that can be relatively easily plotted.
 # puts complex into separate windows
@@ -20,7 +24,10 @@ import numbers
 def plot_measurement(measurement, name=None, save=False, annotation=None):
 	# check how many windows we need
 	# cycle over the measurement dict and check stuff out
-	figsize=(12,8)
+	font = {'size'   : 12}
+	matplotlib.rc('font', **font)
+	
+	figsize=(8,6)
 	axes = {}
 	remove_separate = []
 	for mname, data in measurement.items():
@@ -30,12 +37,19 @@ def plot_measurement(measurement, name=None, save=False, annotation=None):
 		dtype = data[2].dtype
 		log = False
 		unwrap = False
+		punits = ['' for i in range(len(pnames))]
 		if len (data)>3:
 			options = data[3]
 			if 'log' in options:
 				log = options['log']
 			if 'unwrap'	in options:
 				unwrap = options['unwrap']
+			if 'scatter' in options:
+				scatter = options['scatter']
+			else:
+				scatter = [False for i in range(len(pnames))]
+		if len (data) > 4:
+			punits = data[4]
 		
 		if not log and not np.iscomplexobj(data[2]):	filter_abs = lambda x: x
 		elif not log:									filter_abs = np.abs
@@ -54,8 +68,16 @@ def plot_measurement(measurement, name=None, save=False, annotation=None):
 		if np.iscomplexobj(data[2]):
 			axes[plot_name+' amplitude'] = {'axes': plt.figure(plot_name+' amplitude', figsize=figsize).add_axes([0.1, 0.1, 0.85, 0.85]), \
 											'plots':{mname:{'mname':mname, 'filter': filter_abs}}}
+			try:
+				matplotlib.pyplot.ticklabel_format(style='sci', scilimits=(-3,3), useOffset=False, axis='both', useLocale=True)
+			except AttributeError:
+				pass
 			axes[plot_name+' phase'] = {'axes': plt.figure(plot_name+' phase', figsize=figsize).add_axes([0.1, 0.1, 0.85, 0.85]), \
 											'plots':{mname:{'mname':mname, 'filter': filter_phase}}}
+			try:
+				matplotlib.pyplot.ticklabel_format(style='sci', scilimits=(-3,3), useOffset=False, axis='both', useLocale=True)
+			except AttributeError:
+				pass
 		else:
 			axes[plot_name] = {'axes': plt.figure(plot_name, figsize=figsize).add_axes([0.1, 0.1, 0.80, 0.85]), \
 								'plots':{mname:{'mname':mname, 'filter': filter_abs}}}
@@ -87,7 +109,10 @@ def plot_measurement(measurement, name=None, save=False, annotation=None):
 	for ax_name, ax in axes.items():
 		meas = {}
 		for plot_name, plot in ax['plots'].items():
-			meas[plot_name] = (measurement[plot['mname']][0], measurement[plot['mname']][1], plot['filter'](measurement[plot['mname']][2]))
+			meas[plot_name] = (measurement[plot['mname']][0], 
+								measurement[plot['mname']][1], 
+								plot['filter'](measurement[plot['mname']][2]),
+								*measurement[plot['mname']][3:])
 		plots = plot_measurement_sa(meas, ax['axes'])
 		for plot in plots.keys():
 			ax['plots'][plot]['plot'] = plots[plot]
@@ -123,6 +148,21 @@ def plot_measurement_sa(measurement, axes):
 			pvals = data[1]
 			vals = data[2]
 			dims = data[2].shape
+			if len(data)>3:
+				opts = data[3]
+			else:
+				opts = {}
+			if len(data)>4:
+				punits = data[4]
+			else:
+				punits = ['' for i in range(len(pnames))]
+			
+			# scatter plot or lines? depends on the opts.
+			if 'scatter' in opts:
+				plot_kwargs = {'marker':'o', 'markerfacecolor':'None', 'linestyle':'none'}
+			else:
+				plot_kwargs = {}
+			
 			#give axis names if there are spare axes
 			for pname in pnames:
 				if len(axes_names) < 2:
@@ -138,13 +178,17 @@ def plot_measurement_sa(measurement, axes):
 			if len(dims) != data_dim: continue
 			if data_dim == 1:
 				if axes_indeces[0] == 0:
-					plot = axes.plot(pvals[0], vals)
+					formatter = EngFormatter(unit=punits[0])
+					axes.xaxis.set_major_formatter(formatter)
+					plot = axes.plot(pvals[0], vals, **plot_kwargs)
 					# bug where plot return a list instead of a Line2D
 					if hasattr(plot, '__iter__'):
 						plot = plot[0]
 					plot.T = False
 				else:
-					plot = axes.plot(vals, pvals[0])
+					formatter = EngFormatter(unit=punits[0])
+					axes.yaxis.set_major_formatter(formatter)
+					plot = axes.plot(vals, pvals[0], **plot_kwargs)
 					# bug where plot return a list instead of a Line2D
 					if hasattr(plot, '__iter__'):
 						plot = plot[0]
@@ -152,10 +196,18 @@ def plot_measurement_sa(measurement, axes):
 			if data_dim == 2:
 				plt.clf()
 				if axes_indeces[0] == 0:
+					xformatter = EngFormatter(unit=punits[0])
+					axes.xaxis.set_major_formatter(xformatter)
+					yformatter = EngFormatter(unit=punits[1])
+					axes.yaxis.set_major_formatter(yformatter)
 					plot = plt.imshow(vals.T, aspect = 'auto', origin='lower', 
 						extent = [pvals[0][0], pvals[0][-1], pvals[1][0], pvals[1][-1] ], interpolation = "none", cmap='RdBu_r')
 					plot.T = True
 				else:
+					xformatter = EngFormatter(unit=punits[0])
+					axes.yaxis.set_major_formatter(xformatter)
+					yformatter = EngFormatter(unit=punits[1])
+					axes.xaxis.set_major_formatter(yformatter)
 					plot = plt.imshow(vals, aspect = 'auto', origin='lower', 
 						extent = [pvals[1][0], pvals[1][-1], pvals[0][0], pvals[0][-1] ], interpolation = "none", cmap='RdBu_r')
 					plot.T = False
@@ -193,3 +245,4 @@ def update_plot_measurement_sa(measurement, plots):
 			plt.clim(np.nanmin(data), np.nanmax(data))
 		plt.draw()	
 	plt.pause(0.05)
+	

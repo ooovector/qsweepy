@@ -127,16 +127,16 @@ class Agilent_N5242A(Instrument):
 		
 		self.add_parameter('status', type=bool, flags=Instrument.FLAG_GETSET)
 		
-		
 		# sets the S21 setting in the PNA X
-		self.define_S21()
-		self.set_S21()
+		#Do it in your script please!!
+		#self.define_S21()
+		#self.set_S21()
 		
 		# Implement functions
 		self.add_function('get_freqpoints')
 		self.add_function('get_tracedata')
 		self.add_function('init')
-		self.add_function('set_S21')
+		#self.add_function('set_S21')
 		self.add_function('set_xlim')
 		self.add_function('get_xlim')
 		self.add_function('get_sweep_time')
@@ -151,6 +151,9 @@ class Agilent_N5242A(Instrument):
 		#self._oldnop = self.get_nop()
 		#if self._oldspan==0.002:
 		#  self.set_zerospan(True)
+		
+		self.clear()
+		self.select_measurement(1)
 		
 		self.get_all()
 	
@@ -192,19 +195,20 @@ class Agilent_N5242A(Instrument):
 	def write(self, cmd):
 	#I want just write it motherfucka!
 		return self._visainstrument.write(cmd)	
-	
+	'''
 	def set_S21(self, select='S21'):
-		'''
-		calls the defined S21 setting
-		'''
+		
+		#calls the defined S21 setting
+		
 		self._visainstrument.write("DISP:WIND:TRAC:DEL")
 		self._visainstrument.write("DISP:WIND:TRAC:FEED 'my_ch1_{0}'".format(select))
+		self._visainstrument.write("CALC:PAR:SEL 'my_ch1_{0}'".format(select))
 		#self._visainstrument.write("CALC:PAR:SEL 'my_ch1_{0}'".format(select))
 
 	def define_S21(self, select='S21'):
-		'''
-		defines the S21 measurement in the PNA X
-		'''
+		
+		#defines the S21 measurement in the PNA X
+		
 		resp = self._visainstrument.ask('CALC:PAR:CAT?').strip('"')
 		names = resp.split(',')
 		for i in range(0, len(names), 2):
@@ -212,7 +216,20 @@ class Agilent_N5242A(Instrument):
 				return
 				
 		self._visainstrument.write( "CALCulate:PARameter:EXT 'my_ch1_{0}','{0}'".format(select))
-		
+	'''	
+	def clear(self):
+		self._visainstrument.write("*CLS")
+	
+	def select_measurement(self,Mnum):
+		#Select Mnum = 1 after default preset
+		self._visainstrument.write("CALC:PAR:MNUM {:d}".format(Mnum) )
+		self._visainstrument.ask("*OPC?")
+	
+	def set_measurement(self,Mtype):
+		#Mtype = "S11"|"S21"|"S22"|"S12"
+		#Select measurement before doing this
+		self._visainstrument.write("CALC:PAR:MOD "+Mtype)
+		self._visainstrument.ask("*OPC?")
 		
 	def reset_windows(self):
 		self._visainstrument.write('DISP:WIND Off')
@@ -494,7 +511,7 @@ class Agilent_N5242A(Instrument):
 		return self._freqpoints
 	
 	def get_points(self):
-		return {'S-parameter':[('Frequency', self.get_freqpoints())]}
+		return {'S-parameter':[('Frequency', self.get_freqpoints(), 'Hz')]}
 		
 	def get_dtype(self):
 		return {'S-parameter':complex}

@@ -1391,7 +1391,8 @@ class Spectrum_M3i2132(Instrument):
 		return data
 	
 	def get_points(self):
-		return {'Voltage':[('Sample',numpy.arange(self.get_nums()*self.software_nums_multi)), ('Time',numpy.arange(self.get_nop())/self.get_clock())]}
+		return {'Voltage':[('Sample',numpy.arange(self.get_nums()*self.software_nums_multi), ''), 
+							('Time',numpy.arange(self.get_nop())/self.get_clock(), 's')]}
 		
 	def get_dtype(self):
 		return {'Voltage':complex}

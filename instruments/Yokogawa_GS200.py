@@ -55,7 +55,7 @@ class Yokogawa_GS210(Instrument):
 
 
 
-    def __init__(self, address, volt_compliance = 1, current_compliance = .001):
+    def __init__(self, address, current_compliance = .001):
         '''Create a default Yokogawa_GS210 object as a current source'''
         Instrument.__init__(self, 'Yokogawa_GS210', tags=['physical'])
         self._address = address
@@ -96,9 +96,9 @@ class Yokogawa_GS210(Instrument):
 
         self._visainstrument.write(":SOUR:FUNC CURR")
 
-        self.set_voltage_compliance(volt_compliance)
-        self.set_current(0)
-        self.set_status(1)
+        #self.set_voltage_compliance(volt_compliance)
+        #self.set_current(0)
+        #self.set_status(1)
 
     def get_id(self):
         '''Get basic info on device'''

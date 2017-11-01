@@ -22,12 +22,12 @@ def exp_fit (x, y):
 	fitresults = leastsq (cost, p0)
 	fitted_curve = model(x, fitresults[0])
 	
-	for i in range(4):
-		plt.figure(i)
-		plt.plot(x, y[i,:], label='data')
-		plt.plot(x, model(x, p0)[i,:], label='initial')
-		plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
-		plt.legend()
+	#for i in range(y.shape[0]):
+	#	plt.figure(i)
+	#	plt.plot(x, y[i,:], label='data')
+	#	plt.plot(x, model(x, p0)[i,:], label='initial')
+	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
+	#	plt.legend()
 	
 	return fitresults[0], fitted_curve+y_last
 	
@@ -50,6 +50,11 @@ def exp_sin_fit(x, y):
 	f = np.fft.fftfreq(len(x), x[1]-x[0])
 	domega = (f[1]-f[0])*2*np.pi
 	
+	#plt.figure('FFT')
+	#plt.plot(f, ft.T)
+	
+	#plt.figure('Initial fit')
+	
 	fR_id = np.argmax(np.sum(np.abs(ft)**2, axis=0))
 	fR_id_conj = len(f)-fR_id
 	if fR_id_conj > fR_id:
@@ -61,14 +66,17 @@ def exp_sin_fit(x, y):
 	
 	c = np.real(np.sum(ft[:,fR_id], axis=0))
 	s = np.imag(np.sum(ft[:,fR_id], axis=0))
-	phase = np.arctan2(s, c)
+	phase = np.pi+np.arctan2(c, s)
 	x0 = np.sqrt(np.mean(np.abs(ft[:,fR_id])**2)/np.mean(np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)-1)/domega/2
-	print (x0, np.abs(ft[:,fR_id])**2, np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)
 	
-	A = np.sqrt(np.abs(ft[:,fR_id])**2+np.abs(ft[:,fR_id_conj])**2)
+	#print (x0, np.abs(ft[:,fR_id])**2, np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)
+	
+	A = np.sqrt(np.abs(ft[:,fR_id])**2+np.abs(ft[:,fR_id_conj])**2)*2
 	p0 = [phase, fR, x0]+A.tolist()
 	
 	from scipy.optimize import leastsq
+	#plt.plot(x, (model(x, p0)).T)
+	#plt.plot(x, (y).T, marker='o', markerfacecolor='None', linestyle='none')
 	fitresults = leastsq (cost, p0)
 	fitted_curve = model(x, fitresults[0])
 	
@@ -97,6 +105,16 @@ def S21pm_fit(measurement, fitter):
 	measurement['S21- fit'] = [t for t in measurement['S21-']]
 	measurement['S21+ fit'][2] = fitted_curve[0,:]+fitted_curve[1,:]*1j
 	measurement['S21- fit'][2] = fitted_curve[2,:]+fitted_curve[3,:]*1j
+	
+	if len(measurement['S21+ fit'])>3:
+		measurement['S21+ fit'][3] = dict(measurement['S21+ fit'][3])
+		if 'scatter' in measurement['S21+ fit'][3]:
+			del measurement['S21+ fit'][3]['scatter']
+	if len(measurement['S21- fit'])>3:
+		measurement['S21- fit'][3] = dict(measurement['S21- fit'][3])
+		if 'scatter' in measurement['S21- fit'][3]:
+			del measurement['S21- fit'][3]['scatter']
+			
 	measurement['S21+ fit'] = tuple(measurement['S21+ fit'])
 	measurement['S21- fit'] = tuple(measurement['S21- fit'])
 	

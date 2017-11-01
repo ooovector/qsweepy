@@ -613,6 +613,11 @@ class Tektronix_AWG5014(Instrument):
 
 		filename = 'test_ch{0}.wfm'.format(channel)
 
+		if self._waveforms[channel-1] is not None:
+			if np.sum(np.abs(self._waveforms[channel-1]-w))<1e-4:
+				self.set_output (1, channel=(channel-1)%4+1)
+				return None
+		
 		self._waveforms[channel-1] = w
 		self.send_waveform(w,m1,m2,filename,self.get_clock())
 		self.do_set_filename(filename, channel=channel)
@@ -650,7 +655,12 @@ class Tektronix_AWG5014(Instrument):
 
 		filename = 'test_ch{0}.wfm'.format(channel)
 
+		if self._markers[channel-1] is not None:
+			if np.sum(np.abs(self._markers[channel-1]-m1))<0.5:
+				self.set_output (1, channel=(channel-1)%4+1)
+				return None
 		self._markers[channel-1] = m1
+		
 		if (channel-1+4)<8:
 			self.send_waveform(w,m1,m2,filename,self.get_clock())
 		else:

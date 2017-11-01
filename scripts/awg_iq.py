@@ -10,7 +10,26 @@ from config import get_config
 from matplotlib import pyplot as plt
 
 class awg_iq:
+	"""Interface for IQ modulation of RF signals wth two AWG channels.
+	
+	IQ modulation requires two low (intermediate) frequency arbitrary waveform generators for the I and Q 
+	connectors of the mixer and one for the LO input connector.
+	Modulated signal is output at RF (radio frequency).
+	
+	Attributes:
+		awg_I (:obj:`awg`): Instance of an AWG class (for example, Tektronix AWG5014C or AWG500) 
+			that is connected to the I input of the mixer. Should implement the methods get_nop, get_clock,
+			set_clock, set_waveform, set_status, set_trigger_mode, run and stop.
+		awg_Q (:obj:`awg`): Instance of an AWG class that is connected to the Q input of the mixer. 
+			awg_I and awg_Q are normaly the same device (I and Q are connected to different channels of the same device).
+		awg_ch_I (int): Channel id of the device awg_I that is connected to the I connector of the mixer.
+		awg_ch_Q (int): Channel id of the device awg_I that is connected to the Q connector of the mixer.
+		lo (:obj:`psg`): Instance of a sinusodial signal generator. Should implement the methods get_frequency and set_frequency.
+		
+	"""
 	def __init__(self, awg_I, awg_Q, awg_ch_I, awg_ch_Q, lo):#, mixer):
+		"""
+		"""
 		self.awg_I = awg_I
 		self.awg_Q = awg_Q
 		self.awg_ch_I = awg_ch_I
@@ -22,8 +41,10 @@ class awg_iq:
 		self.calibrations = {}
 		self.sideband_id = 0
 		#self.mixer = mixer
-	
+		
+	#@property 
 	def get_nop(self):
+		"""int: Number of samples in segment."""
 		I_nop = self.awg_I.get_nop()
 		Q_nop = self.awg_Q.get_nop()
 		if I_nop != Q_nop:
@@ -31,6 +52,7 @@ class awg_iq:
 		return I_nop
 	
 	def get_clock(self):
+		"""int: Sample rate of I and Q channels (complex amplitude envelope)."""
 		I_clock = self.awg_I.get_clock()
 		Q_clock = self.awg_Q.get_clock()
 		if I_clock != Q_clock:
@@ -38,18 +60,28 @@ class awg_iq:
 		return I_clock
 		
 	def set_nop(self, nop):
+		"""int: Sets number of samples in segment."""
 		self.awg_I.set_nop(nop)
 		self.awg_Q.set_nop(nop)
 		
 	def set_clock(self, clock):
-		self.awg_I.set_nop(clock)
-		self.awg_Q.set_nop(clock)
+		"""Sets sampling rate."""
+		self.awg_I.set_clock(clock)
+		self.awg_Q.set_clock(clock)
 		
 	def set_status(self, status):
+		"""Turns on and off the lo and awg channels."""
+		self.lo.set_status(status)
 		self.awg_I.set_status(status, channel=self.awg_ch_I)
 		self.awg_Q.set_status(status, channel=self.awg_ch_Q)
 	
 	def __set_waveform_IQ_cmplx(self, waveform_cmplx):
+		"""Sets the real part of the waveform on the I channel and the imaginary part of the 
+		waveform on the Q channel.
+		
+		No intermediate frequency multiplication and mixer calibration corrections are performed.
+		This is a low-level function that is normally only called for debugging purposes. Pulse 
+		sequence generators do not normally call this function, but rather sate_waveform."""
 		waveform_I = np.real(waveform_cmplx)
 		waveform_Q = np.imag(waveform_cmplx)
 		
@@ -60,6 +92,12 @@ class awg_iq:
 			#logging.warning('Waveform clipped!')
 	
 	def set_waveform(self, waveform_cmplx):
+		"""Sets the real part of the waveform on the I channel and the imaginary part of the 
+		waveform on the Q channel.
+		
+		This function multiplies the waveform with the intermediate frequency oscillation and sideband 
+		calibration amplitudes. he function accepts a complex waveform envelope and effectively forms a 
+		RF output waveform of the given envelope at the frequency given by the frequency attribute."""
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_if = waveform_cmplx*np.exp(1j*2*np.pi*t*self.get_if())
 		
@@ -75,6 +113,7 @@ class awg_iq:
 	
 	# clip DC to prevent mixer damage
 	def clip_dc(self, x):
+		"""Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
 		x = [np.real(x), np.imag(x)]
 		for c in (0,1):
 			if x[c] < -0.3:
@@ -85,10 +124,14 @@ class awg_iq:
 		return x
 	
 	def _set_dc(self, x):
+		"""Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
 		x = self.clip_dc(x)	
 		self.__set_waveform_IQ_cmplx([x]*self.get_nop())
 		
 	def _set_if_cw(self, dc, I, Q):
+		"""Sets a CW with arbitrary calibration. This functions is invoked by _calibrate_sa 
+		to find the optimal values of the I and Q complex amplitudes and dc offsets that correspond 
+		to the minimum SFDR."""
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		dc = self.clip_dc(dc)
 		waveform_I = np.real(I*np.exp(2*np.pi*1j*t*self.get_if()))+np.real(dc)
@@ -100,6 +143,11 @@ class awg_iq:
 		return ('if', self.get_if()), ('frequency', self.get_frequency()), ('sideband_id', self.sideband_id)
 				
 	def get_calibration(self, sa=None):
+		"""User-level function to sort out mxer calibration matters. Checks if there is a saved calibration for the given
+		LO and IF frequencies and loads it.
+		When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current 
+		frequencies.
+		"""
 		calibration_path = get_config().get('datadir')+'/calibrations/'
 		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		try:
@@ -119,6 +167,7 @@ class awg_iq:
 		save_pkl(None, self.calibrations[self.cname()], location=calibration_path, filename=filename, plot=False)
 	
 	def _calibrate_cw_sa(self, sa, num_sidebands = 7):
+		"""Performs IQ mixer calibration with the spectrum analyzer sa with the intermediate frequency."""
 		from scipy.optimize import fmin
 		import time
 		dc = self._calibrate_zero_sa(sa)
@@ -144,7 +193,7 @@ class awg_iq:
 		self.awg_I.run()
 		self.awg_Q.run()
 		solution = [np.real(dc), np.imag(dc), 0.5, 0.5, 0.5, 0.5]
-		for iter_id in range(3):
+		for iter_id in range(1):
 			def tfunc(x):
 				dc = x[0] + x[1]*1j
 				I =  x[2] + x[3]*1j
@@ -188,6 +237,7 @@ class awg_iq:
 		return self.calibrations[self.cname()]
 			
 	def _calibrate_zero_sa(self, sa):
+		"""Performs IQ mixer calibration for DC signals at the I and Q inputs."""
 		import time
 		from scipy.optimize import fmin	
 		print(self.lo.get_frequency())

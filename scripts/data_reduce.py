@@ -8,6 +8,7 @@ class data_reduce:
 	def __init__(self, source):
 		self.source = source
 		self.filters = {}
+		self.extra_opts = {}
 		
 	def get_points(self):
 		return { filter_name:filter['get_points']() for filter_name, filter in self.filters.items()}
@@ -20,7 +21,7 @@ class data_reduce:
 		return { filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
 		
 	def get_opts(self):
-		return { filter_name:filter['get_opts']() for filter_name, filter in self.filters.items()}
+		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}
 		
 def mean_reducer(source, src_meas, axis):
 	def get_points():
