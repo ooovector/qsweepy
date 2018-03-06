@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def exp_fit (x, y):
+def exp_fit1d (x, y):
 	def model(x,p):
 		x0=p[0]
-		A = np.reshape(np.asarray(p[1:]),(len(p[1:]), 1))
-		return A*np.exp(-x/x0)
+		A =p[1]
+		B =p[2]
+		return A*np.exp(-x/x0)+B
 	cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
 	
 	y = np.asarray(y)
@@ -16,7 +17,7 @@ def exp_fit (x, y):
 	y_first = y[:,0]	
 	x0=np.sqrt(np.sum(np.abs(integral)**2)/np.sum(np.abs(y_first)**2))
 	
-	p0 = [x0]+y_first.tolist()
+	p0 = [x0]+y_first.tolist()+[0]
 	
 	from scipy.optimize import leastsq
 	fitresults = leastsq (cost, p0)
@@ -30,6 +31,39 @@ def exp_fit (x, y):
 	#	plt.legend()
 	
 	return fitresults[0], fitted_curve+y_last
+
+def exp_fit (x, y):
+	def model(x,p):
+		x0=p[0]
+		AB = p[1:]
+		A = np.reshape(AB[:int(len(AB)/2)],  (int(len(AB)/2), 1))
+		B = np.reshape(AB[-int(len(AB)/2):], (int(len(AB)/2), 1))
+		return A*np.exp(-x/x0)+B
+	cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
+	
+	y = np.asarray(y)
+	y_last = y[:,-1]#np.reshape(y[:,-1], (y.shape[0], 1))
+	#y = y - y_last
+	
+	integral = np.sum(y,axis=1)*(x[1]-x[0])
+	y_first = y[:,0]	
+	x0=np.sqrt(np.sum(np.abs(integral)**2)/np.sum(np.abs(y_first)**2))
+	
+	p0 = [x0]+y_first.tolist()+y_last.tolist()
+	print (p0)
+	
+	from scipy.optimize import leastsq
+	fitresults = leastsq (cost, p0)
+	fitted_curve = model(x, fitresults[0])
+	
+	#for i in range(y.shape[0]):
+	#	plt.figure(i)
+	#	plt.plot(x, y[i,:], label='data')
+	#	plt.plot(x, model(x, p0)[i,:], label='initial')
+	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
+	#	plt.legend()
+	
+	return fitresults[0], fitted_curve
 	
 
 def exp_sin_fit(x, y):

@@ -25,6 +25,8 @@ from time import sleep, time
 import types
 import logging
 import numpy
+import os
+import platform
 
 class Spectrum_M3i2132(Instrument):
 	'''
@@ -161,21 +163,105 @@ class Spectrum_M3i2132(Instrument):
 		Output:
 			None
 		'''
-		logging.debug(__name__ + ' : Loading spcm_win64.dll')
-		self._spcm_win32 = windll.LoadLibrary('C:\\WINDOWS\\System32\\spcm_win64.dll')
+		
+		# determine bit width of os
+		oPlatform = platform.architecture()
+		if (oPlatform[0] == '64bit'):
+			bIs64Bit = 1
+		else:
+			bIs64Bit = 0
 
-		self._spcm_win32.open           = self._spcm_win32["spcm_hOpen"]
-		self._spcm_win32.close          = self._spcm_win32["spcm_vClose"]
-		self._spcm_win32.SetParam32     = self._spcm_win32["spcm_dwSetParam_i32"]
-		self._spcm_win32.SetParam64m    = self._spcm_win32["spcm_dwSetParam_i64m"]
-		self._spcm_win32.SetParam64     = self._spcm_win32["spcm_dwSetParam_i64"]
-		self._spcm_win32.GetParam32     = self._spcm_win32["spcm_dwGetParam_i32"]
-		self._spcm_win32.GetParam64m    = self._spcm_win32["spcm_dwGetParam_i64m"]
-		self._spcm_win32.GetParam64     = self._spcm_win32["spcm_dwGetParam_i64"]
-		self._spcm_win32.DefTransfer64m = self._spcm_win32["spcm_dwDefTransfer_i64m"]
-		self._spcm_win32.DefTransfer64  = self._spcm_win32["spcm_dwDefTransfer_i64"]
-		self._spcm_win32.InValidateBuf  = self._spcm_win32["spcm_dwInvalidateBuf"]
-		self._spcm_win32.GetErrorInfo   = self._spcm_win32["spcm_dwGetErrorInfo_i32"]
+		logging.debug(__name__ + ' : Loading spcm_win64.dll')
+		if (bIs64Bit == 1):
+			self._spcm_win32 = windll.LoadLibrary ("c:\\windows\\system32\\spcm_win64.dll")
+		else:
+			self._spcm_win32 = windll.LoadLibrary ("c:\\windows\\system32\\spcm_win32.dll")
+
+		# define card handle type
+		if (bIs64Bit):
+			# for unknown reasons c_void_p gets messed up on Win7/64bit, but this works:
+			drv_handle = POINTER(c_uint64)
+		else:
+			drv_handle = c_void_p
+			
+		# load spcm_hOpen
+		if (bIs64Bit): self._spcm_win32.open = getattr (self._spcm_win32, "spcm_hOpen")
+		else: self._spcm_win32.open = getattr (self._spcm_win32, "_spcm_hOpen@4")
+		self._spcm_win32.open.argtype = [c_char_p]
+		self._spcm_win32.open.restype = drv_handle 
+
+		# load spcm_vClose
+		if (bIs64Bit): self._spcm_win32.close = getattr (self._spcm_win32, "spcm_vClose")
+		else: self._spcm_win32.close = getattr (self._spcm_win32, "_spcm_vClose@4")
+		self._spcm_win32.close.argtype = [drv_handle]
+		self._spcm_win32.close.restype = None
+
+		# load spcm_dwGetErrorInfo
+		if (bIs64Bit): self._spcm_win32.GetErrorInfo = getattr (self._spcm_win32, "spcm_dwGetErrorInfo_i32")
+		else: self._spcm_win32.GetErrorInfo = getattr (self._spcm_win32, "_spcm_dwGetErrorInfo_i32@16")
+		self._spcm_win32.GetErrorInfo.argtype = [drv_handle, POINTER(c_uint32), POINTER(c_int32), c_char_p]
+		self._spcm_win32.GetErrorInfo.restype = c_uint32
+
+		# load spcm_dwGetParam_i32
+		if (bIs64Bit): self._spcm_win32.GetParam32 = getattr (self._spcm_win32, "spcm_dwGetParam_i32")
+		else: self._spcm_win32.GetParam32 = getattr (self._spcm_win32, "_spcm_dwGetParam_i32@12")
+		self._spcm_win32.GetParam32.argtype = [drv_handle, c_int32, POINTER(c_int32)]
+		self._spcm_win32.GetParam32.restype = c_uint32
+
+		# load spcm_dwGetParam_i64
+		if (bIs64Bit): self._spcm_win32.GetParam64 = getattr (self._spcm_win32, "spcm_dwGetParam_i64")
+		else: self._spcm_win32.GetParam64 = getattr (self._spcm_win32, "_spcm_dwGetParam_i64@12")
+		self._spcm_win32.GetParam64.argtype = [drv_handle, c_int32, POINTER(c_int64)]
+		self._spcm_win32.GetParam64.restype = c_uint32
+
+		# load spcm_dwSetParam_i32
+		if (bIs64Bit): self._spcm_win32.SetParam32 = getattr (self._spcm_win32, "spcm_dwSetParam_i32")
+		else: self._spcm_win32.SetParam32 = getattr (self._spcm_win32, "_spcm_dwSetParam_i32@12")
+		self._spcm_win32.SetParam32.argtype = [drv_handle, c_int32, c_int32]
+		self._spcm_win32.SetParam32.restype = c_uint32
+
+		# load spcm_dwSetParam_i64
+		if (bIs64Bit): self._spcm_win32.SetParam64 = getattr (self._spcm_win32, "spcm_dwSetParam_i64")
+		else: self._spcm_win32.SetParam64 = getattr (self._spcm_win32, "_spcm_dwSetParam_i64@16")
+		self._spcm_win32.SetParam64.argtype = [drv_handle, c_int32, c_int64]
+		self._spcm_win32.SetParam64.restype = c_uint32
+
+		# load spcm_dwSetParam_i64m
+		if (bIs64Bit): self._spcm_win32.SetParam64m = getattr (self._spcm_win32, "spcm_dwSetParam_i64m")
+		else: self._spcm_win32.SetParam64m = getattr (self._spcm_win32, "_spcm_dwSetParam_i64m@16")
+		self._spcm_win32.SetParam64m.argtype = [drv_handle, c_int32, c_int32, c_int32]
+		self._spcm_win32.SetParam64m.restype = c_uint32
+
+		# load spcm_dwDefTransfer_i64
+		if (bIs64Bit): self._spcm_win32.DefTransfer64 = getattr (self._spcm_win32, "spcm_dwDefTransfer_i64")
+		else: self._spcm_win32.DefTransfer64 = getattr (self._spcm_win32, "_spcm_dwDefTransfer_i64@36")
+		self._spcm_win32.DefTransfer64.argtype = [drv_handle, c_uint32, c_uint32, c_uint32, c_void_p, c_uint64, c_uint64]
+		self._spcm_win32.DefTransfer64.restype = c_uint32
+
+		# load spcm_dwInvalidateBuf
+		if (bIs64Bit): self._spcm_win32.InValidateBuf = getattr (self._spcm_win32, "spcm_dwInvalidateBuf")
+		else: self._spcm_win32.InValidateBuf = getattr (self._spcm_win32, "_spcm_dwInvalidateBuf@8")
+		self._spcm_win32.InValidateBuf.argtype = [drv_handle, c_uint32]
+		self._spcm_win32.InValidateBuf.restype = c_uint32
+
+		# load spcm_dwGetContBuf_i64
+		if (bIs64Bit): spcm_dwGetContBuf_i64 = getattr (self._spcm_win32, "spcm_dwGetContBuf_i64")
+		else: spcm_dwGetContBuf_i64 = getattr (self._spcm_win32, "_spcm_dwGetContBuf_i64@16")
+		spcm_dwGetContBuf_i64.argtype = [drv_handle, c_uint32, POINTER(c_void_p), POINTER(c_uint64)]
+		spcm_dwGetContBuf_i64.restype = c_uint32
+			
+		#self._spcm_win32.open           = self._spcm_win32["spcm_hOpen"]
+		#self._spcm_win32.close          = self._spcm_win32["spcm_vClose"]
+		#self._spcm_win32.SetParam32     = self._spcm_win32["spcm_dwSetParam_i32"]
+		#self._spcm_win32.SetParam64m    = self._spcm_win32["spcm_dwSetParam_i64m"]
+		#self._spcm_win32.SetParam64     = self._spcm_win32["spcm_dwSetParam_i64"]
+		#self._spcm_win32.GetParam32     = self._spcm_win32["spcm_dwGetParam_i32"]
+		#self._spcm_win32.GetParam64m    = self._spcm_win32["spcm_dwGetParam_i64m"]
+		#self._spcm_win32.GetParam64     = self._spcm_win32["spcm_dwGetParam_i64"]
+		#self._spcm_win32.DefTransfer64m = self._spcm_win32["spcm_dwDefTransfer_i64m"]
+		#self._spcm_win32.DefTransfer64  = self._spcm_win32["spcm_dwDefTransfer_i64"]
+		#self._spcm_win32.InValidateBuf  = self._spcm_win32["spcm_dwInvalidateBuf"]
+		#self._spcm_win32.GetErrorInfo   = self._spcm_win32["spcm_dwGetErrorInfo_i32"]
 
 	def _open(self):
 		'''

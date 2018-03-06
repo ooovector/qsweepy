@@ -30,6 +30,7 @@ def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_para
 					fitter = circuit.reflection_port(f_data = f_data, z_data_raw=z_data[power_id,:])
 				fitter.autofit()
 			fitter.fitresults[sweep_parameter_name] = power
+			fitter.fitresults['single_photon_limit'] = fitter.get_single_photon_limit()
 			fitresults.append(fitter.fitresults.copy())
 		except:
 			pass

@@ -35,6 +35,8 @@ def plot_measurement(measurement, name=None, save=False, annotation=None):
 		pvals = data[1]
 		dims = data[2].shape
 		dtype = data[2].dtype
+		if not np.issubdtype(dtype, np.number):
+			continue
 		log = False
 		unwrap = False
 		punits = ['' for i in range(len(pnames))]

@@ -40,6 +40,7 @@ class awg_iq:
 		self.frequency = lo.get_frequency()
 		self.calibrations = {}
 		self.sideband_id = 0
+		self.ignore_calibration_drift = False
 		#self.mixer = mixer
 		
 	#@property 
@@ -91,6 +92,15 @@ class awg_iq:
 		#if np.any(np.abs(waveform_I)>1.0) or np.any(np.abs(waveform_Q)>1.0):
 			#logging.warning('Waveform clipped!')
 	
+	def calib(self, cname):
+		if self.ignore_calibration_drift:
+			if cname not in self.calibrations:
+				c = [calib for calib in self.calibrations.values()]
+				return c[0]
+		if cname not in self.calibrations:
+			print ('Calibration not loaded. Use ignore_calibration_drift to use any calibration.')
+		return self.calibrations[cname]
+	
 	def set_waveform(self, waveform_cmplx):
 		"""Sets the real part of the waveform on the I channel and the imaginary part of the 
 		waveform on the Q channel.
@@ -101,8 +111,8 @@ class awg_iq:
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_if = waveform_cmplx*np.exp(1j*2*np.pi*t*self.get_if())
 		
-		waveform_I = np.real(self.calibrations[self.cname()]['I']*waveform_if)+np.real(self.calibrations[self.cname()]['dc'])
-		waveform_Q = np.imag(self.calibrations[self.cname()]['Q']*waveform_if)+np.imag(self.calibrations[self.cname()]['dc'])
+		waveform_I = np.real(self.calib(self.cname())['I']*waveform_if)+np.real(self.calib(self.cname())['dc'])
+		waveform_Q = np.imag(self.calib(self.cname())['Q']*waveform_if)+np.imag(self.calib(self.cname())['dc'])
 		
 		self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
@@ -290,6 +300,9 @@ class awg_iq:
 	def set_frequency(self, frequency):
 		self.lo.set_frequency(frequency-self.get_sideband_id()*self.get_if())
 		self.frequency = self.lo.get_frequency()+self.get_sideband_id()*self.get_if()
+		
+	def set_uncal_frequency(self, frequency):
+		self.lo.set_frequency(frequency-self.get_sideband_id()*self.get_if())	
 	
 	def get_frequency(self):
 		return self.frequency

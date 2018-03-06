@@ -8,10 +8,11 @@ import numpy as np
 import plotting
 import scipy.io
 
-def mk_dir(path = None, time=True):
+def mk_dir(path = None, time=True, root = None, name=None):
 	if (path is None) or (path==''):
 		(data_root, day_folder_name, time_folder_name) = get_location()
-		
+		if root is not None:
+			data_root = root
 		if not os.path.exists('{0}/{1}'.format(data_root, day_folder_name)):
 			os.mkdir('{0}/{1}'.format(data_root, day_folder_name))
 		if not os.path.isdir('{0}/{1}'.format(data_root, day_folder_name)):
@@ -24,13 +25,13 @@ def mk_dir(path = None, time=True):
 		
 			return '{0}/{1}/{2}/'.format(data_root, day_folder_name, time_folder_name)
 		else:
-			return '{0}/{1}/{2}/'.format(data_root, day_folder_name)
+			return '{0}/{1}/'.format(data_root, day_folder_name)
 	else:
 		if not os.path.exists(path):
 			os.mkdir(path)
 		return path	
 
-def get_location():
+def get_location(Ndm=True):
 	config = get_config()
 	data_root = config.get('datadir')
 	now = datetime.datetime.now()

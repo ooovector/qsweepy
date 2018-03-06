@@ -542,7 +542,7 @@ class Agilent_N9030A(Instrument):
 		return self.get_bandwidth_video()
 	def do_set_res_bw(self, video_bw):
 		self.set_bandwidth(video_bw)
-	def do_get_res_bw(self, video_bw):
+	def do_get_res_bw(self):
 		return self.get_bandwidth()
 
 	def do_set_bandwidth(self,band):

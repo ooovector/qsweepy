@@ -9,6 +9,7 @@ import cmath
 import save_pkl
 import logging
 import plotting
+import pickle as pic
 
 def optimize(target, *params, initial_simplex=None, maxfun=200):
 	from scipy.optimize import fmin
@@ -32,7 +33,7 @@ def optimize(target, *params, initial_simplex=None, maxfun=200):
 	score = tfunc(solution/x0)
 	return solution, score
 
-def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True):
+def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True, save = True, time_war_label=True,cycle_save_mode=False):
 	'''
 	Performs a n-d parametric sweep.
 	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... , filename=None)
@@ -46,17 +47,17 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	
 	import warnings
 	warnings.filterwarnings("ignore",".*Using default event loop until function specific to this GUI is implemented*")
+	if (time_war_label):
+		try:
+			from ipywidgets import HTML
+			from IPython.display import display
+			sweep_state_widget = HTML()
+			display(sweep_state_widget)
+		except:
+			sweep_state_widget = None
 	
-	try:
-		from ipywidgets import HTML
-		from IPython.display import display
-		sweep_state_widget = HTML()
-		display(sweep_state_widget)
-	except:
-		sweep_state_widget = None
-		
-	print("Started at: ", time.strftime("%b %d %Y %H:%M:%S", time.localtime()))
-	start_time = time.time()
+		print("Started at: ", time.strftime("%b %d %Y %H:%M:%S", time.localtime()))
+		start_time = time.time()
 	
 	# extracting sweep parameters from list
 	# check if it is a list of pairs
@@ -70,7 +71,6 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 	point_types = measurer.get_dtype()
 	meas_opts = measurer.get_opts()
 	points = measurer.get_points() # should return dict of meas_name:points
-	print (points)
 	point_dim_names = {mname:tuple([cname	   for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
 	point_dim		= {mname:tuple([len(cvals) for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
 	point_dim_vals	= {mname:tuple([cvals	   for cname, cvals, cunits in mxvals]) for mname, mxvals in points.items()}
@@ -100,9 +100,19 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 							non_unity_dim_vals(mname), 
 							np.reshape(data[mname], non_unity_dims(mname)),
 							meas_opts[mname], non_unity_dim_units(mname)) for mname in points.keys()}
+	import os
 	
-	if root_dir is None:
+	if not root_dir and not filename:
 		data_dir = save_pkl.mk_dir()
+	elif filename and not root_dir:
+		date_dir = save_pkl.mk_dir(time=False)
+		a,b,time_folder_name = save_pkl.get_location()
+		data_dir = '{0}/{1}-{2}'.format(date_dir, time_folder_name, filename)
+		if not os.path.exists(data_dir):
+			os.mkdir(data_dir)
+		if not os.path.isdir(data_dir):
+			raise Exception('{0} is not a directory'.format(data_dir))
+		data_dir = data_dir+'/'
 	else:
 		data_dir = root_dir	
 	
@@ -129,11 +139,12 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 		plot_axes = plotting.plot_measurement(mk_measurement(0))
 		last_plot_update = time.time()
 		plot_update_time = plot_update_start - last_plot_update
-
-	# starting sweep
 	start_time = time.time()
-	try:
+	if (time_war_label):
+	# starting sweep
+		
 		sweep_state_print("First sweep...",sweep_state_widget)
+	try:
 		# looping over all indeces at the same time
 		all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dim))
 		vals = [None for d in sweep_dim] # set initial parameter vals to None
@@ -153,6 +164,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 			#saving data to containers
 			for mname in points.keys():
 				mpoint_m = mpoint[mname]
+				#print (mname, mpoint_m.shape, data[mname].shape)
 				data[mname][[(i) for i in indeces]+[...]] = mpoint_m
 				data_flat = np.reshape(data[mname], non_unity_dims(mname))
 				mpoint_m_flat = np.reshape(mpoint_m, tuple(dim for dim in point_dim[mname] if dim > 1))
@@ -184,9 +196,10 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 			param_val_mes = ',\t'.join(['{0}: {1:6.4g}'.format(param[2], val) for param,val in zip(params,vals)])
 			stat_mes_fmt = '\rTime left: {0},\tparameter values: {1},\taverage cycle time: {2:4.2g}s\t'
 			stat_mes = stat_mes_fmt.format(format_time_delta(avg_time*(total_sweeps-done_sweeps)), param_val_mes, avg_time)
-			
-			sweep_state_print(stat_mes,sweep_state_widget)
-		print("\nElapsed time: "+format_time_delta(time.time() - start_time))
+			if (time_war_label):
+				sweep_state_print(stat_mes,sweep_state_widget)
+		if (time_war_label):
+			print("\nElapsed time: "+format_time_delta(time.time() - start_time))
 	
 	finally:	
 		for mname in points.keys():
@@ -198,11 +211,14 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, header=Non
 			#data_pkl = tuple(sweep_xrange_pkl)+(np.abs(data_pkl), np.angle(data_pkl))
 
 			#save_pkl.save_pkl(header, data_pkl, location = data_dir)
-			save_pkl.save_pkl(header, mk_measurement(0), location = data_dir)
+			if (save):
+				save_pkl.save_pkl(header, mk_measurement(0), location = data_dir)
 			
 			if ascii_files[mname]:
 				for fmt, ascii_file in ascii_files[mname].items():
 					ascii_file.close()
+	#if (~cycle_save_mode):
+		#save_pkl.save_pkl(header,mk_measurement(0),location=save_pkl.mk_dir(time=False))
 					
 	return mk_measurement(0)
 

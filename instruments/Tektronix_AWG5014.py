@@ -331,6 +331,8 @@ class Tektronix_AWG5014(Instrument):
 		'''
 		logging.debug(__name__ + ' : Clear waveform list')
 		self._visainstrument.write('WLIS:WAV:DEL ALL')
+		self._waveforms = [None, None, None, None]
+		self._markers = [None, None, None, None, None, None, None, None]
 
 	def load_waveform(self, channel, filename, drive='Z:', path='\\'):
 		'''
@@ -553,8 +555,11 @@ class Tektronix_AWG5014(Instrument):
 		#response = raw_input('type "yes" to continue')
 		#if response is 'yes':
 		#    logging.debug(__name__ + ' : Setting nop to %s' % numpts)
-		self._nop = numpts
-		self.clear_waveforms()
+		if self._nop != numpts:
+			self._nop = numpts
+			self.del_waveform_all()
+			#self.clear_waveforms()
+			self._waveforms = [None, None, None, None]
 		#else:
 		#    print 'aborted'
 
@@ -612,7 +617,7 @@ class Tektronix_AWG5014(Instrument):
 			w[:] = waveform[:len(w)]
 
 		filename = 'test_ch{0}.wfm'.format(channel)
-
+		
 		if self._waveforms[channel-1] is not None:
 			if np.sum(np.abs(self._waveforms[channel-1]-w))<1e-4:
 				self.set_output (1, channel=(channel-1)%4+1)
