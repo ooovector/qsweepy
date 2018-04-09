@@ -16,7 +16,14 @@ class paramp:
         self.hint_span_bw = 30.
         
         self.pump_on = True
-
+		self.target = self.vna_snr_target
+		
+	def vna_snr_target(self):
+		time.sleep(0.4)
+		measurements = self.vna.measure()['S-parameter'].ravel()
+		print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
+		return np.std(measurements)/np.abs(np.mean(measurements))
+		
     def measure(self):
     # maximize SNR of S21 at given frequency, excitation power and bandwidth
         pna.set_nop(self.hint_nop)
@@ -32,12 +39,14 @@ class paramp:
         self.pump_src.set_status(self.pump_on)
         self.bias_src.set_status(True)
     
-        def target():
-            time.sleep(0.4)
-            measurements = pna.measure()['S-parameter'].ravel()
-            print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
-            return np.std(measurements)/np.abs(np.mean(measurements))
-    
+#        def target():
+#            time.sleep(0.4)
+#            measurements = pna.measure()['S-parameter'].ravel()
+#            print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
+#            return np.std(measurements)/np.abs(np.mean(measurements))
+
+		target = lambda: self.target()
+		
         res = sweep.optimize(target, *params, initial_simplex = initial_simplex, maxfun=self.hint_maxfun)
         for x, p in zip(res[0], params): p[0](x)
         S21 = pna.measure()['S-parameter'].ravel()[0]

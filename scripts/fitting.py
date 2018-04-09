@@ -31,6 +31,27 @@ def exp_fit1d (x, y):
 	#	plt.legend()
 	
 	return fitresults[0], fitted_curve+y_last
+	
+def gaussian_CPMG(x, y, gamma1, gammap, tayp):
+	def model(x, p):
+		gammaphi = p[0]
+		AB = p[1:]
+		size = int(len(AB)/2)
+		A = np.reshape(AB[:size], size)
+		B = np.reshape(AB[-size:], size)
+		return A*np.exp(-x*gamma1/2)*exp(-gammap*tayp)*exp(-(gammaphi*x)**2)+B
+	error_function = lambda p: (np.abs(model(x,y) - y)**2).ravel()
+	
+	y = np.asarray(y)
+	y_last = y[:,-1]
+	y_firsy = y[:, 0]
+	gammaphi_0 = np.sqrt(np.abs(np.ln(y_first-y_last))/x[0]**2)
+	p0 = [gammaphi_0] + y_first.tolist() + y_last_tolist()
+	
+	from scipy.optimize import leastsq
+	fitresults = leastsq(error_function, p0)
+	fitted_curve = model(x, fitresults[0])
+	return fitresults[0], fitted_curve
 
 def exp_fit (x, y):
 	def model(x,p):

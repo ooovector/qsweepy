@@ -368,7 +368,8 @@ class AWG500(Instrument):
 		
 
 	#Constructor
-	def __init__(self, name, address=0, ver=0, use_internal_trigger=True):
+	def __init__(self, name, address=0, ver=0, use_internal_trigger=True, mode='master'):
+		from config import get_config
 		#qtlab stuff
 		Instrument.__init__(self, name, tags=['measure'])
 		# Opening ftd2xx connection (USB-COM dongle)
@@ -447,7 +448,10 @@ class AWG500(Instrument):
 			is_programmed = self.IsVirtexProgrammed()
 			print ('Virtex is programmed? ', is_programmed)
 			if not is_programmed:
-				self.ProgVirtex6()
+				if mode=='master':
+					self.ProgVirtex6(filename=get_config().get('AWG500_default_firmware'))
+				else:
+					self.ProgVirtex6(filename=get_config().get('AWG500_slave_firmware'))
 		
 		self.send_control_word()
 		# setting a single trigger per AWG repeat

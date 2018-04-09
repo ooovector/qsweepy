@@ -186,6 +186,7 @@ class Tektronix_AWG5014(Instrument):
 			None
 		'''
 		logging.debug(__name__ + ' : Clear waveforms from channels')
+		self._visainstrument.write('WLISt:WAVeform:DELete ALL')
 		self._visainstrument.write('SOUR1:FUNC:USER ""')
 		self._visainstrument.write('SOUR2:FUNC:USER ""')
 		self._visainstrument.write('SOUR3:FUNC:USER ""')

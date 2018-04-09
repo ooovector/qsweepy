@@ -47,7 +47,8 @@ def load_pkl(filename, location=None):
 	f = open('{0}/{1}.pkl'.format(location, filename), "rb")
 	return pickle.load(f)
 	
-def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, location=None, time=True, filename=None, matlab=False):
+def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, location=None, time=True, filename=None, matlab=False, gzip=False):
+	import gzip
 	location = mk_dir(path = location, time=time)
 
 	if not filename:
@@ -55,7 +56,7 @@ def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, locatio
 			filename = '{0} {1}'.format(header['type'], header['name'])
 		else:
 			filename = '{0}'.format(header['type'])
-		
+
 	f = open('{0}/{1}.pkl'.format(location, filename), 'wb')
 	if header:
 		data_pkl = (2, data, header)

@@ -115,7 +115,11 @@ class awg_iq:
 		waveform_Q = np.imag(self.calib(self.cname())['Q']*waveform_if)+np.imag(self.calib(self.cname())['dc'])
 		
 		self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+		self.waveform = waveform_cmplx
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
+		
+	def get_waveform(self):
+		return self.waveform
 		
 	def set_trigger_mode(self, mode):
 		self.awg_I.set_trigger_mode(mode)
@@ -126,10 +130,10 @@ class awg_iq:
 		"""Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
 		x = [np.real(x), np.imag(x)]
 		for c in (0,1):
-			if x[c] < -0.3:
-				x[c] = -0.3
-			if x[c] > 0.3:
-				x[c] = 0.3
+			if x[c] < -0.5:
+				x[c] = -0.5
+			if x[c] > 0.5:
+				x[c] = 0.5
 		x = x[0] + 1j * x[1]
 		return x
 	
@@ -235,7 +239,7 @@ class awg_iq:
 				print ('dc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\tB: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}\r'.format(dc, I, Q, bad_power_dbm, good_power_dbm, clipping))
 				print (result)
 				return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping			
-			solution = fmin(tfunc, solution, maxiter=50, xtol=2**(-14))
+			solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-14))
 			score = tfunc(solution)
 			
 		self.calibrations[self.cname()] = {'dc': self.clip_dc(solution[0]+solution[1]*1j),
@@ -279,7 +283,7 @@ class awg_iq:
 			print (x, result)
 			return result
 		
-		solution = fmin(tfunc, [0.1,0.1], maxiter=30, xtol=2**(-14))
+		solution = fmin(tfunc, [0.3,0.3], maxiter=30, xtol=2**(-14))
 		x = self.clip_dc(solution[0]+1j*solution[1])
 		self.zero = x
 		

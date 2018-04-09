@@ -57,13 +57,40 @@ class pulses:
 			channel_device.set_waveform(pulse_shape[channel])
 
 class sz_measurer:
-	def __init__(self, adc, ex_seq, ro_seq, pulse_generator):
+	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None):
 		self.adc = adc
 		self.ex_seq = ex_seq
 		self.ro_seq = ro_seq
+		self.ro_delay_seq = ro_delay_seq
 		self.pulse_generator = pulse_generator
 		self.repeat_samples = 2
 		self.save_last_samples = False
+		self.train_test_split = 0.8
+		self.measurement_name = ''
+		self.dump_measured_samples = False
+	
+	def measure_delay(self, ro_channel):
+		import matplotlib.pyplot as plt
+		from scipy.signal import resample
+		
+		self.pulse_generator.set_seq(self.ro_delay_seq)
+		first_nonzero = int(np.nonzero(np.abs(self.pulse_generator.channels[ro_channel].get_waveform()))[0][0]/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock())
+		ro_dac_waveform = self.pulse_generator.channels[ro_channel].awg_I.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_I)+\
+					   1j*self.pulse_generator.channels[ro_channel].awg_Q.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_Q)
+		ro_dac_waveform = resample(ro_dac_waveform, num=int(len(ro_dac_waveform)/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock()))
+		ro_adc_waveform = np.mean(self.adc.measure()['Voltage'], axis=0)
+		ro_dac_waveform = ro_dac_waveform - np.mean(ro_dac_waveform)
+		ro_adc_waveform = ro_adc_waveform - np.mean(ro_adc_waveform)
+		xc = np.abs(np.correlate(ro_dac_waveform, ro_adc_waveform, 'same'))
+		xc_max = np.argmax(xc)
+		delay = int((xc_max - first_nonzero)/2)
+		plt.figure('delay')
+		plt.plot(ro_dac_waveform[first_nonzero:])
+		plt.plot(ro_adc_waveform[delay:])
+		plt.plot(ro_adc_waveform)
+		print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
+		return delay
+		
 	
 	def calibrate(self):
 		from sklearn.metrics import roc_auc_score, roc_curve
@@ -84,11 +111,18 @@ class sz_measurer:
 		samples_one  = np.reshape(samples_one, (samples_one.shape[0]*samples_one.shape[1], samples_one.shape[2]))
 
 		samples = np.asarray([samples_zero, samples_one])
+		train = samples[:,:int(samples.shape[1]*self.train_test_split),:]
+		test = samples[:,int(samples.shape[1]*self.train_test_split):,:]
+		train = train - np.reshape(np.mean(train, axis=2), (train.shape[0], train.shape[1], 1))
+		test = test - np.reshape(np.mean(test, axis=2), (test.shape[0], test.shape[1], 1))
 		
-		mean_signal = np.mean(np.mean(samples, axis=1),axis=0)
-		diff_signal = np.diff(np.mean(samples, axis=1),axis=0).ravel()
-		
-		diff_signal = diff_signal - np.mean(diff_signal)
+		mean_train_signal = np.mean(np.mean(train, axis=1),axis=0)
+		diff_train_signal = np.diff(np.mean(train, axis=1),axis=0).ravel()
+		diff_train_signal = diff_train_signal - np.mean(diff_train_signal)
+
+		mean_test_signal = np.mean(np.mean(test, axis=1),axis=0)
+		diff_test_signal = np.diff(np.mean(test, axis=1),axis=0).ravel()
+		diff_test_signal = diff_test_signal - np.mean(diff_test_signal)
 		
 #		diff_signal_fft = np.fft.fft(diff_signal)
 #		pmax = np.argmax(diff_signal_fft)
@@ -97,18 +131,22 @@ class sz_measurer:
 #		diff_singal = np.fft.ifft(diff_signal_filt_fft)
 
 		# SUPERVISED PREDICTOR
-		coefficients = np.einsum('k,ijk->ij', 
-								np.conj(diff_signal), 
-								samples-mean_signal)
+		# TEST
+		coefficients_train = np.einsum('k,ijk->ij', 
+								np.conj(diff_train_signal), 
+								test-mean_train_signal)
+		coefficients_test = np.einsum('k,ijk->ij', 
+								np.conj(diff_test_signal), 
+								test-mean_test_signal)
 								
-		scale = np.mean(np.conj(np.mean(coefficients[1,:]) - np.mean(coefficients[0,:])))
-		feature = np.conj(diff_signal)/scale
+		scale = np.mean(np.conj(np.mean(coefficients_train[1,:]) - np.mean(coefficients_train[0,:])))
+		feature = np.conj(diff_train_signal)/scale
 		
-		filter = data_reduce.feature_reducer(self.adc, 'Voltage', 1, mean_signal, feature)
+		filter = data_reduce.feature_reducer(self.adc, 'Voltage', 1, mean_train_signal, feature)
 
-		predictions = np.real(np.einsum('k,ijk->ij', feature, samples-mean_signal))
+		predictions = np.real(np.einsum('k,ijk->ij', feature, test-mean_train_signal))
 		
-		self.calib_bg = mean_signal
+		self.calib_bg = mean_train_signal
 		self.calib_feature = feature
 		self.calib_pred = predictions
 		
@@ -129,8 +167,8 @@ class sz_measurer:
 		self.calib_proba = probabilities[1,:]
 		self.calib_hists = hists
 		
-		roc_curve = roc_curve([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
-		roc_auc = roc_auc_score([0]*samples.shape[1]+[1]*samples.shape[1], self.predictor(predictions.ravel()))
+		roc_curve = roc_curve([0]*test.shape[1]+[1]*test.shape[1], self.predictor(predictions.ravel()))
+		roc_auc = roc_auc_score([0]*test.shape[1]+[1]*test.shape[1], self.predictor(predictions.ravel()))
 		fidelity = np.mean([np.mean(self.predictor(predictions[0,:]<0)), 
 							np.mean(self.predictor(predictions[1,:]>0))])
 
@@ -146,7 +184,7 @@ class sz_measurer:
 		#self.calib_fidelity_binary = fidelity_binary
 		
 		self.filter = filter
-		self.filter_binary = data_reduce.feature_reducer_binary(self.adc, 'Voltage', 1, mean_signal, feature)
+		self.filter_binary = data_reduce.feature_reducer_binary(self.adc, 'Voltage', 1, mean_train_signal, feature)
 		
 		if self.save_last_samples:
 			self.samples = samples
@@ -199,6 +237,8 @@ class sz_measurer:
 				'Calibrated ROC AUC': self.calib_roc_auc,
 				#'Calibrated fidelity binary': self.calib_fidelity_binary,
 				'Calibrated fidelity': self.calib_fidelity}
+		if self.dump_measured_samples:
+			self.dump_samples(name=self.measurement_name)
 		return meas
 		
 	def get_points(self):
@@ -213,6 +253,13 @@ class sz_measurer:
 				#'Calibrated fidelity binary': float, 
 				'Calibrated fidelity': float}
 	
+	def dump_samples(self, name):
+		from save_pkl import save_pkl
+		header = {'type':'Binary classification samples', 'name':name}
+		measurement = {'Binary classification samples':(['Class', 'Sample ID', 'time'], 
+				[np.asarray([0, 1]), np.arange(self.samples.shape[1]), np.arange(self.samples.shape[2])/self.adc.get_clock()],
+				self.samples)}
+		save_pkl(header, self.samples, plot=False)
 	
 class tomography:
 	def __init__(self, sz_measurer, pulse_generator, proj_seq, reconstruction_basis={}):
