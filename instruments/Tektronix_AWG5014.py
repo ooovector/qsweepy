@@ -21,8 +21,8 @@ from instrument import Instrument
 import visa
 import types
 import logging
-import numpy
 import struct
+import numpy as np
 
 class Tektronix_AWG5014(Instrument):
 	'''
@@ -68,6 +68,7 @@ class Tektronix_AWG5014(Instrument):
 		self._nop = nop
 		self._waveforms = [None]*4
 		self._markers = [None]*8
+		self.check_cached = False
 
 		# Add parameters
 		self.add_parameter('waveform', type=list,
@@ -98,7 +99,7 @@ class Tektronix_AWG5014(Instrument):
 			channels=(1, 4), minval=0, maxval=2, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('offset', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
-			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
+			channels=(1, 4), minval=-2.25, maxval=2.25, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('marker1_low', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
 			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
@@ -177,7 +178,7 @@ class Tektronix_AWG5014(Instrument):
 
 	def clear_waveforms(self):
 		'''
-		Clears the waveform on both channels.
+		Clears the waveform on all channels.
 
 		Input:
 			None
@@ -186,11 +187,16 @@ class Tektronix_AWG5014(Instrument):
 			None
 		'''
 		logging.debug(__name__ + ' : Clear waveforms from channels')
-		self._visainstrument.write('WLISt:WAVeform:DELete ALL')
-		self._visainstrument.write('SOUR1:FUNC:USER ""')
-		self._visainstrument.write('SOUR2:FUNC:USER ""')
-		self._visainstrument.write('SOUR3:FUNC:USER ""')
-		self._visainstrument.write('SOUR4:FUNC:USER ""')
+	
+		#self._visainstrument.write('WLISt:WAVeform:DELete ALL')
+		
+		#This is a proper way to clean channels
+		s=''
+		for ch in range(1,5):
+			self._waveforms[ch-1] = None
+			s = s+'SOUR{:d}:WAV "";\n'.format(ch)
+		
+		self._visainstrument.write(s)
 
 	def run(self):
 		'''
@@ -592,7 +598,6 @@ class Tektronix_AWG5014(Instrument):
 		self._visainstrument.write('SOUR:FREQ %f' % clock)
 
 	def do_set_waveform(self, waveform, channel):
-		import numpy as np
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
@@ -619,7 +624,10 @@ class Tektronix_AWG5014(Instrument):
 
 		filename = 'test_ch{0}.wfm'.format(channel)
 		
-		if self._waveforms[channel-1] is not None:
+		#wtf???!!!
+		#It doesn't save any time. It's slower than everything
+		
+		if self._waveforms[channel-1] is not None and self.check_cached:
 			if np.sum(np.abs(self._waveforms[channel-1]-w))<1e-4:
 				self.set_output (1, channel=(channel-1)%4+1)
 				return None
@@ -633,7 +641,6 @@ class Tektronix_AWG5014(Instrument):
 		return self._waveforms[channel-1] 
 		
 	def do_set_digital(self, marker, channel):
-		import numpy as np
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
@@ -692,11 +699,18 @@ class Tektronix_AWG5014(Instrument):
 
 		Output:
 			None
+		''' 
+		self._visainstrument.write('SOUR%s:FUNC:USER "%s"' % (channel, name))
 		'''
 		logging.debug(__name__  + ' : Try to set %s on channel %s' % (name, channel))
 		exists = False
+		
+		#U don't need all this stuff. 'SOUR%s:FUNC:USER "%s"' does everything. N_N
+		
+		#It works unstable without 'SOUR%s:FUNC:USER "%s"'
 		self._visainstrument.write('MMEM:IMP "%s", "%s", WFM' % (name,name))
 		self._visainstrument.write('SOURCE%s:WAVEFORM "%s"' % (channel,name))
+		
 		if name in self._values['files']:
 			exists= True
 			logging.debug(__name__  + ' : File exists in local memory')
@@ -705,6 +719,7 @@ class Tektronix_AWG5014(Instrument):
 		else:
 			logging.debug(__name__  + ' : File does not exist in memory, \
 			reading from instrument')
+			#there is no "MAIN". Fix this. N_N
 			lijst = self._visainstrument.ask('MMEM:CAT? "MAIN"')
 			bool = False
 			bestand=""
@@ -718,7 +733,8 @@ class Tektronix_AWG5014(Instrument):
 				elif bool:
 					bestand = bestand + lijst[i]
 		if exists:
-			self._visainstrument.write('SOUR%s:FUNC:USER "%s","MAIN"' % (channel, name))
+			self._visainstrument.write('SOUR%s:FUNC:USER "%s"' % (channel, name))
+			
 			# data = self._visainstrument.ask('MMEM:DATA? "%s"' % name)
 			# logging.debug(__name__  + ' : File exists on instrument, loading \
 			# into local memory')
@@ -765,7 +781,7 @@ class Tektronix_AWG5014(Instrument):
 		# else:
 			# logging.warning(__name__  + ' : Verkeerde lengte %s ipv %s'
 				# % (self._values['files'][name]['nop'], self._nop))
-
+'''
 	def do_get_amplitude(self, channel):
 		'''
 		Reads the amplitude of the designated channel from the instrument
@@ -1010,7 +1026,7 @@ class Tektronix_AWG5014(Instrument):
 		self._values['files'][filename]['clock']=clock
 		self._values['files'][filename]['nop']=len(w)
 
-		m = m1 + numpy.multiply(m2,2)
+		m = m1 + np.multiply(m2,2)
 		ws = bytes()
 		for i in range(0,len(w)):
 			ws = ws + struct.pack('<fB', w[i], int(m[i]))

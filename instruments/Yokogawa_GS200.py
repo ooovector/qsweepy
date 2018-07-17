@@ -65,8 +65,8 @@ class Yokogawa_GS210(Instrument):
         current_range = (-200e-3, 200e-3)
         voltage_range = (-32, 32)
 
-        self._mincurrent = -50e-3
-        self._maxcurrent =  50e-3
+        self._mincurrent = -120e-3
+        self._maxcurrent =  120e-3
 
         self._minvoltage = -1e-6
         self._maxvoltage =  1e-6

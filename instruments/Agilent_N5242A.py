@@ -135,6 +135,7 @@ class Agilent_N5242A(Instrument):
 		# Implement functions
 		self.add_function('get_freqpoints')
 		self.add_function('get_tracedata')
+		self.add_function('get_data')
 		self.add_function('init')
 		#self.add_function('set_S21')
 		self.add_function('set_xlim')
@@ -175,6 +176,15 @@ class Agilent_N5242A(Instrument):
 	###
 	#Communication with device
 	###	
+	
+	def pre_sweep(self):
+		#self.init()
+		self.set_trigger_source("MAN")
+		self.write("*ESE 1")
+		self.set_average_mode("POIN")
+	
+	def post_sweep(self):
+		self.set_trigger_source("IMM")
 	
 	def init(self):
 		self._visainstrument.write("INIT:IMM")
@@ -254,7 +264,7 @@ class Agilent_N5242A(Instrument):
 		Output:
 			None
 		'''
-		logging.debug(__name__ + ' : setting CW frequency to %s' % cwf)
+		#logging.debug(__name__ + ' : setting CW frequency to %s' % cwf)
 		self._visainstrument.write('SENS%i:FREQ:CW %f' % (self._ci,cwf))
 	
 	def do_get_frequency(self):
@@ -287,6 +297,13 @@ class Agilent_N5242A(Instrument):
 		if int(self.get_avg_status()) == 1: return True
 		else: return False 
 		
+	def get_data(self):
+		data = self._visainstrument.query_binary_values("CALCulate:DATA? SDATA", datatype=u'f') 
+		data_size = numpy.size(data)
+		datareal = numpy.array(data[0:data_size:2])
+		dataimag = numpy.array(data[1:data_size:2])
+		return datareal+1j*dataimag
+		
 	def get_tracedata(self, format = 'AmpPha'):
 		'''
 		Get the data of the current trace
@@ -297,28 +314,22 @@ class Agilent_N5242A(Instrument):
 		Output:
 			'AmpPha':_ Amplitude and Phase
 		'''
-		try:
-			#Clear status, initiate measurement
-			self.set_trigger_source("MAN")
-			self.write("*ESE 1")
-			self.set_average_mode("POIN")
-			self.write("*CLS")
-			self.init()
-			#Set bit in ESR when operation complete
+		#Clear status, initiate measurement
+		self.write("*CLS")
+		self.init()
+		#Set bit in ESR when operation complete
+		
+		self.write("*OPC")
+		#Wait until ready and let plots to handle events (mouse drag and so on)
+		while int(self.ask("*ESR?"))==0:
+			sleep(0.002)
 			
-			self.write("*OPC")
-			#Wait until ready and let plots to handle events (mouse drag and so on)
-			while int(self.ask("*ESR?"))==0:
-				plt.pause(0.05)
-				
-			self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
-			#data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
-			#data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
-			#data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)	  
-			#test
-			data = self._visainstrument.query_binary_values("CALCulate:DATA? SDATA",datatype=u'f') 
-		finally:
-			self.set_trigger_source("IMM")
+		self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
+		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
+		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
+		#data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)	  
+		#test
+		data = self._visainstrument.query_binary_values("CALCulate:DATA? SDATA", datatype=u'f') 
 		data_size = numpy.size(data)
 		datareal = numpy.array(data[0:data_size:2])
 		dataimag = numpy.array(data[1:data_size:2])
@@ -525,21 +536,16 @@ class Agilent_N5242A(Instrument):
 		
 	def set_xlim(self, start, stop):
 		logging.debug(__name__ + ' : setting start freq to %s Hz' % start)
+		self._visainstrument.write('SENS{:d}:FREQ:SPAN {:e}'.format(self._ci,stop-start)) 
 		self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,start))   
-		self._start = start
-		self.get_centerfreq();
-		self.get_stopfreq();
-		self.get_span();
 		
 		logging.debug(__name__ + ' : setting stop freq to %s Hz' % stop)
 		self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,stop))  
-		self._stop = stop
-		self.get_startfreq();
-		self.get_centerfreq();
-		self.get_span();
 		
 	def get_xlim(self):
-		return self._start, self._stop	
+		start = self.get_startfreq();
+		stop = self.get_stopfreq();
+		return start, stop	
 	
 	def do_set_cw_freq(self,cwf):
 		'''

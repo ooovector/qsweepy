@@ -1,6 +1,9 @@
 from scipy.signal import gaussian
+from scipy.signal import tukey
+from scipy.signal import hann
 import data_reduce
 import numpy as np
+import readout_classifier
 
 class pulses:
 	def __init__(self, channels = {}):
@@ -8,11 +11,41 @@ class pulses:
 		self.settings = {}
 	
 	## generate waveform of a gaussian pulse with quadrature phase mixin
-	def gauss_hd (self, channel, length, amp_x, amp_y, sigma, alpha=0.):
+	def gauss_hd (self, channel, length, amp_x, sigma, alpha=0.):
 		gauss = gaussian(int(round(length*self.channels[channel].get_clock())), sigma*self.channels[channel].get_clock())
 		gauss -= gauss[0]
 		gauss_der = np.gradient (gauss)*self.channels[channel].get_clock()
-		return amp_x*(gauss + 1j*gauss_der*alpha) + 1j*amp_y*(gauss + 1j*gauss_der*alpha)
+		return amp_x*(gauss + 1j*gauss_der*alpha)
+		
+	# def rect_cos (self, channel, length, amp, alpha=0.):
+		# alfa = 0.5
+		# impulse = tukey(int(round(length*self.channels[channel].get_clock())), alfa)
+		# #print(alfa*self.channels[channel].get_clock())
+		# #print(length)
+		# #print(round(length*self.channels[channel].get_clock()))
+		# impulse -= impulse[0]
+		# impulse_der = np.gradient(impulse)*self.channels[channel].get_clock()
+		# return amp*(impulse + 1j*impulse_der*alpha)
+		
+	def rect_cos (self, channel, length, amp, length_tail, alpha=0.):
+		length_of_plato = length - length_tail*2
+		length_of_one_tail = int(length_tail*self.channels[channel].get_clock())
+		hann_function = hann(2*length_of_one_tail)
+		first = hann_function[:length_of_one_tail]
+		second = hann_function[length_of_one_tail:]
+		plato = np.ones(int(round(length_of_plato*self.channels[channel].get_clock())))
+		final = first.tolist() 
+		final.extend(plato.tolist())
+		final.extend(second.tolist())
+		impulse = np.asarray(final)
+		impulse -= impulse[0]
+		impulse_der = np.gradient(impulse)*self.channels[channel].get_clock()
+		#print(self.channels[channel].get_clock())
+		#print(length_tail*self.channels[channel].get_clock())
+		#print(first)
+		#print(second)
+		#print(plato)
+		return amp*(impulse + 1j*impulse_der*alpha)
 		
 	## generate waveform of a rectangular pulse
 	def rect(self, channel, length, amplitude):
@@ -38,29 +71,39 @@ class pulses:
 		final_delay = 1e-6
 		pulse_seq_padded = [self.p(None, initial_delay, None)]+seq+[self.p(None, final_delay, None)]
 	
-		pulse_shape = {k:[] for k in self.channels.keys()}
-		for channel, channel_device in self.channels.items():
-			for pulse in pulse_seq_padded:
-				pulse_shape[channel].extend(pulse[channel])
-			pulse_shape[channel] = np.asarray(pulse_shape[channel])
+		try:
+			for channel, channel_device in self.channels.items():
+				channel_device.freeze()
 	
-			if len(pulse_shape[channel])>channel_device.get_nop():
-				tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
-				tmp = pulse_shape[channel][-channel_device.get_nop():]
-				pulse_shape[channel] = tmp
-				raise(ValueError('pulse sequence too long'))
-			else:
-				tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
-				tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
-				pulse_shape[channel] = tmp
+			pulse_shape = {k:[] for k in self.channels.keys()}
+			for channel, channel_device in self.channels.items():
+				for pulse in pulse_seq_padded:
+					pulse_shape[channel].extend(pulse[channel])
+				pulse_shape[channel] = np.asarray(pulse_shape[channel])
 		
-			channel_device.set_waveform(pulse_shape[channel])
+				if len(pulse_shape[channel])>channel_device.get_nop():
+					tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
+					tmp = pulse_shape[channel][-channel_device.get_nop():]
+					pulse_shape[channel] = tmp
+					raise(ValueError('pulse sequence too long'))
+				else:
+					tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
+					tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
+					pulse_shape[channel] = tmp
+			
+				channel_device.set_waveform(pulse_shape[channel])
+		finally:
+			for channel, channel_device in self.channels.items():
+				channel_device.unfreeze()
 
 class sz_measurer:
-	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None):
+	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None, ex_seq_zero=[], adc_measurement_name='Voltage'):
 		self.adc = adc
-		self.ex_seq = ex_seq
 		self.ro_seq = ro_seq
+		self.prepare_seqs = []
+		
+		self.ex_seq = ex_seq
+		self.ex_seq_zero = ex_seq_zero
 		self.ro_delay_seq = ro_delay_seq
 		self.pulse_generator = pulse_generator
 		self.repeat_samples = 2
@@ -68,6 +111,9 @@ class sz_measurer:
 		self.train_test_split = 0.8
 		self.measurement_name = ''
 		self.dump_measured_samples = False
+		self.cutoff_start = 0
+		self.readout_classifier = readout_classifier.linear_classifier()
+		self.adc_measurement_name = adc_measurement_name
 	
 	def measure_delay(self, ro_channel):
 		import matplotlib.pyplot as plt
@@ -90,6 +136,26 @@ class sz_measurer:
 		plt.plot(ro_adc_waveform)
 		print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
 		return delay
+	
+	def new_calibrate(self):
+		X = []
+		y = []
+		for class_id, prepare_seq in enumerate(self.prepare_seqs):
+			for i in range(self.repeat_samples):
+				# pulse sequence to prepare state
+				self.pulse_generator.set_seq(prepare_seq+self.ro_seq)
+				measurement = self.adc.measure()
+				if type(self.adc_measurement_name) is list:
+					raise ValueError('Multiqubit readout not implemented') #need multiqubit readdout implementation
+				else:
+					X.append(measurement[self.adc_measurement_name])
+				y.extend([class_id]*len(self.adc.get_points()[self.adc_measurement_name][0][1]))
+		X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1]))) # last dimension is the feature dimension
+		y = np.asarray(y)
+		
+		self.predictor_class = readout_classifier.linear_classifier()
+		scores = readout_classifier.evaluate_classifier(self.predictor_class, X, y)
+		self.predictor_class.fit(X, y)
 		
 	
 	def calibrate(self):
@@ -99,7 +165,7 @@ class sz_measurer:
 		samples_zero = []
 		samples_one = []
 		for i in range(self.repeat_samples):
-			self.pulse_generator.set_seq(self.ro_seq)
+			self.pulse_generator.set_seq(self.ex_seq_zero+self.ro_seq)
 			samples_zero.append(self.adc.measure()['Voltage'])
 			# pi pulse sequence
 			self.pulse_generator.set_seq(self.ex_seq+self.ro_seq)
@@ -109,16 +175,19 @@ class sz_measurer:
 		samples_one  = np.asarray(samples_one )
 		samples_zero = np.reshape(samples_zero, (samples_zero.shape[0]*samples_zero.shape[1], samples_zero.shape[2]))
 		samples_one  = np.reshape(samples_one, (samples_one.shape[0]*samples_one.shape[1], samples_one.shape[2]))
-
+		
 		samples = np.asarray([samples_zero, samples_one])
 		train = samples[:,:int(samples.shape[1]*self.train_test_split),:]
 		test = samples[:,int(samples.shape[1]*self.train_test_split):,:]
 		train = train - np.reshape(np.mean(train, axis=2), (train.shape[0], train.shape[1], 1))
 		test = test - np.reshape(np.mean(test, axis=2), (test.shape[0], test.shape[1], 1))
 		
+		train[:,:,:self.cutoff_start] = 0	
+		
 		mean_train_signal = np.mean(np.mean(train, axis=1),axis=0)
 		diff_train_signal = np.diff(np.mean(train, axis=1),axis=0).ravel()
 		diff_train_signal = diff_train_signal - np.mean(diff_train_signal)
+		#train_correl = np.einsum('ijk,ilk->jl', np.conj(train-np.reshape(np.mean(train, axis=1), (2,1,-1))), train-np.reshape(np.mean(train, axis=1), (2,1,-1)))
 
 		mean_test_signal = np.mean(np.mean(test, axis=1),axis=0)
 		diff_test_signal = np.diff(np.mean(test, axis=1),axis=0).ravel()
@@ -137,10 +206,12 @@ class sz_measurer:
 								test-mean_train_signal)
 		coefficients_test = np.einsum('k,ijk->ij', 
 								np.conj(diff_test_signal), 
-								test-mean_test_signal)
-								
+								test-mean_test_signal)							
+		
 		scale = np.mean(np.conj(np.mean(coefficients_train[1,:]) - np.mean(coefficients_train[0,:])))
 		feature = np.conj(diff_train_signal)/scale
+		feature[:self.cutoff_start] = 0
+		#feature2 = np.linsolve(np.conj(train_correl), np.conj(diff_train_signal))
 		
 		filter = data_reduce.feature_reducer(self.adc, 'Voltage', 1, mean_train_signal, feature)
 
@@ -185,6 +256,13 @@ class sz_measurer:
 		
 		self.filter = filter
 		self.filter_binary = data_reduce.feature_reducer_binary(self.adc, 'Voltage', 1, mean_train_signal, feature)
+		self.measurer = data_reduce.data_reduce(self.adc)
+		self.measurer.filters['sz'] = self.filter
+		#self.binary_measurer = data_reduce.data_reduce(self.adc)
+		self.measurer.filters['sz binary'] = self.filter_binary
+		
+		self.filter_binary_mean = data_reduce.mean_reducer(self.measurer, 'sz binary', 0)
+		self.filter_mean = data_reduce.mean_reducer(self.measurer, 'sz', 0)
 		
 		if self.save_last_samples:
 			self.samples = samples

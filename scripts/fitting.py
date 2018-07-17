@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def resample_x_fit(x):
+	if len(x) < 500:
+		return np.linspace(np.min(x), np.max(x), 501)
+	else:
+		return x
+
 def exp_fit1d (x, y):
 	def model(x,p):
 		x0=p[0]
@@ -21,7 +27,7 @@ def exp_fit1d (x, y):
 	
 	from scipy.optimize import leastsq
 	fitresults = leastsq (cost, p0)
-	fitted_curve = model(x, fitresults[0])
+	fitted_curve = model(resample_x_fit(x), fitresults[0])
 	
 	#for i in range(y.shape[0]):
 	#	plt.figure(i)
@@ -30,7 +36,7 @@ def exp_fit1d (x, y):
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
 	
-	return fitresults[0], fitted_curve+y_last
+	return fitresults[0], (resample_x_fit(x), fitted_curve+y_last)
 	
 def gaussian_CPMG(x, y, gamma1, gammap, tayp):
 	def model(x, p):
@@ -46,7 +52,7 @@ def gaussian_CPMG(x, y, gamma1, gammap, tayp):
 	y_last = y[:,-1]
 	y_firsy = y[:, 0]
 	gammaphi_0 = np.sqrt(np.abs(np.ln(y_first-y_last))/x[0]**2)
-	p0 = [gammaphi_0] + y_first.tolist() + y_last_tolist()
+	p0 = [gammaphi_0] + y_first.tolist() + y_last.tolist()
 	
 	from scipy.optimize import leastsq
 	fitresults = leastsq(error_function, p0)
@@ -75,7 +81,7 @@ def exp_fit (x, y):
 	
 	from scipy.optimize import leastsq
 	fitresults = leastsq (cost, p0)
-	fitted_curve = model(x, fitresults[0])
+	fitted_curve = model(resample_x_fit(x), fitresults[0])
 	
 	#for i in range(y.shape[0]):
 	#	plt.figure(i)
@@ -83,8 +89,8 @@ def exp_fit (x, y):
 	#	plt.plot(x, model(x, p0)[i,:], label='initial')
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
-	
-	return fitresults[0], fitted_curve
+	parameters = {'decay': fitresults[0][0], 'amplitudes':fitresults[0][1:]}
+	return (resample_x_fit(x), fitted_curve), parameters
 	
 
 def exp_sin_fit(x, y):
@@ -112,6 +118,8 @@ def exp_sin_fit(x, y):
 	
 	fR_id = np.argmax(np.sum(np.abs(ft)**2, axis=0))
 	fR_id_conj = len(f)-fR_id
+	if fR_id_conj == len(f):
+		fR_id_conj = 0
 	if fR_id_conj > fR_id:
 		tmp = fR_id_conj
 		fR_id_conj = fR_id
@@ -142,7 +150,32 @@ def exp_sin_fit(x, y):
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
 	
-	return fitresults[0], fitted_curve+means
+	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:]}
+
+	return (resample_x_fit(x), fitted_curve+means), parameters
+
+def fit1d(measurement, fitter, measurement_name):
+	t = measurement[measurement_name][1][0]
+	fitdata = [ measurement[measurement_name][2]]
+	fitted_curve, parameters = fitter(t, fitdata)
+	#if fitter is exp_sin_fit:
+	#	parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
+	#elif fitter is exp_fit:
+	#	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
+	
+	measurement[measurement_name+' fit'] = [t for t in measurement[measurement_name]]
+	measurement[measurement_name+' fit'][1][0] = fitted_curve[0]
+	measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]
+	
+	if len(measurement[measurement_name+' fit'])>3:
+		measurement[measurement_name+' fit'][3] = dict(measurement[measurement_name+' fit'][3])
+		if 'scatter' in measurement[measurement_name+' fit'][3]:
+			del measurement[measurement_name+' fit'][3]['scatter']
+			
+	measurement[measurement_name+' fit'] = tuple(measurement[measurement_name+' fit'])
+	
+	return measurement, parameters
+	
 	
 def S21pm_fit(measurement, fitter):
 	t = measurement['S21+'][1][0]
@@ -150,16 +183,18 @@ def S21pm_fit(measurement, fitter):
 				np.imag(measurement['S21+'][2]), 
 				np.real(measurement['S21-'][2]), 
 				np.imag(measurement['S21-'][2])]
-	parameters, fitted_curve = fitter(t, fitdata)
-	if fitter is exp_sin_fit:
-		parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
-	elif fitter is exp_fit:
-		parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
+	fitted_curve, parameters = fitter(t, fitdata)
+	#if fitter is exp_sin_fit:
+	#	parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
+	#elif fitter is exp_fit:
+	#	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
 	
 	measurement['S21+ fit'] = [t for t in measurement['S21+']]
 	measurement['S21- fit'] = [t for t in measurement['S21-']]
-	measurement['S21+ fit'][2] = fitted_curve[0,:]+fitted_curve[1,:]*1j
-	measurement['S21- fit'][2] = fitted_curve[2,:]+fitted_curve[3,:]*1j
+	measurement['S21+ fit'][1][0] = fitted_curve[0]
+	measurement['S21- fit'][1][0] = fitted_curve[0]
+	measurement['S21+ fit'][2] = fitted_curve[1][0,:]+fitted_curve[1][1,:]*1j
+	measurement['S21- fit'][2] = fitted_curve[1][2,:]+fitted_curve[1][3,:]*1j
 	
 	if len(measurement['S21+ fit'])>3:
 		measurement['S21+ fit'][3] = dict(measurement['S21+ fit'][3])
@@ -174,6 +209,151 @@ def S21pm_fit(measurement, fitter):
 	measurement['S21- fit'] = tuple(measurement['S21- fit'])
 	
 	return measurement, parameters
+	
+def xcorr_centre_period(vec, axis=0):
+    f_stack = [lambda x: np.correlate(x-np.mean(x), np.flip(x-np.mean(x), axis=0), mode='full')]
+    iteraxes = list(np.arange(len(vec.shape)))
+    del iteraxes[axis]
+    for _axis in iteraxes[::-1]:
+        axis_id = len(f_stack)-1
+        f_stack.append(lambda x: np.apply_along_axis(f_stack[axis_id], _axis, x))
+    mpi = f_stack[-1](vec)
+    
+    f_stack = [lambda x: np.correlate(x-np.mean(x), x-np.mean(x), mode='full')]
+    iteraxes = list(np.arange(len(vec.shape)))
+    del iteraxes[axis]
+    for _axis in iteraxes[::-1]:
+        axis_id = len(f_stack)-1
+        f_stack.append(lambda x: np.apply_along_axis(f_stack[axis_id], _axis, x))
+    mp = f_stack[-1](vec)
+    mp_scalar = np.sum(np.abs(mp)**2, axis=tuple(range(1, len(vec.shape))))
+    mp_scalar[int(len(mp_scalar)/2)-20:int(len(mp_scalar)/2)+20]=0
+    period = int(len(mp_scalar)/2)-np.argmax(mp_scalar[:int(len(mp_scalar)/2)])
+
+    xc_max = np.argmax(np.sum(np.abs(mpi)**2, axis=tuple(range(1, len(vec.shape)))))
+    plt.plot(mp_scalar)
+    return (xc_max/2*(len(mp_scalar)*2)/(len(mp_scalar)*2-1)), period
+	
+def xcorr_scale(vec1, vec2, axis=0, thresh=0.97, centre_reference_pixels=None, max_scale=None):
+	# vec1  is reference 
+	# vec2 is compared with
+	
+	# prefers peak near centres (avoids getting into the wrong period for periodic)
+	from skimage.transform import hough_line
+	
+	iteraxes = list(np.arange(len(vec1.shape)))
+	del iteraxes[axis]
+	vec1 -= np.mean(vec1, axis=tuple(iteraxes), keepdims=True)
+	#plt.figure()
+	# vec1_4 = np.sum(np.abs(vec1-np.mean(vec1, axis=axis, keepdims=True))**2, axis=axis, keepdims=True)
+	# vec2_4 = np.sum(np.abs(vec2-np.mean(vec2, axis=axis, keepdims=True))**2, axis=axis, keepdims=True)
+	# vec1=vec1*vec1_4
+	# vec2=vec2*vec2_4
+	
+	# plt.figure()
+	# plt.pcolormesh(np.real(vec1))
+	# plt.colorbar()
+	# plt.figure()
+	# plt.pcolormesh(np.real(vec2))
+	# plt.colorbar()
+	
+	#vec1 = vec1*np.std(vec1, axis=tuple(iteraxes), keepdims=True)
+	#vec2 = vec2*np.std(vec2, axis=tuple(iteraxes), keepdims=True)
+	
+	# first correlate vec1 and vec2 elements with each other
+	new_axes = [axis+1]+[i+1 if i != axis else 0 for i in range(len(vec1.shape))]
+	vec2_transposed = np.reshape(vec2, tuple([1]+list(vec2.shape)))
+	vec2_transposed = np.transpose(vec2_transposed, new_axes)
+	reduce_axes = tuple([i+1 for i in range(len(vec1.shape)) if i != axis])
+	corr2d = np.sum(np.conj(vec1)*vec2_transposed, reduce_axes)
+	corr2d = corr2d/np.sqrt(np.sum(np.abs(corr2d)**2, axis=0, keepdims=True)*np.sum(np.abs(corr2d)**2, axis=1, keepdims=True))
+	#corr2d = -np.sum(np.abs(np.conj(vec1)-vec2_transposed)**2, reduce_axes)
+	
+	#plt.figure()
+	#plt.pcolormesh(np.real(vec1))
+	#plt.figure()
+	#plt.pcolormesh(np.real(vec2))
+	# use gradient modulus for edge detection
+	#corr2d_gradient = np.sqrt(np.sum([np.abs(i)**2 for i in np.gradient(corr2d)], axis=0))
+	#corr2d_gradient -= np.mean(corr2d_gradient)
+	
+	# ad-hoc crap to reduce influence of borders
+	#corr2d_gradient[:int(corr2d_gradient.shape[0]/4),:] = 0
+	#corr2d_gradient[-int(corr2d_gradient.shape[0]/4):,:] = 0
+	#corr2d_gradient[:,:int(corr2d_gradient.shape[1]/4)] = 0
+	#corr2d_gradient[:, -int(corr2d_gradient.shape[1]/4):] = 0
+	
+	#corr2d[:int(corr2d_gradient.shape[0]/5),:] = 0
+	#corr2d[-int(corr2d_gradient.shape[0]/5):,:] = 0
+	
+	thresh = np.percentile(np.real(corr2d), thresh*100)
+	bin = np.real(corr2d)>thresh
+	
+	#bin[:int(corr2d_gradient.shape[0]/4),:] = 0
+	#bin[-int(corr2d_gradient.shape[0]/4):,:] = 0
+	
+#	corr2d[:,:int(corr2d_gradient.shape[1]/4)] = 0
+#	corr2d[:, -int(corr2d_gradient.shape[1]/4):] = 0
+	
+	#binarizer using threshold
+	#thresh = np.percentile(corr2d_gradient, thresh*100)
+	#bin = np.real(corr2d_gradient)>thresh
+	
+	
+	#h_real, theta, d = hough_line(np.real(corr2d))
+	#h_imag, theta, d = hough_line(np.imag(corr2d))
+	
+	#h_grad, theta, d = hough_line(corr2d_gradient)
+	
+	# Hough transform: lines -> vectices
+	h_bin, theta, d =  hough_line(bin)
+	#h, theta, d =  hough_line(corr2d)
+	#cxx, cyy = np.meshgrid(np.arange(corr2d.shape[0]), np.arange(corr2d.shape[1]))
+	if not centre_reference_pixels:
+		centre_reference_pixels = corr2d.shape[1]/2
+	
+	dist_to_origin = np.cos(theta)*(centre_reference_pixels)+np.sin(theta)*(corr2d.shape[0]/2)-np.reshape(d, (-1, 1))
+	# plt.figure()
+	# plt.pcolormesh(theta, d, np.abs(dist_to_origin))
+	# plt.colorbar()
+	#h_bin = h_real+1j*h_imag
+	h_corrected = (h_bin/np.sqrt(10**2+np.abs(dist_to_origin)**2))/(1/np.tan(2*theta)**2+1)**(1/8)
+	if max_scale: h_corrected[:, np.abs(np.tan(theta))>max_scale] = 0
+	# prefer maxima near centre
+	max_raveled_index = np.argmax(h_corrected)
+	d_index,theta_index = np.unravel_index(max_raveled_index, h_bin.shape)
+	max_theta = theta[theta_index]
+	max_d = dist_to_origin[d_index,theta_index ]
+	
+	#h = h_real+1j*h_imag
+	# plt.figure()
+	# plt.pcolormesh(np.real(bin))
+	# plt.colorbar()
+	# plt.figure()
+	# plt.pcolormesh(theta, d, np.real(h_bin))
+	# plt.colorbar()
+	# plt.figure()
+	# plt.pcolormesh(theta, d, np.real(h_corrected))
+	# plt.colorbar()
+	# plt.figure()
+	# plt.pcolormesh(theta, d, h)
+	# plt.colorbar()
+	# plt.figure()
+	# plt.pcolormesh(np.real(corr2d))
+	# plt.colorbar()
+	#plt.figure('Xcorr imag')
+	#plt.pcolormesh(np.imag(corr2d))
+	#plt.colorbar()
+
+	#plt.figure()
+	#plt.pcolormesh(theta, d,(h_bin.T/(10**2+np.abs(d)**2)**(1/4)).T)
+	#plt.colorbar()
+	#x_ind = max_d*np.cos(max_theta)
+	#y_ind = max_d*np.sin(max_theta)
+	#print(max_d, max_theta)
+	#print(x_ind, y_ind, np.tan(theta))
+	scale = np.tan(max_theta)*vec2.shape[axis]/vec1.shape[axis]
+	return scale, max_d
 	
 def dc_squid_fit_S21(data, noise_sigma=5, fit=True, method='min', plot=False):
 	from scipy.optimize import leastsq

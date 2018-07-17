@@ -41,6 +41,7 @@ class awg_iq:
 		self.calibrations = {}
 		self.sideband_id = 0
 		self.ignore_calibration_drift = False
+		self.frozen = False
 		#self.mixer = mixer
 		
 	#@property 
@@ -88,6 +89,9 @@ class awg_iq:
 		
 		self.awg_I.set_waveform(waveform_I, channel=self.awg_ch_I)
 		self.awg_Q.set_waveform(waveform_Q, channel=self.awg_ch_Q)
+		#import matplotlib.pyplot as plt
+		#plt.plot(waveform_I)
+		#plt.plot(waveform_Q)
 		
 		#if np.any(np.abs(waveform_I)>1.0) or np.any(np.abs(waveform_Q)>1.0):
 			#logging.warning('Waveform clipped!')
@@ -200,6 +204,7 @@ class awg_iq:
 			sa.set_res_bw(res_bw)
 			sa.set_video_bw(video_bw)
 			sa.set_span(res_bw)
+		sa.set_sweep_time_auto(1)
 			
 		self.lo.set_status(True)
 		sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
@@ -261,6 +266,7 @@ class awg_iq:
 		sa.set_video_bw(video_bw)
 		sa.set_detector('rms')
 		sa.set_centerfreq(self.lo.get_frequency())
+		sa.set_sweep_time(1e-3)
 		#time.sleep(0.1)
 		if hasattr(sa, 'set_nop'):
 			sa.set_span(0)
@@ -297,7 +303,6 @@ class awg_iq:
 		
 	def set_sideband_id(self, sideband_id):
 		self.sideband_id = sideband_id
-	
 	def get_sideband_id(self):
 		return self.sideband_id
 	
@@ -310,3 +315,9 @@ class awg_iq:
 	
 	def get_frequency(self):
 		return self.frequency
+	def freeze(self):
+		self.frozen = True
+	def unfreeze(self):
+		if self.frozen:
+			self.frozen = False
+			#self.assemble_waveform()

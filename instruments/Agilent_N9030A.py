@@ -110,6 +110,9 @@ class Agilent_N9030A(Instrument):
 		self.add_function('set_xlim')
 		self.add_function('get_xlim')
 		self.add_function('get_sweep_time')
+		self.add_function('set_sweep_time')
+		self.add_function('set_sweep_time_auto')
+		self.add_function('get_sweep_time_auto')
 		#self.add_function('avg_clear')
 		#self.add_function('avg_status')
 		
@@ -291,7 +294,19 @@ class Agilent_N9030A(Instrument):
 				time in ms
 		"""
 		return float(self._visainstrument.ask(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
-	###
+		
+	def set_sweep_time(self, t):
+		self._visainstrument.write( ':SENS{:d}:SWE:TIME {:e}'.format(self._ci, t) )
+		
+	def set_sweep_time_auto(self, val):
+		if val:
+			self._visainstrument.write(":SWE:TIME:AUTO 1")
+		else:
+			self._visainstrument.write(":SWE:TIME:AUTO 0")
+			
+	def get_sweep_time_auto(self):
+		return int(self._visainstrument.ask(":SWE:TIME:AUTO?"))
+		
 	# SET and GET functions
 	###
 	

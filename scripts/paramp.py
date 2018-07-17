@@ -1,3 +1,7 @@
+import numpy as np
+import sweep
+import time
+
 class paramp:
     def __init__(self, vna, pump_src, bias_src):
         self.vna = vna
@@ -16,21 +20,14 @@ class paramp:
         self.hint_span_bw = 30.
         
         self.pump_on = True
-		self.target = self.vna_snr_target
-		
-	def vna_snr_target(self):
-		time.sleep(0.4)
-		measurements = self.vna.measure()['S-parameter'].ravel()
-		print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
-		return np.std(measurements)/np.abs(np.mean(measurements))
-		
+
     def measure(self):
     # maximize SNR of S21 at given frequency, excitation power and bandwidth
-        pna.set_nop(self.hint_nop)
-        pna.set_bandwidth(self.target_bw)
-        pna.set_power(self.target_power)
-        pna.set_centerfreq(self.target_f)
-        pna.set_span(self.target_bw/self.hint_span_bw)
+        self.vna.set_nop(self.hint_nop)
+        self.vna.set_bandwidth(self.target_bw)
+        self.vna.set_power(self.target_power)
+        self.vna.set_centerfreq(self.target_f)
+        self.vna.set_span(self.target_bw/self.hint_span_bw)
     
         params = ((self.pump_src.set_frequency, self.pump_src.get_frequency()),
                   (self.pump_src.set_power, self.pump_src.get_power()),
@@ -39,17 +36,15 @@ class paramp:
         self.pump_src.set_status(self.pump_on)
         self.bias_src.set_status(True)
     
-#        def target():
-#            time.sleep(0.4)
-#            measurements = pna.measure()['S-parameter'].ravel()
-#            print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
-#            return np.std(measurements)/np.abs(np.mean(measurements))
-
-		target = lambda: self.target()
-		
+        def target():
+            time.sleep(0.4)
+            measurements = self.vna.measure()['S-parameter'].ravel()
+            print (np.log10(np.abs(np.mean(measurements)))*20, np.log10(np.std(measurements)/np.abs(np.mean(measurements)))*10)
+            return np.std(measurements)/np.abs(np.mean(measurements))
+    
         res = sweep.optimize(target, *params, initial_simplex = initial_simplex, maxfun=self.hint_maxfun)
         for x, p in zip(res[0], params): p[0](x)
-        S21 = pna.measure()['S-parameter'].ravel()[0]
+        S21 = self.vna.measure()['S-parameter'].ravel()[0]
         measurement = {'S-parameter':np.asarray(S21), 
                        'SNR':np.asarray(res[1]), 
                        'Pump frequency':np.asarray(res[0][0]), 
@@ -118,11 +113,58 @@ class paramp:
             self.GN_P.append(10**(noise_powers[2]/10))
         self.G = np.zeros_like(self.GN_P[0])
         self.TN = np.zeros_like(self.GN_P[0])
+        self.G_1d = np.zeros(self.GN_target_frequencies.shape[0])
+        self.TN_1d = np.zeros(self.GN_target_frequencies.shape[0])
         for tf_id, tf in enumerate(self.GN_target_frequencies):
             gain, noise_T = self.gain_noise(self.GN_frequencies, np.asarray(self.GN_P)[:, tf_id,:], temp_files[0][0], temp_files[1][0], bw)
             self.G[tf_id, :] = gain
             self.TN[tf_id, :] = noise_T
+            self.G_1d[tf_id] = np.interp(tf, self.GN_frequencies, gain)
+            self.TN_1d[tf_id] = np.interp(tf, self.GN_frequencies, noise_T)
             #print (noise_powers)
+            
+        self.GN_meas = {'Gain frequency dependence': (('Target frequency', 'Probe frequency'), 
+                         (self.GN_target_frequencies, self.GN_frequencies),
+                         self.G, {'log':10}),
+                        'Noise T frequency dependence': (('Target frequency', 'Probe frequency'), 
+                         (self.GN_target_frequencies, self.GN_frequencies),
+                         self.TN),
+                        'Gain': (('Frequency',), (self.GN_target_frequencies,), self.G_1d, {'log':10}),
+                        'Noise T': (('Frequency',), (self.GN_target_frequencies,), self.TN_1d),}
+        self.off_gain = np.nanmedian(np.nanmedian(self.G))
+        return self.GN_meas
+        
+    def load_vna_noise_measurement(self, filename, vna_power, bw, atten):
+        from scipy.constants import Boltzmann
+        noise_vna = open('D:\\qtlab\\ReiData\\data\\2017-06-23\\10-52-50\\S-parameter S-paramter with std -60 dBm, bw 5e4.pkl', 'rb')
+        data_vna = pickle.load(noise_vna)
+        noise_vna.close()
+        noise_rel = (np.real(data_vna[1]['S-parameter std'][2])/np.abs(data_vna[1]['S-parameter'][2]))**2
+        noise_vna_inp = 1e-3*(10**(vna_power/10.))
+        noise_T = noise_rel*noise_vna_inp*(10**(atten/10))/(bw*Boltzmann)
+        gain = (np.abs(data_vna[1]['S-parameter'][2])**2)*10**(-atten/10)
+        self.TN_m = noise_T
+        self.G_m = gain
+        self.GN_m_target_frequencies = data_vna[1]['S-parameter'][1][0]
+        self.GN_m_probe_frequencies = data_vna[1]['S-parameter'][1][1]
+        self.G_m_1d = np.zeros(self.GN_m_target_frequencies.shape[0])
+        self.TN_m_1d = np.zeros(self.GN_m_target_frequencies.shape[0])
+        for tf_id, tf in enumerate(self.GN_m_target_frequencies):
+            self.G_m_1d[tf_id] = np.interp(tf, self.GN_m_probe_frequencies, gain[tf_id,:])
+            self.TN_m_1d[tf_id] = np.interp(tf, self.GN_m_probe_frequencies, noise_T[tf_id,:])
+        
+        self.off_gain_m = np.nanmedian(self.G_m)
+        
+        self.GN_m_meas = {'Monochromatic gain frequency dependence': (('Target frequency', 'Probe frequency'), 
+                         (self.GN_m_target_frequencies, self.GN_m_probe_frequencies),
+                         self.G_m, {'log':10}),
+                        'Monochromatic noise T frequency dependence': (('Target frequency', 'Probe frequency'), 
+                         (self.GN_m_target_frequencies, self.GN_m_probe_frequencies),
+                         self.TN_m),
+                        'Monochromatic gain': (('Frequency',), (self.GN_m_target_frequencies,), self.G_m_1d, {'log':10}),
+                        'Monochromatic noise T': (('Frequency',), (self.GN_m_target_frequencies,), self.TN_m_1d),}
+        self.off_gain = np.nanmedian(np.nanmedian(self.G))
+        return self.GN_meas
             
     def load_gain_saturation_measurement(self, filename, filter_kernel = (3,3,3)):
         import pickle
@@ -164,6 +206,18 @@ class paramp:
         calibration_path = get_config().get('datadir')+'/calibrations/paramp/saturation/{0}/'.format(name)
         header = {'name':name, 'type':'gain saturation'}
         save_pkl.save_pkl(header, self.sat_meas, location=calibration_path)
+        
+    def save_gain_noise_plots(self, name):
+        import save_pkl
+        calibration_path = get_config().get('datadir')+'/calibrations/paramp/gain & noise/{0}/'.format(name)
+        header = {'name':name, 'type':'gain & noise'}
+        save_pkl.save_pkl(header, self.GN_meas, location=calibration_path)
+
+    def save_vna_gain_noise_plots(self, name):
+        import save_pkl
+        calibration_path = get_config().get('datadir')+'/calibrations/paramp/monochromatic gain & noise/{0}/'.format(name)
+        header = {'name':name, 'type':'Monochromatic gain & noise'}
+        save_pkl.save_pkl(header, self.GN_m_meas, location=calibration_path)
             
     def planck_function(self, f, Ts, gains):
         from scipy.constants import Planck, Boltzmann

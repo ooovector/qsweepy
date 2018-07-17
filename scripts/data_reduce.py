@@ -9,6 +9,10 @@ class data_reduce:
 		self.source = source
 		self.filters = {}
 		self.extra_opts = {}
+		if hasattr(self.source, 'pre_sweep'):
+			self.pre_sweep = self.source.pre_sweep
+		if hasattr(self.source, 'post_sweep'):
+			self.post_sweep = self.source.post_sweep
 		
 	def get_points(self):
 		return { filter_name:filter['get_points']() for filter_name, filter in self.filters.items()}
@@ -23,6 +27,23 @@ class data_reduce:
 	def get_opts(self):
 		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}
 		
+def downsample_reducer(source, src_meas, axis, carrier, downsample, iq=True, iq_axis=-1):
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		new_axes [axis] = [i for i in new_axes [axis]]
+		new_axes [axis][1] = [i for i in new_axes[axis][1]][::downsample]
+		if iq:
+			new_axes [iq_axis][1] = np.asarray([j for i in zip(new_axes [iq_axis][1], new_axes [iq_axis][1]) for j in i ])
+		return new_axes
+	intermediate_axes = [len(a[1]) for a in source.get_points()[src_meas][:axis]]+[len(source.get_points()[src_meas][axis][1][::downsample]), downsample]+[len(a[1]) for a in source.get_points()[src_meas][axis+1:]]
+	filter_func = lambda x,s:np.mean(np.reshape(np.exp(s*2*np.pi*1j*source.get_points()[src_meas][axis][1]*carrier)*x[src_meas], intermediate_axes), axis=axis+1)
+	
+	filter = {'filter': lambda x:filter_func(x,1) if not iq else np.concatenate([filter_func(x,1), filter_func(x,-1)], axis=iq_axis),
+			  'get_points': get_points,
+			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
+			  'get_opts': (lambda : source.get_opts()[src_meas])}
+	return filter
+		
 def mean_reducer(source, src_meas, axis):
 	def get_points():
 		new_axes = source.get_points()[src_meas].copy()
@@ -30,7 +51,7 @@ def mean_reducer(source, src_meas, axis):
 		return new_axes
 	filter = {'filter': lambda x:np.mean(x[src_meas], axis=axis),
 			  'get_points': get_points,
-			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
 	
@@ -41,7 +62,7 @@ def std_reducer(source, src_meas, axis):
 		return new_axes
 	filter = {'filter': lambda x:np.std(x[src_meas], axis=axis),
 			  'get_points': get_points,
-			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
 	
@@ -52,7 +73,7 @@ def mean_reducer_noavg(source, src_meas, axis):
 		return new_axes
 	filter = {'filter': lambda x:np.mean(x[src_meas], axis=axis)-np.mean(x[src_meas]),
 			  'get_points': get_points,
-			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
 	
@@ -111,6 +132,6 @@ def feature_reducer_binary(source, src_meas, axis_mean, bg, feature):
 	feature = np.reshape(feature, new_feature_shape)
 	filter = {'filter': lambda x:(np.sum((x[src_meas]-bg)*feature, axis=axis_mean)>0)*2-1,
 			  'get_points': get_points,
-			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
+			  'get_dtype': (lambda : int),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
