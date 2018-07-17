@@ -12,6 +12,7 @@ import plotting
 import pickle as pic
 import shutil as sh
 import threading
+import pathlib
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	from scipy.optimize import fmin
@@ -104,22 +105,17 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 	import os
 	
 	if not root_dir and not filename:
-		data_dir = save_pkl.mk_dir()
-		directory_to = save_pkl.mk_dir(unfinished=True)
+		data_dir = save_pkl.default_measurement_save_path()
+		directory_to = save_pkl.default_measurement_save_path(unfinished=True)
 	elif filename and not root_dir:
-		date_dir = save_pkl.mk_dir(time=False)
-		directory_to_date = save_pkl.mk_dir(unfinished=True, time=False)
-		a,b,time_folder_name = save_pkl.get_location()
-		data_dir = '{0}/{1}-{2}'.format(date_dir, time_folder_name, filename)
-		directory_to = '{0}/{1}-{2}'.format(directory_to_date, time_folder_name, filename)
-		if not os.path.exists(data_dir):
-			os.mkdir(data_dir)
-		if not os.path.isdir(data_dir):
-			raise Exception('{0} is not a directory'.format(data_dir))
-		data_dir = data_dir+'/'
+		data_dir = save_pkl.default_measurement_save_path(name=filename)
+		directory_to = save_pkl.default_measurement_save_path(unfinished=True, name=filename)
 	else:
 		data_dir = root_dir	
 		directory_to = root_dir+'/unfinished/'
+	
+	data_dir = data_dir+'/'
+	pathlib.Path(data_dir).mkdir(parents=True, exist_ok=True) # create top-level directory for moving
 	
 	#opening on-the-fly ascii files
 	if not filename is None and output:
@@ -154,6 +150,8 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 	try:
 		# looping over all indeces at the same time
 		all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dim))
+		if len(sweep_dim)==0: # 0-d sweep case: single measurement
+			all_indeces = [[]] 
 		vals = [None for d in sweep_dim] # set initial parameter vals to None
 		done_sweeps = 0
 		total_sweeps = np.prod([d for d in sweep_dim])
@@ -278,6 +276,8 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 				for fmt, ascii_file in ascii_files[mname].items():
 					ascii_file.close()
 		stop_acq = True
+		pathlib.Path(directory_to).parent.mkdir(parents=True, exist_ok=True) # create top-level directory for moving
+		sh.move(data_dir,directory_to)
 		directory_to = sh.move(data_dir,directory_to)
 		data_dir = directory_to
 	finally:

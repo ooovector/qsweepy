@@ -7,31 +7,26 @@ from config import get_config
 import numpy as np
 import plotting
 import scipy.io
+import pathlib
 
-def mk_dir(path = None, time=True, root = None, name=None, unfinished=False):
+def default_measurement_save_path(path = None, time=True, root = None, name=None, unfinished=False, mkdir=False):
 	if (path is None) or (path==''):
 		(data_root, day_folder_name, time_folder_name) = get_location(unfinished=unfinished)
 		if root is not None:
 			data_root = root
-		if not os.path.exists('{0}/{1}'.format(data_root, day_folder_name)):
-			os.mkdir('{0}/{1}'.format(data_root, day_folder_name))
-		if not os.path.isdir('{0}/{1}'.format(data_root, day_folder_name)):
-			raise Exception('{0}/{1} is not a directory'.format(data_root, day_folder_name))
-		if time:
-			if not os.path.exists('{0}/{1}/{2}'.format(data_root, day_folder_name, time_folder_name)):
-				os.mkdir('{0}/{1}/{2}'.format(data_root, day_folder_name, time_folder_name))
-			if not os.path.isdir('{0}/{1}/{2}'.format(data_root, day_folder_name, time_folder_name)):
-				raise Exception('{0}/{1}/{2} is not a directory'.format(data_root, day_folder_name, time_folder_name))
-		
-			return '{0}/{1}/{2}/'.format(data_root, day_folder_name, time_folder_name)
+		if time and name:
+			path = '{0}/{1}/{2}-{3}'.format(data_root, day_folder_name, time_folder_name, name)
+		elif time:
+			path = '{0}/{1}/{2}'.format(data_root, day_folder_name, time_folder_name)
+		elif name:
+			path = '{0}/{1}/{2}'.format(data_root, day_folder_name, name)
 		else:
-			return '{0}/{1}/'.format(data_root, day_folder_name)
-	else:
-		if not os.path.exists(path):
-			os.mkdir(path)
-		return path	
+			path = '{0}/{1}'.format(data_root, day_folder_name)
+	if mkdir:
+		pathlib.Path(location).mkdir(parents=True, exist_ok=True) 
+	return path
 
-def get_location(Ndm=True, unfinished=False):
+def get_location(unfinished=False):
 	config = get_config()
 	if unfinished:
 		data_root = config.get('datadir')+'/unfinished'
@@ -52,7 +47,7 @@ def load_pkl(filename, location=None):
 	
 def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, location=None, time=True, filename=None, matlab=False, gzip=False, plot_axes=None):
 	import gzip
-	location = mk_dir(path = location, time=time)
+	location = default_measurement_save_path(path = location, time=time)
 
 	if not filename:
 		if 'type' in header:
@@ -63,7 +58,9 @@ def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, locatio
 		else:
 			filename = ' '.join(data.keys())
 
-	f = open('{0}/{1}.pkl'.format(location, filename), 'wb')
+	pathlib.Path(location).mkdir(parents=True, exist_ok=True) 
+	filename = '{0}/{1}.pkl'.format(location, filename)
+	f = open(filename, 'wb')
 	if header:
 		data_pkl = (2, data, header)
 	else:
@@ -80,3 +77,5 @@ def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, locatio
 	if matlab:
 		matfilename = '{0}/{1}.mat'.format(location, filename)
 		scipy.io.savemat(matfilename, mdict=data)
+		
+	return filename

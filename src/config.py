@@ -22,11 +22,20 @@ import sys
 import json
 import logging
 
+#TODO: 
+
+# An ideal config module should be loadable (by config name or path)
+# have default config ready
+# Default config should be available in QTLAB_PATH
+
+# Current functions: __init__ loads from filename (which filename?) fine
+# Execdir is unnecessary. Remove it completely.
+
+
 class Config():
     '''
     Class to manage settings for the QTLab environment.
     '''
-
     def __init__(self, filename):
         self._filename = filename
         self._config = {}
@@ -37,13 +46,7 @@ class Config():
 
         # Override exec dir
         self['execdir'] = get_execdir()
-
-    def load_userconfig(self):
-        filename = os.path.join(get_execdir(), 'userconfig.py')
-        if os.path.exists(filename):
-            logging.debug('Loading userconfig from %s', filename)
-            execfile(filename, {'config': self})
-
+# We don't have a tmpdir.
     def setup_tempdir(self):
         '''Get directory for temporary files.'''
 
@@ -58,7 +61,7 @@ class Config():
 
     def _get_filename(self):
         return os.path.join(get_execdir(), self._filename)
-
+		
     def load_defaults(self):
         self._defaults['datadir'] = os.path.join(get_execdir(), 'data')
 
