@@ -22,7 +22,18 @@ class awg_digital:
 		return self.awg.set_clock(clock)
 	
 	def set_waveform(self, waveform):
-		self.awg.set_digital(waveform, channel=self.channel)
+		if self.mode == 'waveform':
+			self.awg.set_digital(waveform, channel=self.channel)
+		if self.mode == 'marker':
+			delay_tock = np.where(waveform)[0][0]
+			delay = int(np.ceil(delay_tock / 10));
+			length_tock = np.where(1-waveform[delay_tock:])[0][0]
+			length = int(np.ceil(length_tock/10))
+			self.awg.set_marker(delay, length, channel=self.channel)
+		if self.mode == 'set_delay':
+			delay_tock = np.where(waveform)[0][0]
+			delay = int(np.ceil(delay_tock));
+			self.delay_setter(delay)
 		
 	def freeze(self):
 		self.frozen = True
