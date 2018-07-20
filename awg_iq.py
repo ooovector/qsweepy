@@ -89,6 +89,10 @@ class awg_iq:
 		
 		self.awg_I.set_waveform(waveform_I, channel=self.awg_ch_I)
 		self.awg_Q.set_waveform(waveform_Q, channel=self.awg_ch_Q)
+		
+		self.awg_I.run()
+		if self.awg_I != self.awg_Q:
+			self.awg_Q.run()
 		#import matplotlib.pyplot as plt
 		#plt.plot(waveform_I)
 		#plt.plot(waveform_Q)
@@ -166,7 +170,7 @@ class awg_iq:
 		When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current 
 		frequencies.
 		"""
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		try:
 			self.calibrations[self.cname()] = load_pkl(filename, location=calibration_path)
@@ -179,7 +183,7 @@ class awg_iq:
 		return self.calibrations[self.cname()]
 			
 	def save_calibration(self):
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
 		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		save_pkl(None, self.calibrations[self.cname()], location=calibration_path, filename=filename, plot=False)
