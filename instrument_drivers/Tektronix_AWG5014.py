@@ -421,17 +421,6 @@ class Tektronix_AWG5014(Instrument):
 		else:
 			logging.error(__name__ + ' : Unable to set trigger mode to %s, expected "CONT", "TRIG", "GATE" or "SEQ"' % runmode)
 			
-	def do_get_trigger_mode(self):
-		'''
-		Set the Run Mode of the device to Continuous, Triggered, Gated or Sequence.
-		Input:
-			runmode (str) : The Run mode which can be set to 'CONT', 'TRIG', 'GAT' or 'SEQ'.
-
-		Output:
-			None
-		'''
-		return self._visainstrument.ask('AWGC:RMOD?')
-
 	def set_trigger_impedance_1e3(self):
 		'''
 		Sets the trigger impedance to 1 kOhm

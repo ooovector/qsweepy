@@ -23,7 +23,7 @@ def default_measurement_save_path(path = None, time=True, root = None, name=None
 		else:
 			path = '{0}/{1}'.format(data_root, day_folder_name)
 	if mkdir:
-		pathlib.Path(location).mkdir(parents=True, exist_ok=True) 
+		pathlib.Path(path).mkdir(parents=True, exist_ok=True) 
 	return path
 
 def get_location(unfinished=False):
