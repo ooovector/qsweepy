@@ -1,11 +1,12 @@
-from instrument import Instrument
+from qsweepy.instrument import Instrument
 import sys
 sys.path.append('C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
-from _Keysight_M3202A import simple_sync
+from qsweepy.instrument_drivers._Keysight_M3202A.simple_sync import *
 import keysightSD1
 class Keysight_M3202A_Base(Instrument):
 	def __init__(self, name, chassis, slot):
 	## identify chassis, slot id & so on
+		super().__init__(name, tags=['physical'])
 		self.mask = 0
 		self.module = keysightSD1.SD_AOU()
 		self.module_id = self.module.openWithSlot("M3202A", chassis, slot)
@@ -14,13 +15,11 @@ class Keysight_M3202A_Base(Instrument):
 		self.add_parameter('amplitude_channel_{}', type=float,
 							flags=Instrument.FLAG_SOFTGET,
 							channels = (1, 4),
-						   unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
-						   vals=validator.Numbers(-1.5, 1.5))
+						    unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
 		self.add_parameter('offset_channel_{}', type=float,
 							flags=Instrument.FLAG_SOFTGET,
 							channels = (1, 4),
-						   unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
-						   vals=validator.Numbers(-1.5, 1.5)
+						    unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
 		for channel_id in range(4):
 			self.set_amplitude(0.2, channel_id)
 			self.set_offset(0.0, channel_id)
