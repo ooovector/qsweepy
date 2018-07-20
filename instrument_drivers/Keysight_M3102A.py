@@ -1,4 +1,5 @@
 from instrument import Instrument
+from ._Keysight_M3102A.simple_sync import Keysight_M3202A_S
 import sys
 sys.path.append('C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
 
