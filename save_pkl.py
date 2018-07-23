@@ -59,14 +59,13 @@ def save_pkl(header, data, plot = True, curve_fit=None, annotation=None, locatio
 			filename = ' '.join(data.keys())
 
 	pathlib.Path(location).mkdir(parents=True, exist_ok=True) 
-	filename = '{0}/{1}.pkl'.format(location, filename)
-	f = open(filename, 'wb')
-	if header:
-		data_pkl = (2, data, header)
-	else:
-		data_pkl = data
-	pickle.dump(data_pkl, f)
-	f.close()
+	with open('{0}/{1}.pkl'.format(location, filename), 'wb') as f:
+		if header:
+			data_pkl = (2, data, header)
+		else:
+			data_pkl = data
+		pickle.dump(data_pkl, f)
+
 	if plot_axes and plot:
 		plotting.update_plot_measurement(data, plot_axes)
 		plotting.plot_add_annotation(plot_axes, annotation)

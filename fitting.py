@@ -141,7 +141,7 @@ def exp_sin_fit(x, y):
 	#plt.plot(x, (model(x, p0)).T)
 	#plt.plot(x, (y).T, marker='o', markerfacecolor='None', linestyle='none')
 	fitresults = leastsq (cost, p0)
-	fitted_curve = model(x, fitresults[0])
+	fitted_curve = model(resample_x_fit(x), fitresults[0])
 	
 	#for i in range(4):
 	#	plt.figure(i)
@@ -189,8 +189,8 @@ def S21pm_fit(measurement, fitter):
 	#elif fitter is exp_fit:
 	#	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
 	
-	measurement['S21+ fit'] = [t for t in measurement['S21+']]
-	measurement['S21- fit'] = [t for t in measurement['S21-']]
+	measurement['S21+ fit'] = [list(t) if type(t) is tuple else t for t in measurement['S21+']]
+	measurement['S21- fit'] = [list(t) if type(t) is tuple else t for t in measurement['S21-']]
 	measurement['S21+ fit'][1][0] = fitted_curve[0]
 	measurement['S21- fit'][1][0] = fitted_curve[0]
 	measurement['S21+ fit'][2] = fitted_curve[1][0,:]+fitted_curve[1][1,:]*1j

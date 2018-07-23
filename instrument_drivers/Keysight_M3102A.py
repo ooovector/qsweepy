@@ -48,12 +48,19 @@ class Keysight_M3102A(Instrument):
 		#print (channel, self.nop, self.nums, self.trigger_delay, self.trigger)
 		self.moduleIn.DAQconfig(channel, self.nop, self.nums, self.trigger_delay, self.trigger)
 	
-	def set_trigger_external(self, channel):
+	def set_trigger_external(self, channel, trigger_source='ext'):
 		self.trigger = keysightSD1.SD_TriggerModes.EXTTRIG
+		# digitalTriggerMode = keysightSD1.SD_TriggerModes.HWDIGTRIG
+		# if trigger_source == 'ext'
+			# digitalTriggerSource = keysightSD1.SD_TriggerModes.TRIG_EXTERNAL
+		# else:
+			# digitalTriggerSource = keysightSD1.SD_TriggerModes.TRIG_PXI
 		self.moduleIn.triggerIOconfig(1)
-		self.moduleIn.DAQdigitalTriggerConfig(channel, 0, keysightSD1.SD_TriggerBehaviors.TRIGGER_RISE)
+		# self.moduleIn.DAQtriggerConfig(channel, digitalTriggerMode, digitalTriggerSource, analogTriggerMask)
+		self.moduleIn.DAQdigitalTriggerConfig(channel, trigger_source, keysightSD1.SD_TriggerBehaviors.TRIGGER_RISE)
+		# self.moduleIn.DAQtriggerExternalConfig(channel, externalSource, triggerBehavior, sync = SD_SyncModes.SYNC_NONE)
 		self._daqconfig(channel)
-	
+		
 	def set_trigger_delay(self, delay):
 		self.trigger_delay = delay
 		for c in range(1, 5):
