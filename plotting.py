@@ -47,7 +47,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			if np.iscomplexobj(data[2]):
 				num_axes += 2
 			else:
-				num_axes -= 1
+				num_axes += 1
 			if mname+' fit' in measurement.keys() and len (dims)<2:					
 				fit_pnames = measurement[mname+' fit'][0]
 				same_axes = True
@@ -60,7 +60,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 					else:
 						num_axes -= 1
 		
-		#num_rows = np.sqrt(num_axes*(3/4))
+		#num_rows = np.sqrt(num_axes*(3/4))qwe
 		num_cols = int(np.ceil(np.sqrt(num_axes*(4/3))))
 		num_rows = int(np.ceil(num_axes/num_cols))
 		
