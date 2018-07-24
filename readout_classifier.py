@@ -3,42 +3,66 @@ from sklearn.metrics import make_scorer, roc_auc_score
 from sklearn.model_selection import cross_val_score, cross_validate
 from sklearn.base import BaseEstimator, ClassifierMixin
 
-def readout_fidelity(y_pred, y_true):
+def binary_readout_fidelity(y_pred, y_true):
 	false_negative_rate = np.sum(y_true*(1-y_pred))/np.sum(y_true)
 	false_positive_rate = np.sum((1-y_true)*y_pred)/np.sum(1-y_true)
 	return 1-(false_negative_rate+false_positive_rate)/2
 	
-readout_fidelity_scorer = make_scorer(readout_fidelity)
+binary_readout_fidelity_scorer = make_scorer(binary_readout_fidelity)
 
-def evaluate_classifier(classifier, X, y, return_test_score_error=False, return_train_score=False, return_train_score_error=False):
-	scores = cross_validate(classifier, X, y, scoring={'fidelity':readout_fidelity_scorer, 'roc_auc': make_scorer(roc_auc_score, needs_proba=True)},
+def binary_evaluate_classifier(classifier, X, y):
+	scores = cross_validate(classifier, X, y, scoring={'fidelity':binary_readout_fidelity_scorer, 'roc_auc': make_scorer(roc_auc_score, needs_proba=True)},
 							 cv=3, return_train_score=(return_train_score or return_train_score_error) )
-#    if (return_train_score or return_train_score_error):
-#		train_scores = scores['train_score']
-	print(scores)
 	fidelity  = scores['test_fidelity']
 	roc_auc  = scores['test_roc_auc']
-	#return np.mean(test_scores), np.std(test_scores)/np.sqrt(len(test_scores)),\
-	#        np.mean(train_scores), np.std(train_scores)/np.sqrt(len(train_scores))
-#	retvals = [np.mean(test_scores)]
-#	if return_test_score:
-#	retvals.append()
 	return {'fidelity':np.mean(fidelity), 'roc_auc':np.mean(roc_auc)}
 	
-class linear_classifier(BaseEstimator, ClassifierMixin):
+def readout_fidelity(y_pred, y_true):
+	return np.sum(y_pred == y_true)/len(y_true)
+
+readout_fidelity_scorer = make_scorer(readout_fidelity)
+	
+def confusion_matrix(y_pred_proba, y_true):
+	'''
+	Assignment probability of single-shot readout.
+	
+	y_pred_proba(numpy.ndarray, shape (M, N)), M -- number of samples, N -- number of classes
+	returns: (N, N) numpy.ndarray assignment
+	'''
+	confusion_matrix = np.zeros(y_pred_proba.shape[1], y_pred_proba.shape[1])
+	for _class_id in range(y_pred_proba.shape[1]):
+		confusion_matrix[_class_id,:] = np.mean(y_pred_proba[y_true==_class_id], axis=0)
+	return confusion_matrix
+	
+def probability_aware_readout_fidelity(y_pred_proba, y_true):
+	return np.trace(confusion_matrix(y_pred_proba, y_true))
+
+probability_aware_readout_fidelity_scorer = make_scorer(probability_aware_readout_fidelity, needs_proba=True)
+	
+def evaluate_classifier(classifier, X, y):
+	scores = cross_validate(classifier, X, y, scoring={'fidelity':readout_fidelity_scorer, 'probability_aware_fidelity': probability_aware_readout_fidelity_scorer},
+							 cv=3, return_train_score=(return_train_score or return_train_score_error) )
+	fidelity  = scores['test_fidelity']
+	roc_auc  = scores['test_probability_aware_fidelity']
+	return {'fidelity':np.mean(fidelity), 'probability_aware_fidelity':np.mean(roc_auc)}	
+
+# class linear_classifier(BaseEstimator, ClassifierMixin):
+	# def __init__(self):
+		# self.purify = True
+		# pass
+
+	# def fit(self, X, y):
+		# self.class_averages = {}
+		# for _class_id in list(set(y)):
+			# self.class_averages[_class_id] = np.mean(X[y==_class_id,:], axis=0)
+			# dev = X[y==_class_id,:]-self.class_averages[_class_id].T
+			# self.class_cov[_class_id] = np.dot(np.conj(dev.T), dev)
+		# self.
+			
+	
+class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 	def __init__(self):
 		pass
-	# def feature_reducer(source, src_meas, axis_mean, bg, feature):
-		# def get_points():
-			# new_axes = source.get_points()[src_meas].copy()
-			# del new_axes [axis_mean]
-			# return new_axes
-
-# +			
-		# self.filter = self.predictor_class.dimreduce
-		# self.filter_binary = self.predictor_class.predict
-		# self.filter_mean = lambda x: self.predictor_class.predict.
-		# pass
 		
 	def fit(self, X, y):
 		self.avg_zero = np.mean(X[y==0, :], axis=0)
@@ -49,9 +73,6 @@ class linear_classifier(BaseEstimator, ClassifierMixin):
 		self.sigma_0 = np.dot(np.conj(X[y==0,:]-self.avg_zero).T, X[y==0,:]-self.avg_zero)
 		self.sigma_1 = np.dot(np.conj(X[y==1,:]-self.avg_one).T, X[y==1,:]-self.avg_one)
 		self.Sigma_inv = np.linalg.inv(self.sigma_0+self.sigma_1)
-		#self.Sigma_inv = np.identity(len(self.avg))
-		#self.Sigma_inv = np.linalg.inv(np.dot(np.conj(X-self.avg).T, X-self.avg))
-		#print (self.Sigma_inv)
 		self.feature = self.Sigma_inv
 		self.naive_bayes(X,y)
 		
