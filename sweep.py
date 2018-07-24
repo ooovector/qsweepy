@@ -236,11 +236,10 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 					#print ('DAQ threadsweep no: ',done_sweeps)
 			except:
 				sweep_error = True
+				raise
+			finally:
 				if hasattr(measurer, 'post_sweep'):
 					measurer.post_sweep()
-				raise
-			if hasattr(measurer, 'post_sweep'):
-				measurer.post_sweep()
 				
 		if not plot_separate_thread:
 			main_sweep_loop()
@@ -277,9 +276,9 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 					ascii_file.close()
 		stop_acq = True
 		pathlib.Path(directory_to).parent.mkdir(parents=True, exist_ok=True) # create top-level directory for moving
-		sh.move(data_dir,directory_to)
 		directory_to = sh.move(data_dir,directory_to)
 		data_dir = directory_to
+		raise # after finally
 	finally:
 		if acq_thread:
 			if acq_thread.isAlive():
