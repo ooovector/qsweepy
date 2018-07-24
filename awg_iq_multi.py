@@ -236,7 +236,7 @@ class awg_iq_multi:
 		"""This function is no longer user-level as it only calibrates one carrier frequency. User-level function is do_calibration.
 		"""
 		calibration_path = get_config()['datadir']+'/calibrations/'
-		filename = 'IQ-dc-lo{0:4.2f}GHz'.format(self.lo.get_frequency()/1e9)
+		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
 		try:
 			self.dc_calibrations[self.dc_cname()] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
@@ -250,7 +250,7 @@ class awg_iq_multi:
 	def save_dc_calibration(self):
 		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
-		filename = 'IQ-dc-lo{0:4.2f}GHz'.format(self.lo.get_frequency()/1e9)
+		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
 		save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
 		
 	def rf_cname(self, carrier):

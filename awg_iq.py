@@ -178,7 +178,7 @@ class awg_iq:
 		frequencies.
 		"""
 		calibration_path = get_config()['datadir']+'/calibrations/'
-		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
+		filename = 'IQ-if{0:5.3g}-rf{1:5.3g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		try:
 			self.calibrations[self.cname()] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
@@ -192,7 +192,7 @@ class awg_iq:
 	def save_calibration(self):
 		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
-		filename = 'IQ-if{0:4.3g}-rf{1:4.3g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
+		filename = 'IQ-if{0:5.3g}-rf{1:5.3g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		save_pkl(None, self.calibrations[self.cname()], location=calibration_path, filename=filename, plot=False)
 	
 	def _calibrate_cw_sa(self, sa, num_sidebands = 7):
