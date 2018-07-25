@@ -130,7 +130,10 @@ def exp_sin_fit(x, y):
 	c = np.real(np.sum(ft[:,fR_id], axis=0))
 	s = np.imag(np.sum(ft[:,fR_id], axis=0))
 	phase = np.pi+np.arctan2(c, s)
-	x0 = np.sqrt(np.mean(np.abs(ft[:,fR_id])**2)/np.mean(np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)-1)/domega/2
+	if fR_id==0 or fR_id+1==len(f):
+		x0 = np.max(x)-np.min(x)
+	else:
+		x0 = np.sqrt(np.mean(np.abs(ft[:,fR_id])**2)/np.mean(np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)-1)/domega/2
 	
 	#print (x0, np.abs(ft[:,fR_id])**2, np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)
 	
