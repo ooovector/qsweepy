@@ -69,9 +69,9 @@ class Config:
 		self._filename = filename
 	def save(self):
 		try:
-			filename = self._get_filename()
+			filename = self._get_default_filename()
 			logging.debug('Saving settings to %s', filename)
-			with file(filename, 'w+') as f:
+			with file(filename, 'w') as f:
 				dump(self._config, f, indent=4, sort_keys=True)
 		except Exception as e:
 			logging.warning('Unable to save config file')

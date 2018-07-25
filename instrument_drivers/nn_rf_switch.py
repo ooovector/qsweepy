@@ -13,12 +13,12 @@ class nn_rf_switch(Instrument):
 		Instrument.__init__(self, name, tags=['physical'])
 		
 		self._address = address
-		self.num_channels = 1
+		self.num_channels = 2
 	
 		self.add_parameter('switch', type=int,
 			flags=Instrument.FLAG_GETSET,
 			minval=1, maxval=6,
-			channels=(1, 1), channel_prefix='ch%d_') 
+			channels=(1, 2), channel_prefix='ch%d_') 
 	
 		for channel in range(1,self.num_channels+1):
 			self.do_get_switch(channel=channel)
