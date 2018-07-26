@@ -46,18 +46,45 @@ def evaluate_classifier(classifier, X, y):
 	roc_auc  = scores['test_probability_aware_fidelity']
 	return {'fidelity':np.mean(fidelity), 'probability_aware_fidelity':np.mean(roc_auc)}	
 
-# class linear_classifier(BaseEstimator, ClassifierMixin):
-	# def __init__(self):
-		# self.purify = True
-		# pass
+readout_classifier_scores = ['fidelity', 'probability_aware_fidelity']
 
-	# def fit(self, X, y):
-		# self.class_averages = {}
-		# for _class_id in list(set(y)):
-			# self.class_averages[_class_id] = np.mean(X[y==_class_id,:], axis=0)
-			# dev = X[y==_class_id,:]-self.class_averages[_class_id].T
-			# self.class_cov[_class_id] = np.dot(np.conj(dev.T), dev)
-		# self.
+class linear_classifier(BaseEstimator, ClassifierMixin):
+	def __init__(self, purify=True, cov_mode='equal'):
+		self.purify = purify
+		pass
+
+	def fit(self, X, y):
+		self.class_averages = {}
+		self.class_list = sorted(list(set(y)))
+		for _class_id in self.class_list:
+			self.class_averages[_class_id] = np.mean(X[y==_class_id,:], axis=0)
+			dev = X[y==_class_id,:]-self.class_averages[_class_id].T
+			self.class_cov[_class_id] = np.dot(np.conj(dev.T), dev)
+		if self.cov_mode == 'equal':
+			self.cov_inv = 1/(np.mean(self.class_cov.values()))
+			self.class_cov_inv = {_class_id: self.cov_inv for _class_id in self.class_list}
+			self.class_features = {_class_id: np.conj(self.class_averages[_class_id])*self.cov_inv/len(self.class_averages[_class_id]) for _class_id in self.class_list}
+		elif self.cov_mode == 'LDA':
+			self.cov_inv = np.linalg.inv(np.sum(self.class_cov.values()))
+			self.class_cov_inv = {_class_id: self.cov_inv for _class_id in self.class_list}
+			self.class_features = {_class_id: np.dot(np.conj(self.class_averages[_class_id]), self.cov_inv)/len(self.class_averages[_class_id]) for _class_id in self.class_list}
+		elif self.cov_mode == 'QDA':
+			self.class_cov_inv = {_class_id: np.linalg.inv(self.class_cov) for _class_id in self.class_list}
+			## TODO: insert correct formula for QDA here
+			#self.class_features = {_class_id: np.dot(self.class_cov[_class_id], self.cov_inv)/len(self.class_cov[_class_id]) for _class_id in list(set(y))}
+			
+	def dimreduce(self, X):
+		if self.cov_mode == 'equal':
+			reduced = [np.real(np.sum(self.class_features[_class_id]*X, axis=1)) for _class_id in self.class_list]
+		#prediction = np.real(np.sum(np.dot(np.conj(self.diff),self.Sigma_inv)*(X - self.avg), axis=1))
+		return reduced
+	def predict(self, X)
+		return self.class_list[np.argmax(self.dimreduce(X))]
+	# trivial probability assignment
+	def predict_proba(self, X)
+		result = np.zeros(len(self.class_list))
+		result[self.predict(X)]=1.
+		return result
 			
 	
 class binary_linear_classifier(BaseEstimator, ClassifierMixin):
