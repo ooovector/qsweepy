@@ -14,7 +14,7 @@ class single_shot_readout:
 		ro_delay_seq (pulses.sequence): Sequence used to align the DAC and ADC (readout delay compensation)
 		adc_measurement_name (str): name of measurement on ADC
     """
-	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None, adc_measurement_name='Voltage'):
+	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None, _readout_classifier = readout_classifier.linear_classifier(), adc_measurement_name='Voltage'):
 		self.adc = adc
 		self.ro_seq = ro_seq
 		self.ex_seq = ex_seq
@@ -27,7 +27,7 @@ class single_shot_readout:
 		self.measurement_name = ''
 		self.dump_measured_samples = False
 		#self.cutoff_start = 0
-		self.readout_classifier = readout_classifier.linear_classifier()
+		self.readout_classifier = _readout_classifier
 		self.adc_measurement_name = adc_measurement_name
 	
 	def measure_delay(self, ro_channel):
@@ -45,11 +45,11 @@ class single_shot_readout:
 		xc = np.abs(np.correlate(ro_dac_waveform, ro_adc_waveform, 'same'))
 		xc_max = np.argmax(xc)
 		delay = int((xc_max - first_nonzero)/2)
-		plt.figure('delay')
-		plt.plot(ro_dac_waveform[first_nonzero:])
-		plt.plot(ro_adc_waveform[delay:])
-		plt.plot(ro_adc_waveform)
-		print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
+		#plt.figure('delay')
+		#plt.plot(ro_dac_waveform[first_nonzero:])
+		#plt.plot(ro_adc_waveform[delay:])
+		#plt.plot(ro_adc_waveform)
+		#print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
 		return delay
 	
 	def calibrate(self):
@@ -67,44 +67,38 @@ class single_shot_readout:
 				y.extend([class_id]*len(self.adc.get_points()[self.adc_measurement_name][0][1]))
 		X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1]))) # last dimension is the feature dimension
 		y = np.asarray(y)
+		if self.dump_measured_samples:
+			self.samples = np.reshape(X, (len(self.prepare_seqs), -1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
 		
 		self.predictor_class = readout_classifier.linear_classifier()
 		scores = readout_classifier.evaluate_classifier(self.predictor_class, X, y)
 		self.predictor_class.fit(X, y)
+		self.scores = scores
 		
 	def get_opts(self):
-		return {#'Calibrated ROC AUC binary': {'log': False},
-				'Calibrated ROC AUC': {'log': False},
-				#'Calibrated fidelity binary': {'log': False} ,
-				'Calibrated fidelity': {'log': False}}
+		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
+		return {score_name:{'log':False} for score_name in scores}
 	
 	def measure(self):
 		self.calibrate()
-		meas = {#'Calibrated ROC AUC binary': self.calib_roc_auc_binary,
-				'Calibrated ROC AUC': self.calib_roc_auc,
-				#'Calibrated fidelity binary': self.calib_fidelity_binary,
-				'Calibrated fidelity': self.calib_fidelity}
+		meas = self.scores
 		if self.dump_measured_samples:
 			self.dump_samples(name=self.measurement_name)
 		return meas
 		
 	def get_points(self):
-		return {#'Calibrated ROC AUC binary': {},
-				'Calibrated ROC AUC': {},
-				#'Calibrated fidelity binary': {},
-				'Calibrated fidelity': {} }
+		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
+		return {score_name:{}}
 				
 	def get_dtype(self):
-		return {#'Calibrated ROC AUC binary': float,
-				'Calibrated ROC AUC': float,
-				#'Calibrated fidelity binary': float, 
-				'Calibrated fidelity': float}
+		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
+		return {score_name:float}
 	
 	def dump_samples(self, name):
 		from .save_pkl import save_pkl
-		header = {'type':'Binary classification samples', 'name':name}
-		measurement = {'Binary classification samples':(['Class', 'Sample ID', 'time'], 
-				[np.asarray([0, 1]), np.arange(self.samples.shape[1]), np.arange(self.samples.shape[2])/self.adc.get_clock()],
+		header = {'type':'Readout classification samples', 'name':name}
+		measurement = {'Readout classification samples':(['Class', 'Sample ID', 'time'], 
+				[np.arange(self.samples), np.arange(self.samples.shape[1]), np.arange(self.samples.shape[2])/self.adc.get_clock()],
 				self.samples)}
 		save_pkl(header, self.samples, plot=False)
 	
