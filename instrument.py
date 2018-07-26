@@ -287,7 +287,6 @@ class Instrument():
 				func.__doc__ += '\n%s' % options['doc']
 
 			setattr(self, 'get_%s' % name,  func)
-			print (__file__, 290, name)
 			self._added_methods.append('get_%s' % name)
 
 			# Set function to do_get_%s or _do_get_%s, whichever is available

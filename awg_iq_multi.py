@@ -170,7 +170,7 @@ class awg_iq_multi:
 		for carrier_id, carrier in self.carriers.items():
 			if not carrier.status:
 				continue
-			waveform_if = carrier.get_waveform()*np.exp(1j*2*np.pi*t*carrier.get_if())
+			waveform_if = carrier.get_waveform()*np.exp(1j*2*np.pi*t*np.abs(carrier.get_if()))
 		
 			waveform_I += np.real(self.calib_rf(self.rf_cname(carrier))['I']*waveform_if)
 			waveform_Q += np.imag(self.calib_rf(self.rf_cname(carrier))['Q']*waveform_if)
@@ -323,6 +323,8 @@ class awg_iq_multi:
 			sa.set_video_bw(video_bw)
 			sa.set_span(res_bw)
 			if hasattr(sa, 'set_nop'): 
+				res_bw = 1e3
+				video_bw = 2e2
 				sa.set_sweep_time(50e-3)
 				sa.set_nop(1)
 		
@@ -330,7 +332,9 @@ class awg_iq_multi:
 
 		self.awg_I.run()
 		self.awg_Q.run()
-		solution = [-0.5, 0.2]
+		sign = 4 if carrier.get_if()>0 else -1
+		solution = [-0.5*sign, 0.2*sign]
+		print (carrier.get_if(), carrier.frequency)
 		for iter_id in range(1):
 			def tfunc(x):
 				#dc = x[0] + x[1]*1j
@@ -338,7 +342,7 @@ class awg_iq_multi:
 				sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
 				I =  0.5
 				Q =  x[0] + x[1]*1j
-				max_amplitude = self._set_if_cw(self.calib_dc(self.dc_cname())['dc'], I, Q, carrier.get_if(), half_length)
+				max_amplitude = self._set_if_cw(self.calib_dc(self.dc_cname())['dc'], I, Q, np.abs(carrier.get_if()), half_length)
 				if max_amplitude < 1:
 					clipping = 0
 				else:
@@ -350,7 +354,7 @@ class awg_iq_multi:
 				# otherwise, sweep through each sideband
 					result = []
 					for sideband_id in range(num_sidebands):
-						sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*carrier.get_if())
+						sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*np.abs(carrier.get_if()))
 						#time.sleep(0.1)
 						#result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
 						result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)

@@ -76,7 +76,6 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			subplot_figs, subplot_axes = plt.subplots(num_rows, num_cols, figsize=figsize, num=name)
 		subplot_axes = np.reshape(subplot_axes, (num_rows, num_cols))
 		plt.get_current_fig_manager().window.showMaximized()
-		print(num_axes)
 	axis_id = 0
 	for mname, data in measurement.items():
 		pnames = data[0]
