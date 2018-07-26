@@ -47,7 +47,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			if np.iscomplexobj(data[2]):
 				num_axes += 2
 			else:
-				num_axes -= 1
+				num_axes += 1
 			if mname+' fit' in measurement.keys() and len (dims)<2:					
 				fit_pnames = measurement[mname+' fit'][0]
 				same_axes = True
@@ -60,7 +60,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 					else:
 						num_axes -= 1
 		
-		#num_rows = np.sqrt(num_axes*(3/4))
+		#num_rows = np.sqrt(num_axes*(3/4))qwe
 		num_cols = int(np.ceil(np.sqrt(num_axes*(4/3))))
 		num_rows = int(np.ceil(num_axes/num_cols))
 		
@@ -76,7 +76,6 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			subplot_figs, subplot_axes = plt.subplots(num_rows, num_cols, figsize=figsize, num=name)
 		subplot_axes = np.reshape(subplot_axes, (num_rows, num_cols))
 		plt.get_current_fig_manager().window.showMaximized()
-		print(num_axes)
 	axis_id = 0
 	for mname, data in measurement.items():
 		pnames = data[0]

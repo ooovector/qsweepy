@@ -1,10 +1,10 @@
-import ..Keysight_M3202A
+from  qsweepy.instrument_drivers.Keysight_M3202A import *
 import numpy as np
 
 # CREATE AND OPEN MODULE IN
-class Keysight_M3202A_S(Keysight_M3202A.Keysight_M3202A_Base):
+class Keysight_M3202A_S(Keysight_M3202A_Base):
 	def __init__(self, name, chassis, slot):
-		__super__().init()
+		super().__init__(name, chassis, slot)
 		self.master_channel = None
 		self.repetition_period = 50000
 		self.trigger_source_types = [0]*4
@@ -12,6 +12,7 @@ class Keysight_M3202A_S(Keysight_M3202A.Keysight_M3202A_Base):
 		self.trigger_delays = [0]*4
 		self.trigger_behaviours = [0]*4
 		self.waveforms = [None]*4
+		self.waveform_ids = [None]*4
 		self.marker_delay = [None]*4
 		self.marker_length = [None]*4
 	

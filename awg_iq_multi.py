@@ -140,6 +140,10 @@ class awg_iq_multi:
 		
 		self.awg_I.set_waveform(waveform_I, channel=self.awg_ch_I)
 		self.awg_Q.set_waveform(waveform_Q, channel=self.awg_ch_Q)
+		
+		self.awg_I.run()
+		if self.awg_I != self.awg_Q:
+			self.awg_Q.run()
 		#import matplotlib.pyplot as plt
 		#plt.plot(waveform_I)
 		#plt.plot(waveform_Q)
@@ -166,7 +170,7 @@ class awg_iq_multi:
 		for carrier_id, carrier in self.carriers.items():
 			if not carrier.status:
 				continue
-			waveform_if = carrier.get_waveform()*np.exp(1j*2*np.pi*t*carrier.get_if())
+			waveform_if = carrier.get_waveform()*np.exp(1j*2*np.pi*t*np.abs(carrier.get_if()))
 		
 			waveform_I += np.real(self.calib_rf(self.rf_cname(carrier))['I']*waveform_if)
 			waveform_Q += np.imag(self.calib_rf(self.rf_cname(carrier))['Q']*waveform_if)
@@ -199,14 +203,19 @@ class awg_iq_multi:
 		x = self.clip_dc(x)	
 		self.__set_waveform_IQ_cmplx([x]*self.get_nop())
 		
-	def _set_if_cw(self, dc, I, Q, _if):
+	def _set_if_cw(self, dc, I, Q, _if, half_length):
+		from  scipy.signal import gaussian as gaussian
 		"""Sets a CW with arbitrary calibration. This functions is invoked by _calibrate_sa 
 		to find the optimal values of the I and Q complex amplitudes and dc offsets that correspond 
 		to the minimum SFDR."""
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		dc = self.clip_dc(dc)
-		waveform_I = np.real(I*np.exp(2*np.pi*1j*t*_if))+np.real(dc)
-		waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))+np.imag(dc)
+		if half_length:
+			envelope = gaussian(self.get_nop(), self.get_nop()/8)
+		else:
+			envelope = np.ones(self.get_nop())
+		waveform_I = np.real(I*np.exp(2*np.pi*1j*t*_if))*envelope+np.real(dc)
+		waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope+np.imag(dc)
 		self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
@@ -226,8 +235,8 @@ class awg_iq_multi:
 	def get_dc_calibration(self, sa=None):
 		"""This function is no longer user-level as it only calibrates one carrier frequency. User-level function is do_calibration.
 		"""
-		calibration_path = get_config().get('datadir')+'/calibrations/'
-		filename = 'IQ-dc-lo{0:4.2f}GHz'.format(self.lo.get_frequency()/1e9)
+		calibration_path = get_config()['datadir']+'/calibrations/'
+		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
 		try:
 			self.dc_calibrations[self.dc_cname()] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
@@ -239,9 +248,9 @@ class awg_iq_multi:
 		return self.dc_calibrations[self.dc_cname()]
 				
 	def save_dc_calibration(self):
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
-		filename = 'IQ-dc-lo{0:4.2f}GHz'.format(self.lo.get_frequency()/1e9)
+		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
 		save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
 		
 	def rf_cname(self, carrier):
@@ -256,7 +265,7 @@ class awg_iq_multi:
 		When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current 
 		frequencies.
 		"""
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(carrier.get_if(), carrier.get_frequency(), self.sideband_id)
 		try:
 			self.rf_calibrations[self.rf_cname(carrier)] = load_pkl(filename, location=calibration_path)
@@ -270,7 +279,7 @@ class awg_iq_multi:
 		return self.rf_calibrations[self.rf_cname(carrier)]
 			
 	def save_rf_calibration(self, carrier):
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
 		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(carrier.get_if(), carrier.get_frequency(), self.sideband_id)
 		save_pkl(None, self.rf_calibrations[self.rf_cname(carrier)], location=calibration_path, filename=filename, plot=False)
@@ -293,13 +302,13 @@ class awg_iq_multi:
 			print ('Calibration not loaded. Use ignore_calibration_drift to use any calibration.')
 		return self.rf_calibrations[cname]
 	
-	def _calibrate_cw_sa(self, sa, carrier, num_sidebands = 3, use_central = False, num_sidebands_final = 9):
+	def _calibrate_cw_sa(self, sa, carrier, num_sidebands = 3, use_central = False, num_sidebands_final = 9, half_length = True, use_single_sweep=False):
 		"""Performs IQ mixer calibration with the spectrum analyzer sa with the intermediate frequency."""
 		from scipy.optimize import fmin
 		import time
-		res_bw = 1e5
-		video_bw = 1e4
-		if hasattr(sa, 'set_nop'):
+		res_bw = 1e4
+		video_bw = 1e3
+		if hasattr(sa, 'set_nop') and use_single_sweep:
 			sa.set_centerfreq(self.lo.get_frequency())
 			sa.set_span((num_sidebands-1)*np.abs(carrier.get_if()))
 			sa.set_nop(num_sidebands)
@@ -307,18 +316,25 @@ class awg_iq_multi:
 			sa.set_res_bw(res_bw)
 			sa.set_video_bw(video_bw)
 			self.set_trigger_mode('CONT')
+			sa.set_sweep_time_auto(1)
 		else:
 			sa.set_detector('rms')
 			sa.set_res_bw(res_bw)
 			sa.set_video_bw(video_bw)
 			sa.set_span(res_bw)
-		sa.set_sweep_time_auto(1)
+			if hasattr(sa, 'set_nop'): 
+				res_bw = 1e3
+				video_bw = 2e2
+				sa.set_sweep_time(50e-3)
+				sa.set_nop(1)
 		
 		self.lo.set_status(True)
 
 		self.awg_I.run()
 		self.awg_Q.run()
-		solution = [-0.5, 0.05]
+		sign = 4 if carrier.get_if()>0 else -1
+		solution = [-0.5*sign, 0.2*sign]
+		print (carrier.get_if(), carrier.frequency)
 		for iter_id in range(1):
 			def tfunc(x):
 				#dc = x[0] + x[1]*1j
@@ -326,23 +342,22 @@ class awg_iq_multi:
 				sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
 				I =  0.5
 				Q =  x[0] + x[1]*1j
-				max_amplitude = self._set_if_cw(self.calib_dc(self.dc_cname())['dc'], I, Q, carrier.get_if())
+				max_amplitude = self._set_if_cw(self.calib_dc(self.dc_cname())['dc'], I, Q, np.abs(carrier.get_if()), half_length)
 				if max_amplitude < 1:
 					clipping = 0
 				else:
 					clipping = (max_amplitude-1)
 				# if we can measure all sidebands in a single sweep, do it
-				if hasattr(sa, 'set_nop'):
+				if hasattr(sa, 'set_nop') and use_single_sweep:
 					result = sa.measure()['Power'].ravel()
 				else:
 				# otherwise, sweep through each sideband
 					result = []
 					for sideband_id in range(num_sidebands):
-						sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*carrier.get_if())
-						print (sa.get_centerfreq())
+						sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*np.abs(carrier.get_if()))
 						#time.sleep(0.1)
 						#result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
-						result.append(np.log10(np.sum(sa.measure()['Power']))*10)
+						result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
 						#time.sleep(0.1)
 					result = np.asarray(result)
 				if use_central:

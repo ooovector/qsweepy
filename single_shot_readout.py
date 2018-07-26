@@ -3,21 +3,21 @@ import numpy as np
 from . import readout_classifier
 
 class single_shot_readout:
-    """
-    Single shot readout class
+	"""
+	Single shot readout class
 
-    Args:
+	Args:
 		adc (Instrument): a device that measures a complex vector for each readout trigger (an ADC)
-        ex_seq (dict of pulses.sequence): a dict of sequences of control pulses. The keys are use for state identification.
-        ro_seq (pulses.sequence): a sequence of control pulses that is used to generate the reaout pulse of the DAC.
-        pulse_generator (pulses.pulse_generator): pulse generator used to concatenate and set waveform sequences on the DAC.
+		prepare_seqs (dict of pulses.sequence): a dict of sequences of control pulses. The keys are use for state identification.
+		ro_seq (pulses.sequence): a sequence of control pulses that is used to generate the reaout pulse of the DAC.
+		pulse_generator (pulses.pulse_generator): pulse generator used to concatenate and set waveform sequences on the DAC.
 		ro_delay_seq (pulses.sequence): Sequence used to align the DAC and ADC (readout delay compensation)
 		adc_measurement_name (str): name of measurement on ADC
     """
-	def __init__(self, adc, ex_seq, ro_seq, pulse_generator, ro_delay_seq = None, _readout_classifier = readout_classifier.linear_classifier(), adc_measurement_name='Voltage'):
+	def __init__(self, adc, prepare_seqs, ro_seq, pulse_generator, ro_delay_seq = None, _readout_classifier = readout_classifier.linear_classifier(), adc_measurement_name='Voltage'):
 		self.adc = adc
 		self.ro_seq = ro_seq
-		self.ex_seq = ex_seq
+		self.prepare_seqs = prepare_seqs
 		
 		self.ro_delay_seq = ro_delay_seq
 		self.pulse_generator = pulse_generator

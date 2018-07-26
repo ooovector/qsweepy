@@ -77,6 +77,9 @@ class awg_iq:
 		self.awg_I.set_status(status, channel=self.awg_ch_I)
 		self.awg_Q.set_status(status, channel=self.awg_ch_Q)
 	
+	def set_waveform_IQ_cmplx_raw(self, waveform_cmplx):
+		self.__set_waveform_IQ_cmplx(waveform_cmplx)	
+		
 	def __set_waveform_IQ_cmplx(self, waveform_cmplx):
 		"""Sets the real part of the waveform on the I channel and the imaginary part of the 
 		waveform on the Q channel.
@@ -87,8 +90,16 @@ class awg_iq:
 		waveform_I = np.real(waveform_cmplx)
 		waveform_Q = np.imag(waveform_cmplx)
 		
+		self.awg_I.stop()
+		if self.awg_I != self.awg_Q:
+			self.awg_Q.stop()
+		
 		self.awg_I.set_waveform(waveform_I, channel=self.awg_ch_I)
 		self.awg_Q.set_waveform(waveform_Q, channel=self.awg_ch_Q)
+		
+		self.awg_I.run()
+		if self.awg_I != self.awg_Q:
+			self.awg_Q.run()
 		#import matplotlib.pyplot as plt
 		#plt.plot(waveform_I)
 		#plt.plot(waveform_Q)
@@ -166,8 +177,8 @@ class awg_iq:
 		When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current 
 		frequencies.
 		"""
-		calibration_path = get_config().get('datadir')+'/calibrations/'
-		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
+		calibration_path = get_config()['datadir']+'/calibrations/'
+		filename = 'IQ-if{0:5.3g}-rf{1:5.3g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		try:
 			self.calibrations[self.cname()] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
@@ -179,9 +190,9 @@ class awg_iq:
 		return self.calibrations[self.cname()]
 			
 	def save_calibration(self):
-		calibration_path = get_config().get('datadir')+'/calibrations/'
+		calibration_path = get_config()['datadir']+'/calibrations/'
 		print (calibration_path)
-		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
+		filename = 'IQ-if{0:5.3g}-rf{1:5.3g}-sb-{2}'.format(self.get_if(), self.get_frequency(), self.sideband_id)
 		save_pkl(None, self.calibrations[self.cname()], location=calibration_path, filename=filename, plot=False)
 	
 	def _calibrate_cw_sa(self, sa, num_sidebands = 7):
