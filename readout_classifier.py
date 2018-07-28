@@ -28,14 +28,15 @@ def confusion_matrix(y_true, y_pred_proba):
 	y_pred_proba(numpy.ndarray, shape (M, N)), M -- number of samples, N -- number of classes
 	returns: (N, N) numpy.ndarray assignment
 	'''
-	print(y_pred_proba.shape)
+	#print(y_pred_proba.shape)
 	confusion_matrix = np.zeros((y_pred_proba.shape[1], y_pred_proba.shape[1]))
 	for _class_id in range(y_pred_proba.shape[1]):
-		confusion_matrix[_class_id,:] = np.mean(y_pred_proba[y_true==_class_id], axis=0)
+		confusion_matrix[_class_id,:] = np.mean(y_pred_proba[y_true==_class_id,:], axis=0)
+	#print (confusion_matrix)
 	return confusion_matrix
 	
 def probability_aware_readout_fidelity(y_true, y_pred_proba):
-	return np.trace(confusion_matrix(y_true, y_pred_proba))
+	return np.trace(confusion_matrix(y_true, y_pred_proba))/y_pred_proba.shape[1]
 
 probability_aware_readout_fidelity_scorer = make_scorer(probability_aware_readout_fidelity, needs_proba=True)
 	
@@ -57,41 +58,106 @@ class linear_classifier(BaseEstimator, ClassifierMixin):
 		self.class_averages = {}
 		self.class_cov = {}
 		self.class_list = sorted(list(set(y)))
+		# go noavg
+		#_X = X.copy()
+		X = X - np.reshape(np.mean(X, axis=1), (-1, 1))
 		for _class_id in self.class_list:
 			self.class_averages[_class_id] = np.mean(X[y==_class_id,:], axis=0)
-			dev = X[y==_class_id,:]-self.class_averages[_class_id].T
-			self.class_cov[_class_id] = np.dot(np.conj(dev.T), dev)
-		if self.cov_mode == 'equal':
-			self.cov_inv = 1/(np.mean([c for c in self.class_cov.values()]))
+		if self.cov_mode in ['LDA', 'QDA']:
+			for _class_id in self.class_list:
+				dev = X[y==_class_id,:]-self.class_averages[_class_id].T
+				self.class_cov[_class_id] = np.dot(np.conj(dev.T), dev)/(np.sum(y==_class_id)-1)
+			#self.class_cov[_class_id] = np.cov(dev, rowvar=False)
+		elif self.cov_mode == 'equal':
+			self.cov_inv = 1./np.mean([np.std(np.abs(X[y==_class_id,:]-self.class_averages[_class_id].T), axis=0)**2 for _class_id in self.class_list])
+			self.class_features = {_class_id: np.conj(self.class_averages[_class_id])*self.cov_inv for _class_id in self.class_list}
+		if self.cov_mode == 'LDA':
+			self.cov_inv = np.linalg.inv(np.sum([c for c in self.class_cov.values()],axis=0))
 			self.class_cov_inv = {_class_id: self.cov_inv for _class_id in self.class_list}
-			self.class_features = {_class_id: np.conj(self.class_averages[_class_id])*self.cov_inv/len(self.class_averages[_class_id]) for _class_id in self.class_list}
-		elif self.cov_mode == 'LDA':
-			self.cov_inv = np.linalg.inv(np.sum([c for c in self.class_cov.values()]))
-			self.class_cov_inv = {_class_id: self.cov_inv for _class_id in self.class_list}
-			self.class_features = {_class_id: np.dot(np.conj(self.class_averages[_class_id]), self.cov_inv)/len(self.class_averages[_class_id]) for _class_id in self.class_list}
+			self.class_features = {_class_id: np.dot(np.conj(self.class_averages[_class_id]), self.cov_inv.T) for _class_id in self.class_list}
 		elif self.cov_mode == 'QDA':
 			self.class_cov_inv = {_class_id: np.linalg.inv(self.class_cov[_class_id]) for _class_id in self.class_list}
 			## TODO: insert correct formula for QDA here
 			#self.class_features = {_class_id: np.dot(self.class_cov[_class_id], self.cov_inv)/len(self.class_cov[_class_id]) for _class_id in list(set(y))}
+		self.naive_bayes(X, y)
 			
 	def dimreduce(self, X):
-		if self.cov_mode == 'equal':
-			reduced = [np.real(np.sum(self.class_features[_class_id]*X, axis=1)) for _class_id in self.class_list]
+		#_X = X.copy()
+		X = X - np.reshape(np.mean(X, axis=1), (-1, 1))
+		if self.cov_mode in ['equal', 'LDA']:
+			reduced = [np.sum(np.real(self.class_features[_class_id]*X), axis=1) for _class_id in self.class_list]
 		#prediction = np.real(np.sum(np.dot(np.conj(self.diff),self.Sigma_inv)*(X - self.avg), axis=1))
 		#print (np.asarray(reduced).shape)
 		return reduced
+		
+	def naive_bayes(self, X, y):
+		from scipy.interpolate import griddata
+		predictions = np.asarray(self.dimreduce(X))
+		# reduce last class dimension
+		predictions = np.asarray(predictions - np.mean(predictions, axis=0))[:-1, :]
+		
+		nbins = 20
+		hist_all, bins = np.histogramdd(predictions.T, bins=nbins)
+		proba_points = [(d_bins[1:]+d_bins[:-1])/2. for d_bins in bins]
+		hists = []
+		
+		for y_val in self.class_list:
+			hists.append(np.histogramdd(predictions[:,y==y_val].T, bins=bins)[0])
+			
+		hists = np.asarray(hists, dtype=float)
+		probabilities = hists/hist_all
+		points = np.reshape(np.meshgrid(*proba_points), (predictions.shape[0], -1)).T
+		#naive_probabilities = np.asarray([proba_points<0, proba_points>0], dtype=float)
+		#probabilities[np.isnan(probabilities)] = naive_probabilities[np.isnan(probabilities)]
+		#X = np.asarray(np.meshgrid(*tuple(bins)))
+		#probabilities[np.isnan(probabilities)] = self.predict_by_nearest([_x[np.isnan(probabilities)] for _x in X])
+		#probability_nearest =
+		#print (probabilities[].shape) 
+		nonzero_points = np.asarray([points[hist_all.ravel()!=0, p_id] for p_id in range(points.shape[1])])
+		zero_points = np.asarray([points[hist_all.ravel()==0, p_id] for p_id in range(points.shape[1])])
+		nonzero_0class_prob = probabilities[0,...][hist_all!=0]
+		#print(probabilities[0, ...].shape, nonzero_points.shape, zero_points.shape, nonzero_0class_prob.shape)
+		unnormalized_nearest = [griddata(nonzero_points.T, 
+										 probabilities[y_val_id,...][hist_all!=0], 
+										 zero_points.T, 
+										 method='nearest') for y_val_id, y_val in enumerate(self.class_list)]
+		for y_val_id, y_val in enumerate(self.class_list):
+			probabilities[y_val_id,...][hist_all==0] = unnormalized_nearest[y_val_id] / np.sum(unnormalized_nearest, axis=0)
+	
+		self.probabilities = probabilities
+		self.proba_points = tuple(proba_points)
+		self.hists = hists
+	
 	def predict(self, X):
+		#return np.interp(self.dimreduce(X), self.proba_points, self.probabilities[1,:], left=0., right=1.)
+		return self.predict_by_nearest(X)
+	
+	def predict_by_nearest(self, X):
 		result = np.vectorize(self.class_list.__getitem__)(np.argmax(self.dimreduce(X), axis=0))
-		print('predict clled, returned shape:', result.shape)
+		#print('predict clled, returned shape:', result.shape)
 		return result
 		#print (np.argmax(self.dimreduce(X), axis=0).shape)
 		#return self.class_list[np.argmax(self.dimreduce(X), axis=0)]
 	# trivial probability assignment
 	def predict_proba(self, X):
-		result = np.zeros((np.asarray(X).shape[0], len(self.class_list)))
-		result[:, self.predict(X)]=1.
-		print('predict_proba called, returned shape:', result.shape)
+		#result = np.zeros((np.asarray(X).shape[0], len(self.class_list)))
+		#indeces = np.arange(np.asarray(X).shape[0])
+		#result[np.asarray((indeces, self.predict(X))).T]=1.
+		#print('predict_proba called, returned shape:', result.shape, 'set 1 shape', np.asarray((indeces, self.predict(X))).shape)
+		#from scipy.sparse import coo_matrix
+		#result = coo_matrix((np.ones(np.asarray(X).shape[0]), ((np.arange(np.asarray(X).shape[0]), self.predict(X)))), (np.asarray(X).shape[0], len(self.class_list)))
+		#return result.todense()
+		from scipy.interpolate import interpn
+		predictions = np.asarray(self.dimreduce(X))
+		# reduce last class dimension
+		predictions = np.asarray(predictions - np.mean(predictions, axis=0))[:-1, :]
+		#print (len(self.proba_points))
+		#print (self.probabilities.shape)
+		result = np.asarray([interpn(self.proba_points, self.probabilities[_class_id,...], np.asarray(predictions).T, method='nearest', bounds_error=False, fill_value=None) for _class_id, class_name in enumerate(self.class_list)]).T
+		#print (result.shape)
 		return result
+										
+		
 			
 	
 class binary_linear_classifier(BaseEstimator, ClassifierMixin):

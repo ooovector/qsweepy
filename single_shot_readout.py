@@ -14,7 +14,7 @@ class single_shot_readout:
 		ro_delay_seq (pulses.sequence): Sequence used to align the DAC and ADC (readout delay compensation)
 		adc_measurement_name (str): name of measurement on ADC
     """
-	def __init__(self, adc, prepare_seqs, ro_seq, pulse_generator, ro_delay_seq = None, _readout_classifier = readout_classifier.linear_classifier(), adc_measurement_name='Voltage'):
+	def __init__(self, adc, prepare_seqs, ro_seq, pulse_generator, ro_delay_seq = None, _readout_classifier = None, adc_measurement_name='Voltage'):
 		self.adc = adc
 		self.ro_seq = ro_seq
 		self.prepare_seqs = prepare_seqs
@@ -27,7 +27,10 @@ class single_shot_readout:
 		self.measurement_name = ''
 		self.dump_measured_samples = False
 		#self.cutoff_start = 0
-		self.readout_classifier = _readout_classifier
+		if not _readout_classifier:
+			self.readout_classifier = readout_classifier.linear_classifier()
+		else:
+			self.readout_classifier = _readout_classifier
 		self.adc_measurement_name = adc_measurement_name
 	
 	def measure_delay(self, ro_channel):
@@ -67,16 +70,16 @@ class single_shot_readout:
 				y.extend([class_id]*len(self.adc.get_points()[self.adc_measurement_name][0][1]))
 		X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1]))) # last dimension is the feature dimension
 		y = np.asarray(y)
-		if self.dump_measured_samples:
-			self.samples = np.reshape(X, (len(self.prepare_seqs), -1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
+		if self.dump_measured_samples or self.save_last_samples:
+			self.calib_X = X#np.reshape(X, (len(self.prepare_seqs), -1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
+			self.calib_y = y
 		
-		self.predictor_class = readout_classifier.linear_classifier()
-		scores = readout_classifier.evaluate_classifier(self.predictor_class, X, y)
-		self.predictor_class.fit(X, y)
+		scores = readout_classifier.evaluate_classifier(self.readout_classifier, X, y)
+		self.readout_classifier.fit(X, y)
 		self.scores = scores
 		
 	def get_opts(self):
-		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
+		scores = readout_classifier.readout_classifier_scores
 		return {score_name:{'log':False} for score_name in scores}
 	
 	def measure(self):
@@ -87,18 +90,21 @@ class single_shot_readout:
 		return meas
 		
 	def get_points(self):
-		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
-		return {score_name:{}}
+		scores = readout_classifier.readout_classifier_scores
+		return {score_name:{} for score_name in scores}
 				
 	def get_dtype(self):
-		scores = readout_classifier.readout_classifier_scores(lambda X, y: 0, [[0]], [0])
-		return {score_name:float}
+		scores = readout_classifier.readout_classifier_scores
+		return {score_name:float for score_name in scores}
 	
 	def dump_samples(self, name):
 		from .save_pkl import save_pkl
-		header = {'type':'Readout classification samples', 'name':name}
-		measurement = {'Readout classification samples':(['Class', 'Sample ID', 'time'], 
-				[np.arange(self.samples), np.arange(self.samples.shape[1]), np.arange(self.samples.shape[2])/self.adc.get_clock()],
-				self.samples)}
-		save_pkl(header, self.samples, plot=False)
+		header = {'type':'Readout classification X', 'name':name}
+		measurement = {'Readout classification X':(['Sample ID', 'time'], 
+				[np.arange(self.calib_X.shape[0]), np.arange(self.calib_X.shape[1])/self.adc.get_clock()],
+				self.calib_X),
+				'Readout classification y':(['Sample ID'],
+				[np.arange(self.calib_X.shape[0])],
+				self.calib_y)}
+		save_pkl(header, measurement, plot=False)
 	
