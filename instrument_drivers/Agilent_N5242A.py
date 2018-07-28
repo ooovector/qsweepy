@@ -158,19 +158,27 @@ class Agilent_N5242A(Instrument):
 		
 		self.get_all()
 	
-	def get_all(self):		
-		self.get_nop()
-		self.get_power()
-		self.get_centerfreq()
-		self.get_startfreq()
-		self.get_stopfreq()
-		self.get_span()
-		self.get_bandwidth()
-		self.get_trigger_source()
-		self.get_average()
-		self.get_averages()
-		self.get_freqpoints()   
-		self.get_channel_index()
+	def get_all(self):
+		params = {}
+		if self.get_sweep_mode() =='CW\n' and self.get_span() == 0.0:
+			params ['power'] = self.get_power()
+			params['freq'] = self.get_startfreq()
+		elif self.get_sweep_mode() == 'LIN\n' :
+			params ['nop'] = self.get_nop()
+			params ['power'] = self.get_power()
+			params['start freq'] = self.get_startfreq()
+			params ['stop freq'] = self.get_stopfreq()
+			params ['span'] = self.get_span()
+			params ['bw'] = self.get_bandwidth()
+			if self.get_average():
+				params['averages']= self.get_averages()
+				params ['average mode'] = self.get_average_mode()
+		params ['sweep mode'] = self.get_sweep_mode()
+		return params
+		#self.get_trigger_source()
+		#self.get_average()
+		#self.get_freqpoints()   
+		#self.get_channel_index()
 		#self.get_zerospan()
 		
 	###
