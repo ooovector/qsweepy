@@ -75,6 +75,7 @@ class Config:
 				dump(self._config, f, indent=4, sort_keys=True)
 		except Exception as e:
 			logging.warning('Unable to save config file')
+			logging.warning(str(e))
 	def __getitem__(self, key):
 		return self._config[key]
 	def __setitem__(self, key, val):
