@@ -199,7 +199,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			plt.suptitle(suptitle)
 	else:
 		plot_add_annotation(axes, annotation)
-	plt.tight_layout(rect=[0.0, 0.03, 1, 0.95])		
+	plt.figure(num=name).tight_layout(rect=[0.0, 0.03, 1, 0.95])		
 	plot_save(axes, save)
 	# return all the axes, filters & plotting instructions for updates
 	return axes

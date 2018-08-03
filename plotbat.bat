@@ -1,0 +1,1 @@
+C:\ProgramData\Anaconda2\Scripts\activate.bat py36 && python %QTLAB_PATH%\qsweepy\standalone_plot.py %1
