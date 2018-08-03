@@ -8,7 +8,14 @@ import logging
 from .save_pkl import *
 from .config import get_config
 from matplotlib import pyplot as plt
+from . import qjson
 
+def get_config_float_fmt():
+	return '6.4g'
+
+def build_param_names(params):
+	return '-'.join(['{0}-{1:6.4g}'.format(param_name, param_value) for param_name, param_value in sorted(params.items())])
+	
 class carrier:
 	def __init__(self, parent):#, mixer):
 		"""
@@ -220,7 +227,8 @@ class awg_iq_multi:
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
 	def dc_cname(self):
-		return ('lo_frequency', self.lo.get_frequency())
+		#return ('fLO-'+get_config_float_fmt()).format(self.lo.get_frequency)
+		return build_param_names({'lo_freq':self.lo.get_frequency()})
 		
 	def do_calibration(self, sa=None):
 		"""User-level function to sort out mixer calibration matters. Checks if there is a saved calibration for the given
@@ -233,31 +241,29 @@ class awg_iq_multi:
 			self.get_rf_calibration(carrier=carrier, sa=sa)
 		
 	def get_dc_calibration(self, sa=None):
-		"""This function is no longer user-level as it only calibrates one carrier frequency. User-level function is do_calibration.
-		"""
-		calibration_path = get_config()['datadir']+'/calibrations/'
-		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
+		#name = 'iq-dc-'+self.dc_cname()
 		try:
-			self.dc_calibrations[self.dc_cname()] = load_pkl(filename, location=calibration_path)
+			self.dc_calibrations[self.dc_cname()] = qjson.load(type='iq-dc',name=self.dc_cname())
 		except Exception as e:
 			if not sa:
 				logging.error('No ready calibration found and no spectrum analyzer to calibrate')
 			else:
+				print (e)
 				self._calibrate_zero_sa(sa)
 				self.save_dc_calibration()
 		return self.dc_calibrations[self.dc_cname()]
 				
 	def save_dc_calibration(self):
-		calibration_path = get_config()['datadir']+'/calibrations/'
-		print (calibration_path)
-		filename = 'IQ-dc-lo{0:5.3f}GHz'.format(self.lo.get_frequency()/1e9)
-		save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
+		#calibration_path = get_config()['datadir']+'/calibrations/'
+		#print (calibration_path)
+		#filename = 'iq-dc-'+self.dc_cname()
+		#save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
+		qjson.dump(type='iq-dc',name=self.dc_cname(), params=self.dc_calibrations[self.dc_cname()])
 		
 	def rf_cname(self, carrier):
-		return ('if', carrier.get_if()), ('frequency', carrier.get_frequency()), ('sideband_id', self.sideband_id)
-		
-	def dc_cname(self):
-		return ('frequency', self.lo.get_frequency())
+		#return ('fLO-{'+get_config_float_fmt()+'}').format(self.lo.get_frequency)
+		#return ('if', carrier.get_if()), ('frequency', carrier.get_frequency()), ('sideband_id', self.sideband_id)
+		return build_param_names({'if':carrier.get_if(), 'frequency':carrier.get_frequency(), 'sideband_id':self.sideband_id})
 		
 	def get_rf_calibration(self, carrier, sa=None):
 		"""User-level function to sort out mxer calibration matters. Checks if there is a saved calibration for the given
@@ -265,10 +271,11 @@ class awg_iq_multi:
 		When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current 
 		frequencies.
 		"""
-		calibration_path = get_config()['datadir']+'/calibrations/'
-		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(carrier.get_if(), carrier.get_frequency(), self.sideband_id)
+		#calibration_path = get_config()['datadir']+'/calibrations/'
+		#filename = 'iq-rf-'+self.rf_cname(carrier)
 		try:
-			self.rf_calibrations[self.rf_cname(carrier)] = load_pkl(filename, location=calibration_path)
+			self.rf_calibrations[self.rf_cname(carrier)] = qjson.load(type='iq-rf',name=self.rf_cname(carrier))
+			#self.rf_calibrations[self.rf_cname(carrier)] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
 			if not sa:
 				logging.error('No ready calibration found and no spectrum analyzer to calibrate')
@@ -279,10 +286,11 @@ class awg_iq_multi:
 		return self.rf_calibrations[self.rf_cname(carrier)]
 			
 	def save_rf_calibration(self, carrier):
-		calibration_path = get_config()['datadir']+'/calibrations/'
-		print (calibration_path)
-		filename = 'IQ-if{0:3.2g}-rf{1:3.2g}-sb-{2}'.format(carrier.get_if(), carrier.get_frequency(), self.sideband_id)
-		save_pkl(None, self.rf_calibrations[self.rf_cname(carrier)], location=calibration_path, filename=filename, plot=False)
+		#calibration_path = get_config()['datadir']+'/calibrations/'
+		#print (calibration_path)
+		#filename = 'iq-rf-'+self.rf_cname(carrier)
+		#save_pkl(None, self.rf_calibrations[self.rf_cname(carrier)], location=calibration_path, filename=filename, plot=False)
+		qjson.dump(type='iq-rf',name=self.rf_cname(carrier), params=self.rf_calibrations[self.rf_cname(carrier)])
 		
 	def calib_dc(self, cname):
 		if self.ignore_calibration_drift:
