@@ -65,6 +65,19 @@ def std_reducer(source, src_meas, axis):
 			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
+
+def std_reducer_noavg(source, src_meas, axis, noavg_axis):
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		del new_axes [axis]
+		return new_axes
+	avg_dim = [len(a[1]) for a in source.get_points()[src_meas].copy()]
+	avg_dim[noavg_axis] = 1
+	filter = {'filter': lambda x:np.std(x[src_meas]-np.reshape(np.mean(x[src_meas], axis=noavg_axis), avg_dim), axis=axis),
+			  'get_points': get_points,
+			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
+			  'get_opts': (lambda : source.get_opts()[src_meas])}
+	return filter
 	
 def mean_reducer_noavg(source, src_meas, axis):
 	def get_points():
@@ -115,7 +128,13 @@ def feature_reducer(source, src_meas, axis_mean, bg, feature):
 	new_feature_shape[axis_mean] = len(feature)
 	bg  = np.reshape(bg, new_feature_shape)
 	feature = np.reshape(feature, new_feature_shape)
-	filter = {'filter': lambda x:np.sum((x[src_meas]-bg)*feature, axis=axis_mean),
+	def filter_func(x):
+		feature_truncated_shape = tuple([slice(None) if i != axis_mean else slice(x[src_meas].shape[axis_mean]) for i in range(len(new_feature_shape))])
+		feature_truncated = feature[feature_truncated_shape]
+		bg_truncated = bg[feature_truncated_shape]
+		print (x[src_meas].shape, axis_mean, feature_truncated_shape, feature.shape, feature_truncated.shape)
+		return np.sum((x[src_meas]-bg_truncated)*feature_truncated, axis=axis_mean)
+	filter = {'filter': filter_func,
 			  'get_points': get_points,
 			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}

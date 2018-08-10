@@ -1,11 +1,12 @@
 from . import sweep
 from . import save_pkl
 from . import fitting
+from . import qjson
 import numpy as np
 
-
+# Maybe we should call this "two-level dynamics"?
 def Rabi(ex_channels,ex_amplitude,lengths,ro_par,qubit_id=None):
-	rabi_freqs = list()
+	rabi_freqs = dict()
 	trg_length = ro_par['trg_length']
 	ro_dac_length = ro_par['ro_dac_length']
 	ro_amplitude = ro_par['ro_amplitude']
@@ -24,11 +25,15 @@ def Rabi(ex_channels,ex_amplitude,lengths,ro_par,qubit_id=None):
 		readout_begin = np.max(lengths)
 		measurement = sweep.sweep(adc, (lengths, set_ex_length, 'Rabi pulse length', 's'), filename=measurement_name)
 		measurement_fitted, fitted_parameters = fitting.S21pm_fit(measurement, fitting.exp_sin_fit)
-		rabi_freqs.append(fitted_parameters['freq'])
+		rabi_freqs[rabi_channel] = fitted_parameters['freq']
 		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
 																				 fitted_parameters['freq'], 
 																				 fitted_parameters['decay'])
 		save_pkl.save_pkl({'type':'Rabi','name': 'qubit{}'.format(qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name)
+	rabi_freqs['amplutude'] = ex_amplitude
+	if qubit_id:
+			rabi_freqs['qubit_id'] = qubit_id	
+	qjson.dump(type='two-level',name = 'rabi', params=rabi_freqs)	
 	return rabi_freqs
 
 	
@@ -63,6 +68,10 @@ def Ramsey(ex_channels,ex_amplitude,delays,target_freq_offset,rabi_freqs,ro_par,
 																				 fitted_parameters['freq'], 
 																				 fitted_parameters['decay'])
 		save_pkl.save_pkl({'type':'Ramsey', 'name': 'qubit {}'.format(qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name)
+	'''ramsey['amplutude'] = ex_amplitude
+	if qubit_id:
+			ramsey['qubit_id'] = qubit_id	
+	qjson.dump(type='ramsey',name = 'ramsey', params=ramsey)	'''
 	return offset_freqs,t2
 def T1(ex_channels,ex_amplitude,delays,rabi_freqs,ro_par,qubit_id=None):
 	t1 = list()

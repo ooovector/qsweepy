@@ -323,7 +323,7 @@ class awg_iq_multi:
 			sa.set_detector('POS')
 			sa.set_res_bw(res_bw)
 			sa.set_video_bw(video_bw)
-			self.set_trigger_mode('CONT')
+			sa.set_trigger_mode('CONT')
 			sa.set_sweep_time_auto(1)
 		else:
 			sa.set_detector('rms')
@@ -384,13 +384,17 @@ class awg_iq_multi:
 			num_sidebands = num_sidebands_final
 			use_central = True
 	
-			sa.set_centerfreq(self.lo.get_frequency())
-			sa.set_span((num_sidebands-1)*np.abs(carrier.get_if()))
-			sa.set_nop(num_sidebands)
-			sa.set_detector('POS')
-			sa.set_res_bw(res_bw)
-			sa.set_video_bw(video_bw)
-			self.set_trigger_mode('CONT')
+			#sa.set_centerfreq(self.lo.get_frequency())
+			#sa.set_nop(num_sidebands)
+			#sa.set_span((num_sidebands-1)*np.abs(carrier.get_if()))
+			#sa.set_detector('POS')
+			#self.set_trigger_mode('CONT')
+			#res_bw = 1e5
+			#video_bw = 1e4
+			#sa.set_res_bw(res_bw)
+			#sa.set_video_bw(video_bw)
+			#sa.set_sweep_time_auto(1)
+			#use_single_sweep = True
 	
 			score = tfunc(solution)
 			

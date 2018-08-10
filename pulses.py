@@ -64,6 +64,9 @@ class pulses:
 			pulses[channel] = pulse_type(channel, length, *params)
 		return pulses
 	
+	def awg(self, channel, length, waveform):
+		return waveform
+	
 	def set_seq(self, seq, force=True):
 		initial_delay = 1e-6
 		final_delay = 1e-6
@@ -88,8 +91,9 @@ class pulses:
 					tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
 					tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
 					pulse_shape[channel] = tmp
-			
+				#print (channel, pulse_shape[channel], len(pulse_shape[channel]))
 				channel_device.set_waveform(pulse_shape[channel])
+
 		finally:
 			for channel, channel_device in self.channels.items():
 				channel_device.unfreeze()

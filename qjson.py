@@ -5,36 +5,9 @@ import json_tricks
 import yaml
 from . import save_pkl
 import pathlib
-
+import collections
 def get_datetime_fmt():
 	return '%Y%m%d%H%M%S' # ex. 20110104172008 -> Jan. 04, 2011 5:20:08pm 
-
-# def calib_to_json(iq_ex,iq_ro):
-	# def rf_tuple(items):
-		# rf_calib = {}
-		# k=0
-		# for i,j in items:
-			# d=dict((x,y) for x,y in i)
-			# for num,v in j.items():
-				# j[num] = str(v)
-			# d.update(j)
-			# rf_calib[k] = d
-			# k+=1
-		# return rf_calib
-	# def dc_tuple(items):
-		# dc_calib = {}
-		# k=0
-		# for i,j in items:
-			# d={i[0]:i[1]}
-			# for num,v in j.items():
-				# j[num] = str(v)
-			# d.update(j)
-			# dc_calib[k] = d
-	# rf_calib = rf_tuple(iq_ex.calibrations.items())
-	# ro_calib = rf_tuple(iq_ro.calibrations.items())
-	# dc_calib = dc_tuple(iq_ex.dc_calibrations.items())
-	# calib_parameters = {'ex_dc':dc_calib,'ex_rf':rf_calib,'ro':ro_calib}
-	# return calib_parameters
 
 def find_last(data_dir, name_parts, ignore_invalidation=False):
 	from . import config
@@ -54,29 +27,14 @@ def find_last(data_dir, name_parts, ignore_invalidation=False):
 	return last_file
 	
 def dump(type,name,params, NEW = False):
+	# if the same params already exists it shouldn't be dumped
 	import os.path
 	loc = save_pkl.get_location()
 	data_dir = loc[0]+'/calibrations/'+type+"/"
-	#current_dir = data_dir+loc[1]
 	pathlib.Path(data_dir).mkdir(parents=True, exist_ok=True)
-	# change calibrations format tuple to dict
-	#if len(params)>1:
-	#	if str(params[0].__module__).split('.')[-1] == 'awg_iq_multi':
-	#		params = { name: calib_to_json(params[0],params[1])}
-	#else:
-	#	params = { name: params[0]}
-	#if current_dir == find_last(current_dir):
-	#	file_to_dump = current_dir+'/'+name+ '0'+'.txt'
-	#else:
-	#	num_of_last_file= int(find_last(current_dir).split('\\')[-1].split(name)[-1].split('.')[0])
-	i=0
-	while True:
-		file_to_dump = data_dir+name+'-'+str(i)+'.txt'
-		if not os.path.isfile(file_to_dump):
-			break
-		i+=1
+	file_to_dump = data_dir+name+'.txt'
 	with open(file_to_dump, 'w') as outfile:	 
-		json_tricks.dump(params, outfile,indent=4)#, separators=(',', ': '))
+		json_tricks.dump(params, outfile,indent=4,sort_keys=True)#, separators=(',', ': '))
 
 def invalidate_calibrations():
 	from . import config
