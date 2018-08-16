@@ -156,10 +156,19 @@ def exp_sin_fit(x, y):
 	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:]}
 
 	return (resample_x_fit(x), fitted_curve+means), parameters
-
-def fit1d(measurement, fitter, measurement_name):
+	
+def fit1d(measurement, fitter, measurement_name=None):
+	if len(measurement)==1 and not measurement_name: # if there is only one measurement name in dict, fit items
+		measurement_name = [mname for mname in measurement.keys()][0]
+	elif not measurement_name:
+		raise(ValueError('No measurement_name passed to fit1d. Available names are: '+', '.join([str(mname) for mname in measurement.keys()])))
+	
 	t = measurement[measurement_name][1][0]
-	fitdata = [ measurement[measurement_name][2]]
+	if np.iscomplexobj(measurement[measurement_name][2]):
+		fitdata = [ np.real(measurement[measurement_name][2]), 
+			        np.imag(measurement[measurement_name][2]) ]
+	else:
+		fitdata = [ measurement[measurement_name][2]]
 	fitted_curve, parameters = fitter(t, fitdata)
 	#if fitter is exp_sin_fit:
 	#	parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
@@ -167,8 +176,12 @@ def fit1d(measurement, fitter, measurement_name):
 	#	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
 	
 	measurement[measurement_name+' fit'] = [t for t in measurement[measurement_name]]
+	measurement[measurement_name+' fit'][1] = [a for a in measurement[measurement_name][1]]
 	measurement[measurement_name+' fit'][1][0] = fitted_curve[0]
-	measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]
+	if np.iscomplexobj(measurement[measurement_name][2]):
+		measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]+fitted_curve[1][1,:]*1j
+	else:
+		measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]
 	
 	if len(measurement[measurement_name+' fit'])>3:
 		measurement[measurement_name+' fit'][3] = dict(measurement[measurement_name+' fit'][3])

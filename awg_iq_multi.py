@@ -61,6 +61,8 @@ class carrier:
 		self.parent.freeze()
 	def unfreeze(self):
 		self.parent.unfreeze()
+	def get_physical_devices(self):
+		return self.parent.get_physical_devices()
 
 class awg_iq_multi:
 	"""Interface for IQ modulation of RF signals wth two AWG channels.
@@ -101,6 +103,12 @@ class awg_iq_multi:
 		#self.mixer = mixer
 		self.frozen = False
 		
+	def get_physical_devices(self):
+		if self.awg_I != self.awg_Q:
+			return [self.awg_I, self.awg_Q]
+		else:
+			return [self.awg_I]
+	
 	#@property 
 	def get_nop(self):
 		"""int: Number of samples in segment."""
@@ -380,7 +388,7 @@ class awg_iq_multi:
 				print (result)
 				return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping			
 			#solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-13))
-			solution = fmin(tfunc, solution, maxiter=30, xtol=2**(-13))
+			solution = fmin(tfunc, solution, maxiter=40, xtol=2**(-12))
 			num_sidebands = num_sidebands_final
 			use_central = True
 	

@@ -99,6 +99,10 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 				scatter = options['scatter']
 			else:
 				scatter = [False for i in range(len(pnames))]
+			if 'realimag' in options:
+				realimag = options['realimag']
+			else:
+				realimag = False
 		if len (data) > 4:
 			punits = data[4]
 		
@@ -108,6 +112,8 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 		elif log == 20:									filter_abs = lambda x: np.log10(np.abs(x))*20
 		if not unwrap:									filter_phase = np.angle
 		else:											filter_phase = lambda x: np.unwrap(np.angle(x))
+		if realimag:									filter_real = lambda x: np.real(x)
+		if realimag:									filter_imag = lambda x: np.imag(x)
 		
 		if len(dims)>2:
 			continue
@@ -117,7 +123,10 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 		plot_name = mname
 		# check if it is complex			
 		if np.iscomplexobj(data[2]):
-			plot_filters = {plot_name+' amplitude':filter_abs, plot_name+' phase':filter_phase}
+			if not realimag:
+				plot_filters = {plot_name+' amplitude':filter_abs, plot_name+' phase':filter_phase}
+			else:
+				plot_filters = {plot_name+' real':filter_real, plot_name+' imag':filter_imag}
 		else:
 			plot_filters = {plot_name:filter_none}
 		
@@ -162,9 +171,13 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 					same_axes = False
 			# if the fit can be plotted in the same axes, plot it!
 			if same_axes:
-				if np.iscomplexobj(data[2]):				
-					axes[plot_name+' amplitude']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_abs}
-					axes[plot_name+' phase']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_phase}
+				if np.iscomplexobj(data[2]):		
+					if not realimag:
+						axes[plot_name+' amplitude']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_abs}
+						axes[plot_name+' phase']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_phase}
+					else: 
+						axes[plot_name+' real']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_real}
+						axes[plot_name+' imag']['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_imag}
 				else:
 					axes[plot_name]['plots'][mname+ ' fit'] = {'mname':mname+ ' fit', 'filter': filter_none}
 				if not 'scatter' in options: # set scatter by default if there is a fit and less than 200 points in the plot.

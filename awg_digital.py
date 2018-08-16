@@ -41,3 +41,6 @@ class awg_digital:
 		if self.frozen:
 			self.frozen = False
 			#self.assemble_waveform()
+
+	def get_physical_devices(self):
+		return [self.awg]

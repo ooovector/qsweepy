@@ -132,7 +132,7 @@ def feature_reducer(source, src_meas, axis_mean, bg, feature):
 		feature_truncated_shape = tuple([slice(None) if i != axis_mean else slice(x[src_meas].shape[axis_mean]) for i in range(len(new_feature_shape))])
 		feature_truncated = feature[feature_truncated_shape]
 		bg_truncated = bg[feature_truncated_shape]
-		print (x[src_meas].shape, axis_mean, feature_truncated_shape, feature.shape, feature_truncated.shape)
+		#print (x[src_meas].shape, axis_mean, feature_truncated_shape, feature.shape, feature_truncated.shape)
 		return np.sum((x[src_meas]-bg_truncated)*feature_truncated, axis=axis_mean)
 	filter = {'filter': filter_func,
 			  'get_points': get_points,
