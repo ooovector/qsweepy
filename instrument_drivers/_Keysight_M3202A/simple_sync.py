@@ -16,9 +16,10 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		self.marker_delay = [None]*4
 		self.marker_length = [None]*4
 	
-	### infinite cycles of a single waveform mode with syncronisation across channels
+	def prepare_set_waveform_async(self, waveform, channel):
+	
+	### infinite cycles of a single waveform mode with synchronisation across channels
 	def set_waveform(self, waveform, channel):
-		self.module.channelWaveShape(channel, keysightSD1.SD_Waveshapes.AOU_AWG);
 		wave = keysightSD1.SD_Wave()
 		if self.waveform_ids[channel] is None:
 			wave.newFromArrayDouble(0, np.zeros((50000,)).tolist()) # WAVE_ANALOG_32
@@ -36,7 +37,8 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		
 		self.module.AWGflush(channel)
 		wave = keysightSD1.SD_Wave()
-		wave.newFromArrayDouble(0, np.asarray(waveform).tolist()) # WAVE_ANALOG_32
+		waveform_data = np.asarray(waveform).tolist()
+		wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
 		self.module.waveformReLoad(wave, waveform_id, 0)
 		
 		self.module.AWGqueueConfig(channel, 1) # inifnite cycles

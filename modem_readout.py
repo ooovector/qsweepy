@@ -104,7 +104,8 @@ class modem_readout(data_reduce.data_reduce):
 			#seq_Q = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, sequence_length/ex_channel.get_clock(), self.pulse_sequencer.awg, 1j*dac_sequence)]
 			# measure response on I sequence
 			self.pulse_sequencer.set_seq(seq_I)
-			meas_I = (np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean) - bg)[:len(dac_sequence_adc_time)]
+			calibration_measurement = self.adc.measure()
+			meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean) - bg)[:len(dac_sequence_adc_time)]
 			# measure response on Q sequence
 			#self.pulse_sequencer.set_seq(seq_Q)
 			#meas_Q = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)		
@@ -120,6 +121,8 @@ class modem_readout(data_reduce.data_reduce):
 												   'coherent_background': self.bg,
 												   'feature': feature}
 			calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas, 1-self.axis_mean, self.bg, feature)
+			
+			del calibration_measurement, meas_I, A_I, b_I, seq_I
 		if save:
 			self.iq_readout_calibrations = iq_readout_calibrations
 			self.calibrated_filters = calibrated_filters

@@ -22,7 +22,9 @@ class data_reduce:
 		
 	def measure(self):
 		data = self.source.measure()
-		return { filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
+		result = { filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
+		del data
+		return result
 		
 	def get_opts(self):
 		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}

@@ -13,6 +13,8 @@ import pickle as pic
 import shutil as sh
 import threading
 import pathlib
+import random
+import gc
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	from scipy.optimize import fmin
@@ -36,7 +38,7 @@ def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	score = tfunc(solution/x0)
 	return solution, score
 	
-def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separate_thread=True, header=None, output=True, save = True, time_war_label=True,bot=(False,0)):
+def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separate_thread=True, header=None, output=True, save = True, time_war_label=True, shuffle=False, bot=(False,0)):
 	'''
 	Performs a n-d parametric sweep.
 	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... , filename=None)
@@ -98,7 +100,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 		return tuple(dim_name for dim, dim_name in zip(data[mname].shape, all_dim_units) if dim > 1)
 	
 	ascii_files = {mname:None for mname in points.keys()}
-	mk_measurement = lambda x: {mname: (non_unity_dim_names(mname), 
+	mk_measurement = lambda: {mname: (non_unity_dim_names(mname), 
 							non_unity_dim_vals(mname), 
 							np.reshape(data[mname], non_unity_dims(mname)),
 							meas_opts[mname], non_unity_dim_units(mname)) for mname in points.keys()}
@@ -137,7 +139,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 	# opening plot windows
 	if plot:
 		plot_update_start = time.time()
-		plot_axes = plotting.plot_measurement(mk_measurement(0), name=filename)
+		plot_axes = plotting.plot_measurement(mk_measurement(), name=filename)
 		last_plot_update = time.time()
 		plot_update_time = last_plot_update - plot_update_start
 	start_time = time.time()
@@ -150,6 +152,9 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 	try:
 		# looping over all indeces at the same time
 		all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dim))
+		if shuffle:
+			all_indeces = [i for i in all_indeces]
+			random.shuffle(all_indeces)
 		if len(sweep_dim)==0: # 0-d sweep case: single measurement
 			all_indeces = [[]] 
 		vals = [None for d in sweep_dim] # set initial parameter vals to None
@@ -175,6 +180,8 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 				nonlocal acq_thread
 				if hasattr(measurer, 'pre_sweep'):
 					measurer.pre_sweep()
+				setters_time = 0
+				measurement_time = 0
 				for indeces in all_indeces:
 					if stop_acq:
 						break
@@ -183,11 +190,15 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 					vals = [params[param_id][0][val_id] for param_id, val_id in enumerate(indeces)]
 					changed_vals = [old_val!=val for old_val, val in zip(old_vals, vals)]
 					# set to new param vals
+					setters_start = time.time()
 					for val, setter, changed in zip(vals, sweep_dim_setters, changed_vals):
 						if changed:
 							setter(val)
+					setters_time += time.time() - setters_start
 					#measuring
+					measurement_start = time.time()
 					mpoint = measurer.measure()
+					measurement_time += time.time() - measurement_start
 					#saving data to containers
 					for mname in points.keys():
 						mpoint_m = mpoint[mname]
@@ -208,23 +219,21 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 					if plot and not plot_separate_thread:
 						if time.time() - last_plot_update >  10*plot_update_time:	
 							plot_update_start = time.time()
-							plotting.update_plot_measurement(mk_measurement(0), plot_axes)
+							plotting.update_plot_measurement(mk_measurement(), plot_axes)
 							last_plot_update = time.time();
 							plot_update_time = last_plot_update - plot_update_start
-					'''
-						if plot_windows[mname]:
-							for fmt, plot in plot_windows[mname].items():
-								update_plot(plot, non_unity_dim_vals(mname), fmt(data_flat))
-								plt.pause(0.01)
-						last_plot_update = time.time()
-						plot_update_time = last_plot_update - plot_update_start
-					'''
-						
-					done_sweeps += 1
-					avg_time = (time.time() - start_time)/done_sweeps
+
+					avg_time = (time.time() - start_time)/(done_sweeps+1)
+					avg_setters_time = setters_time/(done_sweeps+1)
+					avg_measurement_time = measurement_time/(done_sweeps+1)
 					param_val_mes = ',\t'.join(['{0}: {1:6.4g}'.format(param[2], val) for param,val in zip(params,vals)])
-					stat_mes_fmt = '\rTime left: {0},\tparameter values: {1},\taverage cycle time: {2:4.2g}s\t, plot_update_time: {3:4.2g}s'
-					stat_mes = stat_mes_fmt.format(format_time_delta(avg_time*(total_sweeps-done_sweeps)), param_val_mes, avg_time, plot_update_time if plot else 0.0)
+					stat_mes_fmt = '\rTime left: {0},\tparameter values: {1},\taverage cycle time: {2:4.2g}s\t,(setter_time: {4:4.2g}s, measurement_time: {5:4.2g}s)\t,plot_update_time: {3:4.2g}s'
+					stat_mes = stat_mes_fmt.format(format_time_delta(avg_time*(total_sweeps-done_sweeps-1)), 
+													param_val_mes, 
+													avg_time, 
+													plot_update_time if plot else 0.0,
+													avg_setters_time,
+													avg_measurement_time)
 					if (time_war_label):
 						sweep_state_print(stat_mes,sweep_state_widget)
 					#Telebot
@@ -232,7 +241,10 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 						bot_time_cycle_iterator += 1
 						for mname in points.keys():
 							header = {'name': filename, 'type': mname, 'params':non_unity_dim_names(mname)}
-							save_pkl.save_pkl(header, mk_measurement(0), location = data_dir)
+							save_pkl.save_pkl(header, mk_measurement(), location = data_dir)
+					done_sweeps += 1
+				print ('Exiting thread #{} via return', threading.current_thread().ident)
+				return
 					#print ('DAQ threadsweep no: ',done_sweeps)
 			except:
 				sweep_error = True
@@ -250,7 +262,7 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 					if sweep_error:
 						raise KeyboardInterrupt
 					if plot_thread_point_id < done_sweeps:
-						plotting.update_plot_measurement(mk_measurement(0), plot_axes)
+						plotting.update_plot_measurement(mk_measurement(), plot_axes)
 						plot_thread_point_id = done_sweeps
 					if plot_thread_point_id >= np.prod(sweep_dim):
 						return
@@ -285,14 +297,14 @@ def sweep(measurer, *params, filename=None, root_dir=None, plot=True, plot_separ
 				stop_acq = True
 		header = {'name': filename}
 		if (save):
-			save_pkl.save_pkl(header, mk_measurement(0), location = data_dir, plot_axes=plot_axes)
+			save_pkl.save_pkl(header, mk_measurement(), location = data_dir, plot_axes=plot_axes)
 		if bot[0]==True:
 			with open(data_dir+"/send_result.txt",'w') as bot_send_file:
 				bot_send_file.write('1')
 			bot_send_file.close()	
-			
 	
-	return mk_measurement(0)
+	gc.collect()
+	return mk_measurement()
 
 def sweep_vna(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True):
 	return sweep(measurer, *params, filename=filename, root_dir=root_dir, plot=plot, header=header, output=output)['S-parameter']

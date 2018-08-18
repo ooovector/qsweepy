@@ -63,6 +63,10 @@ class carrier:
 		self.parent.unfreeze()
 	def get_physical_devices(self):
 		return self.parent.get_physical_devices()
+	def get_ignore_calibration_drift(self):
+		return self.parent.ignore_calibration_drift
+	def set_ignore_calibration_drift(self, v):
+		self.parent.ignore_calibration_drift = v
 
 class awg_iq_multi:
 	"""Interface for IQ modulation of RF signals wth two AWG channels.
@@ -180,15 +184,15 @@ class awg_iq_multi:
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_I = np.zeros(len(t), dtype=np.complex)
 		waveform_Q = np.zeros(len(t), dtype=np.complex)
-		waveform_I+=np.real(self.calib_dc(self.dc_cname())['dc'])
-		waveform_Q+=np.imag(self.calib_dc(self.dc_cname())['dc'])
+		waveform_I+=np.real(self.calib_dc()['dc'])
+		waveform_Q+=np.imag(self.calib_dc()['dc'])
 		for carrier_id, carrier in self.carriers.items():
 			if not carrier.status:
 				continue
 			waveform_if = carrier.get_waveform()*np.exp(1j*2*np.pi*t*np.abs(carrier.get_if()))
 		
-			waveform_I += np.real(self.calib_rf(self.rf_cname(carrier))['I']*waveform_if)
-			waveform_Q += np.imag(self.calib_rf(self.rf_cname(carrier))['Q']*waveform_if)
+			waveform_I += np.real(self.calib_rf(carrier)['I']*waveform_if)
+			waveform_Q += np.imag(self.calib_rf(carrier)['Q']*waveform_if)
 			if not self.frozen:
 				self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 
@@ -300,7 +304,8 @@ class awg_iq_multi:
 		#save_pkl(None, self.rf_calibrations[self.rf_cname(carrier)], location=calibration_path, filename=filename, plot=False)
 		qjson.dump(type='iq-rf',name=self.rf_cname(carrier), params=self.rf_calibrations[self.rf_cname(carrier)])
 		
-	def calib_dc(self, cname):
+	def calib_dc(self):
+		cname = self.dc_cname()
 		if self.ignore_calibration_drift:
 			if cname not in self.dc_calibrations:
 				dc_c = [calib for calib in self.dc_calibrations.values()]
@@ -309,10 +314,12 @@ class awg_iq_multi:
 			print ('Calibration not loaded. Use ignore_calibration_drift to use any calibration.')
 		return self.dc_calibrations[cname]
 	
-	def calib_rf(self, cname):
+	def calib_rf(self, carrier):
+		cname = self.rf_cname(carrier)
 		if self.ignore_calibration_drift:
 			if cname not in self.rf_calibrations:
 				rf_c = [calib for calib in self.rf_calibrations.values()]
+				rf_c.sort(key=lambda x: np.abs(x['if']-carrier._if)) # get calibration with nearest intermediate frequency
 				return rf_c[0]
 		if cname not in self.rf_calibrations:
 			print ('Calibration not loaded. Use ignore_calibration_drift to use any calibration.')
@@ -348,7 +355,7 @@ class awg_iq_multi:
 
 		self.awg_I.run()
 		self.awg_Q.run()
-		sign = 4 if carrier.get_if()>0 else -1
+		sign = 1 if carrier.get_if()>0 else -1
 		solution = [-0.5*sign, 0.2*sign]
 		print (carrier.get_if(), carrier.frequency)
 		for iter_id in range(1):
@@ -356,9 +363,9 @@ class awg_iq_multi:
 				#dc = x[0] + x[1]*1j
 				target_sideband_id = 1 if carrier.get_if()>0 else -1
 				sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
-				I =  0.5
+				I =  0.4
 				Q =  x[0] + x[1]*1j
-				max_amplitude = self._set_if_cw(self.calib_dc(self.dc_cname())['dc'], I, Q, np.abs(carrier.get_if()), half_length)
+				max_amplitude = self._set_if_cw(self.calib_dc()['dc'], I, Q, np.abs(carrier.get_if()), half_length)
 				if max_amplitude < 1:
 					clipping = 0
 				else:
@@ -384,7 +391,7 @@ class awg_iq_multi:
 				good_power = np.sum(10**((result[sideband_ids==target_sideband_id])/20))
 				bad_power_dbm = np.log10(bad_power)*20
 				good_power_dbm = np.log10(good_power)*20
-				print ('dc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\tB: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}\r'.format(self.calib_dc(self.dc_cname())['dc'], I, Q, bad_power_dbm, good_power_dbm, clipping))
+				print ('dc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\tB: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}\r'.format(self.calib_dc()['dc'], I, Q, bad_power_dbm, good_power_dbm, clipping))
 				print (result)
 				return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping			
 			#solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-13))
@@ -409,7 +416,9 @@ class awg_iq_multi:
 		self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.5, 
 							'Q': solution[0]+solution[1]*1j,
 							'score': score,
-							'num_sidebands': num_sidebands}
+							'num_sidebands': num_sidebands,
+							'if': carrier._if,
+							'lo_freq': self.lo.get_frequency()}
 		
 		return self.rf_calibrations[self.rf_cname(carrier)]
 		

@@ -27,7 +27,9 @@ class diff_readout:
 		data_zero = self.source.measure()
 		self.diff_setter()
 		data_one = self.source.measure()
-		return {mname: data_one[mname]-data_zero[mname] for mname in data_one.keys()}
+		result = {mname: data_one[mname]-data_zero[mname] for mname in data_one.keys()}
+		del data_zero, data_one
+		return result
 		
 	def get_opts(self):
 		return self.source.get_opts()

@@ -26,8 +26,10 @@ class Keysight_M3202A_Base(Instrument):
 	def set_output(self, output, channel):
 		if output:
 			self.mask = self.mask | (1 << (channel))
+			self.module.channelWaveShape(channel, keysightSD1.SD_Waveshapes.AOU_AWG);
 		else:
 			self.mask = self.mask & (0xFF ^ (1 << (channel)))
+			self.module.channelWaveShape(channel, keysightSD1.SD_Waveshapes.AOU_HIZ);
 	def set_trigger_mode(self, mode):
 		pass
 	def run(self):
