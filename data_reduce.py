@@ -3,12 +3,15 @@
 
 import numpy as np
 import logging
+import threading
 
 class data_reduce:
-	def __init__(self, source):
+	def __init__(self, source, thread_limit=1):
 		self.source = source
 		self.filters = {}
 		self.extra_opts = {}
+		self.threads = []
+		self.thread_limiter = threading.Semaphore(thread_limit)
 		if hasattr(self.source, 'pre_sweep'):
 			self.pre_sweep = self.source.pre_sweep
 		if hasattr(self.source, 'post_sweep'):
@@ -19,6 +22,9 @@ class data_reduce:
 	
 	def get_dtype(self):
 		return { filter_name:filter['get_dtype']() for filter_name, filter in self.filters.items()}
+	
+	def get_opts(self):
+		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}
 		
 	def measure(self):
 		data = self.source.measure()
@@ -26,8 +32,48 @@ class data_reduce:
 		del data
 		return result
 		
-	def get_opts(self):
-		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}
+	def postprocess_thread_func(self, data, callback, args):
+		#print ('Spawned deferred postprocessing thread with args: ', args)
+		try:
+			self.postprocess(data, callback, args)
+			#print ('Callback finished with args: ', args)
+			#print ('Worker thread list: \n', self.threads)
+			#print ('Current thread: ', threading.current_thread())
+		except Exception as e:	# I wouldn't recommend this, but you asked for it
+			print ('Postprocessing exception occured with args: ', args)
+			self.termination_cause = e	# If an Exception occurred, it will be here
+			raise
+		finally:
+			self.threads.remove(threading.current_thread())
+			self.thread_limiter.release()
+			
+	def postprocess(self, data, callback, args):
+		result = { filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
+		#print ('Finished postprocessing with args: ', args)
+		del data
+		callback(result, *args)
+		
+	def measure_deferred_result(self, callback, args):
+		if hasattr(self.source, 'measure_deferred_result'): # if underlying device supports deferred results, call it
+			self.source.measure_deferred_result(self.postprocess, args=(callback, args)) 
+			return
+		data = self.source.measure()
+		# first, traverse all threads and make sure they didn't exit with an exception, otherwise rethrow the expection in the main thread
+		for t in self.threads:
+			if hasattr(t, 'termination_cause'):
+				print ('Postprocessing exception detected with args, joining all deferred postprocessing: ', args)
+				self.join_deferred() # wait for all other threads to terminate
+				print ('Reraising')
+				raise(t.termination_cause)
+
+		t= threading.Thread(target=self.postprocess_thread_func, args=(data, callback, args))
+		self.thread_limiter.acquire()
+		self.threads.append(t)
+		t.start()
+	
+	def join_deferred(self):
+		for t in self.threads:
+			t.join()
 		
 def downsample_reducer(source, src_meas, axis, carrier, downsample, iq=True, iq_axis=-1):
 	def get_points():
@@ -128,7 +174,7 @@ def feature_reducer(source, src_meas, axis_mean, bg, feature):
 		return new_axes
 	new_feature_shape = [1]*len(source.get_points()[src_meas])
 	new_feature_shape[axis_mean] = len(feature)
-	bg  = np.reshape(bg, new_feature_shape)
+	bg	= np.reshape(bg, new_feature_shape)
 	feature = np.reshape(feature, new_feature_shape)
 	def filter_func(x):
 		feature_truncated_shape = tuple([slice(None) if i != axis_mean else slice(x[src_meas].shape[axis_mean]) for i in range(len(new_feature_shape))])
@@ -149,7 +195,7 @@ def feature_reducer_binary(source, src_meas, axis_mean, bg, feature):
 		return new_axes
 	new_feature_shape = [1]*len(source.get_points()[src_meas])
 	new_feature_shape[axis_mean] = len(feature)
-	bg  = np.reshape(bg, new_feature_shape)
+	bg	= np.reshape(bg, new_feature_shape)
 	feature = np.reshape(feature, new_feature_shape)
 	filter = {'filter': lambda x:(np.sum((x[src_meas]-bg)*feature, axis=axis_mean)>0)*2-1,
 			  'get_points': get_points,

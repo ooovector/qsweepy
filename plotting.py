@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import numbers
 import matplotlib
+import time
 
 from matplotlib.ticker import EngFormatter
 
@@ -240,6 +241,10 @@ def update_plot_measurement(measurement, axes):
 			meas[plot_name] = (measurement[plot['mname']][0], measurement[plot['mname']][1], plot['filter'](measurement[plot['mname']][2]))
 		plots = update_plot_measurement_sa(meas, ax)
 	
+	plt.draw()	
+	#plt.gcf().canvas.start_event_loop(0.001)
+	plt.gcf().canvas.start_event_loop(0.01)
+	
 # Plots all data on a single axis with given annotations.
 def plot_measurement_sa(measurement, axes):
 	#first plot 2d stuff
@@ -329,7 +334,7 @@ def plot_measurement_sa(measurement, axes):
 		axes.set_xlabel(axes_names[0])
 	if len(axes_names) >= 2:
 		axes.set_ylabel(axes_names[1])
-	plt.pause(0.05)
+	plt.gcf().canvas.start_event_loop(0.05)
 	return plots
 
 def update_plot_measurement_sa(measurement, plots):
@@ -353,6 +358,5 @@ def update_plot_measurement_sa(measurement, plots):
 				data = data.T
 			plot.set_data(data)	
 			plot.set_clim(np.nanmin(data), np.nanmax(data))
-		plt.draw()	
-	plt.pause(0.01)
+		plt.gcf().canvas.start_event_loop(1.0)
 	

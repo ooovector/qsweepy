@@ -12,37 +12,58 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		self.trigger_delays = [0]*4
 		self.trigger_behaviours = [0]*4
 		self.waveforms = [None]*4
+		self.waiting_waveforms = [None]*4
 		self.waveform_ids = [None]*4
+		self.waiting_waveform_ids = [None]*4
 		self.marker_delay = [None]*4
 		self.marker_length = [None]*4
 	
 	def prepare_set_waveform_async(self, waveform, channel):
-	
-	### infinite cycles of a single waveform mode with synchronisation across channels
-	def set_waveform(self, waveform, channel):
 		wave = keysightSD1.SD_Wave()
-		if self.waveform_ids[channel] is None:
+		if self.waiting_waveform_ids[channel] is None:
 			wave.newFromArrayDouble(0, np.zeros((50000,)).tolist()) # WAVE_ANALOG_32
 			self.module.waveformLoad(wave, channel)
 			wave = keysightSD1.SD_Wave()
-			self.waveform_ids[channel] = channel
-		waveform_id = self.waveform_ids[channel];
+			self.waiting_waveform_ids[channel] = channel
+		waveform_id = self.waiting_waveform_ids[channel];
+		
+		waveform_data = np.asarray(waveform).tolist()
+		wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
+		self.module.waveformReLoad(wave, waveform_id, 0)
+		
+		self.waiting_waveforms[channel] = waveform_data
+	
+	### infinite cycles of a single waveform mode with synchronisation across channels
+	def set_waveform(self, waveform, channel):
+		if self.waiting_waveforms[channel] != waveform: # if the current waveform has not been preloaded by prepare_set_waveform_async
+			wave = keysightSD1.SD_Wave()
+			if self.waveform_ids[channel] is None:
+				wave.newFromArrayDouble(0, np.zeros((50000,)).tolist()) # WAVE_ANALOG_32
+				self.module.waveformLoad(wave, channel)
+				wave = keysightSD1.SD_Wave()
+				self.waveform_ids[channel] = channel
+			waveform_id = self.waveform_ids[channel];
+	
+			waveform_data = np.asarray(waveform).tolist()
+			wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
+			self.module.waveformReLoad(wave, waveform_id, 0)
+			self.waveforms[channel] = waveform
+		else: # in case the waveform has been preloaded, exchange the current waveform for the waiting_waveform
+			waveform_id = self.waiting_waveform_ids[channel]
+			waveform = self.waiting_waveforms[channel]
+			self.waiting_waveform_ids[channel] = self.waveform_ids[channel]
+			self.waiting_waveforms[channel] = self.waveforms[channel]
+			self.waveform_ids[channel] = waveform_id
+			self.waveforms[channel] = waveform
 
 		trigger_source_type = self.trigger_source_types[channel]
 		trigger_source_channel = self.trigger_source_channels[channel]
 		trigger_delay = self.trigger_delays[channel]
 		trigger_behaviour = self.trigger_behaviours[channel]
 		self.module.AWGtriggerExternalConfig(channel, trigger_source_channel, trigger_behaviour)
-		#trigger = 0
-		
-		self.module.AWGflush(channel)
-		wave = keysightSD1.SD_Wave()
-		waveform_data = np.asarray(waveform).tolist()
-		wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
-		self.module.waveformReLoad(wave, waveform_id, 0)
-		
+	
+		self.module.AWGflush(channel)	
 		self.module.AWGqueueConfig(channel, 1) # inifnite cycles
-		#self.module.AWGfromArray(channel, trigger, 0, 0, 0, keysightSD1.SD_WaveformTypes.WAVE_ANALOG, waveform[:32576])
 		self.module.AWGqueueWaveform(channel, 
 											waveform_id, 
 											trigger_source_type,#keysightSD1.SD_TriggerModes.AUTOTRIG, 
@@ -59,7 +80,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 											self.marker_length[channel], #length5Tclk 
 											self.marker_delay[channel]); #delay5Tclk
 		self.module.AWGqueueSyncMode(channel, 1)
-		self.waveforms[channel] = waveform
+		
 		#time.sleep(0.05)
 		
 	def set_marker(self, delay, length, channel):
@@ -80,7 +101,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 												1, 
 												0)
 			#(self, nAWG, markerMode, trgPXImask, trgIOmask, value, syncMode, length, delay)
-			print(self.marker_length[channel], self.marker_delay[channel])
+			#print(self.marker_length[channel], self.marker_delay[channel])
 			self.module.AWGqueueMarkerConfig(channel, # nAWG
 											2, # each cycle
 											1<<channel, # PXI channels

@@ -7,7 +7,7 @@ import warnings
 
 # Maybe we should call this "two-level dynamics"?
 class quantum_two_level_dynamics:
-	def __init__(self, pulse_sequencer, readout_device, ex_channel, ro_channel, ro_sequence, ex_amplitude, qubit_id=None, shuffle=False, **kwargs):
+	def __init__(self, pulse_sequencer, readout_device, ex_channel, ro_channel, ro_sequence, ex_amplitude, qubit_id=None, shuffle=False, plot_separate_thread=True, plot=True, **kwargs):
 		self.pulse_sequencer = pulse_sequencer
 		self.readout_device = readout_device
 		self.ro_channel = ro_channel
@@ -16,6 +16,8 @@ class quantum_two_level_dynamics:
 		self.rabi_rect_ex_amplitude = None
 		self.qubit_id = qubit_id
 		self.shuffle = shuffle
+		self.plot_separate_thread = plot_separate_thread
+		self.plot = plot
 		# self.params = kwargs #### TODO: FIX THIS DESIGN
 		if 'fitter' in kwargs:
 			self.fitter = kwargs['fitter']
@@ -54,6 +56,8 @@ class quantum_two_level_dynamics:
 			readout_begin = np.max(lengths)
 			pg = self.pulse_sequencer
 			sequence = []
+			def prepare_set_ex_length(length):
+				pass
 			def set_ex_length(length): 
 				nonlocal sequence
 				sequence = [pg.p(None, readout_begin-length), 
@@ -75,19 +79,20 @@ class quantum_two_level_dynamics:
 			root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 			measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
 														   (frequencies, set_frequency, 'Freqeuency', 'Hz'),
-														   filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir)
+														   filename=measurement_name, shuffle=self.shuffle, 
+														   root_dir=root_dir,
+														   plot_separate_thread= self.plot_separate_thread,
+														   plot=self.plot)
 			
 			annotation = 'Excitation carrier frequency: {0:7.5g}, Readout carrier frequency: {1:7.5g}'.format(
 																						pg.channels[self.ex_channel].get_frequency(),
 																						pg.channels[self.ro_channel].get_frequency())
 			save_pkl.save_pkl({'type':'Rabi 2D','name': 'qubit{}'.format(self.qubit_id)}, measurement, annotation=annotation, filename=measurement_name, location=root_dir)
 
-			del measurement, measurement_fitted, set_ex_length, set_seq
+			del measurement, set_ex_length, set_seq
 		finally:
 			self.pulse_sequencer.channels[self.ex_channel].set_ignore_calibration_drift(ignore_calibration_drift_previous)
 			self.pulse_sequencer.channels[self.ex_channel].set_frequency(frequency_previous)
-		return self.Rabi_rect_result
-
 	
 	def Rabi_rect(self,lengths):
 		readout_begin = np.max(lengths)
@@ -108,7 +113,12 @@ class quantum_two_level_dynamics:
 		measurement_name = 'Rabi rectangular channel {}'.format(self.ex_channel)
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
-		measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir)
+		measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
+								  filename=measurement_name, 
+								  shuffle=self.shuffle, 
+								  root_dir=root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
 		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
 		self.Rabi_rect_result = {}
 		self.Rabi_rect_result['rabi_rect_freq']=fitted_parameters['freq']
@@ -155,7 +165,9 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi2_pulse*2
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Ramsey delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir = root_dir)
+		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Ramsey delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir = root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
 		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
 		self.Ramsey_result = {}
 		self.Ramsey_result['Ramsey_freq']=fitted_parameters['freq']
@@ -198,7 +210,9 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi_pulse = 0.5/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi_pulse
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir)
+		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
 		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_fit)
 		self.decay_result = {}
 		self.decay_result['decay'] = fitted_parameters['decay']
@@ -241,7 +255,9 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi2_pulse*2
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Spin echo delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir)
+		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Spin echo delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
 		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
 		self.spin_echo_result = {}
 		self.spin_echo_result['ramsey_freq']=fitted_parameters['freq']
