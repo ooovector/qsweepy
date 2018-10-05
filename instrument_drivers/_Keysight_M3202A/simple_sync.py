@@ -74,7 +74,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 			self.module.AWGqueueMarkerConfig(channel, # nAWG
 											2, # each cycle
 											1<<channel, # PXI channels
-											0, #trigIOmask
+											1 if channel == 0 else 0, #trigIOmask
 											1, #value (0 is low, 1 is high)
 											0, #syncmode
 											self.marker_length[channel], #length5Tclk 
@@ -105,7 +105,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 			self.module.AWGqueueMarkerConfig(channel, # nAWG
 											2, # each cycle
 											1<<channel, # PXI channels
-											0, #trigIOmask
+											1 if channel == 0 else 0, #trigIOmask
 											1, #value (0 is low, 1 is high)
 											0, #syncmode
 											self.marker_length[channel], #length5Tclk 

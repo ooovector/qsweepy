@@ -9,7 +9,7 @@ class Keysight_M3202A_Base(Instrument):
 		super().__init__(name, tags=['physical'])
 		self.mask = 0
 		self.module = keysightSD1.SD_AOU()
-		self.module_id = self.module.openWithSlot("M3202A", chassis, slot)
+		self.module_id = self.module.openWithSlotCompatibility("M3202A", chassis, slot, compatibility=keysightSD1.SD_Compatibility.LEGACY)
 		self.amplitudes = [0.2]*4
 		self.offsets = [0.0]*4
 		self.add_parameter('amplitude_channel_{}', type=float,
@@ -31,7 +31,8 @@ class Keysight_M3202A_Base(Instrument):
 			self.mask = self.mask & (0xFF ^ (1 << (channel)))
 			self.module.channelWaveShape(channel, keysightSD1.SD_Waveshapes.AOU_HIZ);
 	def set_trigger_mode(self, mode):
-		pass
+		self.module.triggerIOconfig(mode & 0x1, mode & 0x2)
+		self.module.triggerIOwrite((mode & 0x1)!=0)
 	def run(self):
 		self.module.AWGstartMultiple(self.mask)
 	def stop(self):
