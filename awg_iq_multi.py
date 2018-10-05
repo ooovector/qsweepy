@@ -181,6 +181,7 @@ class awg_iq_multi:
 	
 	def assemble_waveform(self):
 		"""Takes waveforms on all carriers and sums them up."""
+		#print ('called assemble_waveform on wage_iq_multi wth I '+str(self.awg_I)+', I channel'+str(self.awg_ch_I))
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_I = np.zeros(len(t), dtype=np.complex)
 		waveform_Q = np.zeros(len(t), dtype=np.complex)
@@ -193,8 +194,8 @@ class awg_iq_multi:
 		
 			waveform_I += np.real(self.calib_rf(carrier)['I']*waveform_if)
 			waveform_Q += np.imag(self.calib_rf(carrier)['Q']*waveform_if)
-			if not self.frozen:
-				self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+		if not self.frozen:
+			self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 		

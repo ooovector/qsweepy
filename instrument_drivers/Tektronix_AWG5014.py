@@ -23,6 +23,7 @@ import types
 import logging
 import struct
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Tektronix_AWG5014(Instrument):
 	'''
@@ -587,6 +588,7 @@ class Tektronix_AWG5014(Instrument):
 		self._visainstrument.write('SOUR:FREQ %f' % clock)
 
 	def do_set_waveform(self, waveform, channel):
+		#print ('do_set_waveform called with channel '+str(channel))
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
@@ -617,7 +619,9 @@ class Tektronix_AWG5014(Instrument):
 		#It doesn't save any time. It's slower than everything
 		
 		if self._waveforms[channel-1] is not None and self.check_cached:
-			if np.sum(np.abs(self._waveforms[channel-1]-w))<1e-4:
+			#print ('There is a waveform ready, check deviation: '+str(np.sum(np.abs(self._waveforms[channel-1]-w))))
+			if np.sum(np.abs(self._waveforms[channel-1]-w))<1e-6:
+				#print ('The waveform is already set, return')
 				self.set_output (1, channel=(channel-1)%4+1)
 				return None
 		
@@ -630,6 +634,7 @@ class Tektronix_AWG5014(Instrument):
 		return self._waveforms[channel-1] 
 		
 	def do_set_digital(self, marker, channel):
+		#print ('do_set_digital called with channel '+str(channel))
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
@@ -658,7 +663,9 @@ class Tektronix_AWG5014(Instrument):
 		filename = 'test_ch{0}.wfm'.format(channel)
 
 		if self._markers[channel-1] is not None:
+			#print ('There is a marker ready, check deviation: '+str(np.sum(np.abs(self._markers[channel-1]-m1))))
 			if np.sum(np.abs(self._markers[channel-1]-m1))<0.5:
+				#print ('The marker is already set, return')
 				self.set_output (1, channel=(channel-1)%4+1)
 				return None
 		self._markers[channel-1] = m1

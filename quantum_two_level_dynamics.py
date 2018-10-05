@@ -139,7 +139,7 @@ class quantum_two_level_dynamics:
 		del measurement, measurement_fitted, set_ex_length, set_seq
 		return self.Rabi_rect_result
 
-	def Ramsey(self,delays,target_freq_offset):
+	def Ramsey(self,delays,target_freq_offset, *params):
 		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
 			self.load_calibration()
 		pg = self.pulse_sequencer
@@ -149,9 +149,7 @@ class quantum_two_level_dynamics:
 			sequence = [pg.p(None, readout_begin - pi2_pulse),
 						pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude), 
 						pg.p(None, delay), 
-						pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi)), 
-						pg.p('ro_trg', self.readout['trg_length'], pg.rect, 1), 
-						pg.p('iq_ro', self.readout['dac_len'], pg.rect, self.readout['amp'])]
+						pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi))]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -165,27 +163,35 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi2_pulse*2
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Ramsey delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir = root_dir,
+		measurement = sweep.sweep(self.readout_device, 
+								  (delays, set_delay, 'Ramsey delay', 's'), 
+								  *params, 
+								  filename=measurement_name, 
+								  shuffle=self.shuffle, 
+								  root_dir = root_dir,
 								  plot_separate_thread= self.plot_separate_thread,
 								  plot=self.plot)
-		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
-		self.Ramsey_result = {}
-		self.Ramsey_result['Ramsey_freq']=fitted_parameters['freq']
-		self.Ramsey_result['Ramsey_decay']=fitted_parameters['decay']
-		self.Ramsey_result['Ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
-		self.Ramsey_result['Ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-		self.Ramsey_result['Ramsey_ex_amplitude'] = self.ex_amplitude
-		self.Ramsey_result['qubit_id'] = self.qubit_id
-		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
+		try:
+			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
+			self.Ramsey_result = {}
+			self.Ramsey_result['Ramsey_freq']=fitted_parameters['freq']
+			self.Ramsey_result['Ramsey_decay']=fitted_parameters['decay']
+			self.Ramsey_result['Ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
+			self.Ramsey_result['Ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+			self.Ramsey_result['Ramsey_ex_amplitude'] = self.ex_amplitude
+			self.Ramsey_result['qubit_id'] = self.qubit_id
+			annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
 																				 fitted_parameters['freq'], 
 																				 fitted_parameters['decay'])
-		save_pkl.save_pkl({'type':'Ramsey', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name,location=root_dir)
+			save_pkl.save_pkl({'type':'Ramsey', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name,location=root_dir)
 		
-		qjson.dump(type='two-level-ramsey',name=self.build_calibration_filename(), params=self.Ramsey_result)
-		del measurement, measurement_fitted, set_delay, set_seq
-		return self.Ramsey_result
+			qjson.dump(type='two-level-ramsey',name=self.build_calibration_filename(), params=self.Ramsey_result)
+			del measurement, measurement_fitted, set_delay, set_seq
+			return self.Ramsey_result
+		except:
+			return measurement
 		
-	def decay(self, delays):
+	def decay(self, delays, *params):
 		pg = self.pulse_sequencer
 		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
 			self.load_calibration()
@@ -194,9 +200,7 @@ class quantum_two_level_dynamics:
 			nonlocal sequence
 			sequence = [pg.p(None, readout_begin - pi_pulse-delay),
 						pg.p(self.ex_channel, pi_pulse, pg.rect, self.ex_amplitude), 
-						pg.p(None, delay), 
-						pg.p('ro_trg', self.readout['trg_length'], pg.rect, 1), 
-						pg.p('iq_ro', self.readout['dac_len'], pg.rect, self.readout['amp'])]
+						pg.p(None, delay)]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -210,24 +214,32 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi_pulse = 0.5/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi_pulse
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
+		measurement = sweep.sweep(self.readout_device, 
+								  (delays, set_delay, 'delay', 's'), 
+								  *params,
+								  filename=measurement_name, 
+								  shuffle=self.shuffle, 
+								  root_dir=root_dir,
 								  plot_separate_thread= self.plot_separate_thread,
 								  plot=self.plot)
-		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_fit)
-		self.decay_result = {}
-		self.decay_result['decay'] = fitted_parameters['decay']
-		self.decay_result['decay_carrier']=pg.channels[self.ex_channel].get_frequency()
-		self.decay_result['decay_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-		self.decay_result['decay_ex_amplitude'] = self.ex_amplitude
-		self.decay_result['qubit_id'] = self.qubit_id
-		annotation = 'Decay: {0:4.6g} s'.format(fitted_parameters['decay'])
-		save_pkl.save_pkl({'type':'Decay', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name,location=root_dir)
+		try:
+			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_fit)
+			self.decay_result = {}
+			self.decay_result['decay'] = fitted_parameters['decay']
+			self.decay_result['decay_carrier']=pg.channels[self.ex_channel].get_frequency()
+			self.decay_result['decay_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+			self.decay_result['decay_ex_amplitude'] = self.ex_amplitude
+			self.decay_result['qubit_id'] = self.qubit_id
+			annotation = 'Decay: {0:4.6g} s'.format(fitted_parameters['decay'])
+			save_pkl.save_pkl({'type':'Decay', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name,location=root_dir)
 		
-		qjson.dump(type='two-level-decay',name=self.build_calibration_filename(), params=self.decay_result)
-		del measurement, measurement_fitted, set_delay, set_seq
-		return self.decay_result
+			qjson.dump(type='two-level-decay',name=self.build_calibration_filename(), params=self.decay_result)
+			del measurement, measurement_fitted, set_delay, set_seq
+			return self.decay_result
+		except:
+			return measurement
 	
-	def spin_echo(self,delays,target_freq_offset):
+	def spin_echo(self,delays,target_freq_offset,*params):
 		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
 			self.load_calibration()
 		pg = self.pulse_sequencer
@@ -239,9 +251,7 @@ class quantum_two_level_dynamics:
 					pg.p(None, delay), 
 					pg.p(self.ex_channel, pi2_pulse*2, pg.rect, self.ex_amplitude), 
 					pg.p(None, delay), 
-					pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi)), 
-					pg.p('ro_trg', self.readout['trg_length'], pg.rect, 1), 
-					pg.p('iq_ro', self.readout['dac_len'], pg.rect, self.readout['amp'])]
+					pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi))]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -255,22 +265,25 @@ class quantum_two_level_dynamics:
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
 		readout_begin = np.max(delays)+pi2_pulse*2
-		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Spin echo delay', 's'), filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
+		measurement = sweep.sweep(self.readout_device, (delays, set_delay, 'Spin echo delay', 's'), *params, filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
 								  plot_separate_thread= self.plot_separate_thread,
 								  plot=self.plot)
-		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
-		self.spin_echo_result = {}
-		self.spin_echo_result['ramsey_freq']=fitted_parameters['freq']
-		self.spin_echo_result['ramsey_decay']=fitted_parameters['decay']
-		self.spin_echo_result['ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
-		self.spin_echo_result['ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-		self.spin_echo_result['ramsey_ex_amplitude'] = self.ex_amplitude
-		self.spin_echo_result['qubit_id'] = self.qubit_id
-		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
+		try:
+			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
+			self.spin_echo_result = {}
+			self.spin_echo_result['ramsey_freq']=fitted_parameters['freq']
+			self.spin_echo_result['ramsey_decay']=fitted_parameters['decay']
+			self.spin_echo_result['ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
+			self.spin_echo_result['ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+			self.spin_echo_result['ramsey_ex_amplitude'] = self.ex_amplitude
+			self.spin_echo_result['qubit_id'] = self.qubit_id
+			annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
 																					 fitted_parameters['freq'], 
 																					 fitted_parameters['decay'])
-		save_pkl.save_pkl({'type':'spin echo', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name,location=root_dir)
+			save_pkl.save_pkl({'type':'spin echo', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name,location=root_dir)
 
-		qjson.dump(type='two-level-spin-echo',name=self.build_calibration_filename(), params=self.spin_echo_result)
-		del measurement, measurement_fitted, set_delay, set_seq
-		return self.spin_echo_result
+			qjson.dump(type='two-level-spin-echo',name=self.build_calibration_filename(), params=self.spin_echo_result)
+			del measurement, measurement_fitted, set_delay, set_seq
+			return self.spin_echo_result
+		except:
+			return measurement

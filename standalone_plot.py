@@ -18,7 +18,9 @@ def plot_filename(filename):
 	else:
 		window_name = 'chinese noname'
 	plotting.plot_measurement(measurement, window_name)
+	plt.autoscale(True)
 	plt.figure(num=window_name).tight_layout()
+	plt.tight_layout()
 	plt.show()
 
 if __name__ == "__main__":

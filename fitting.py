@@ -226,7 +226,7 @@ def S21pm_fit(measurement, fitter):
 	
 	return measurement, parameters
 	
-def xcorr_centre_period(vec, axis=0):
+def xcorr_centre_period(vec, axis=0, drop_size=5):
     f_stack = [lambda x: np.correlate(x-np.mean(x), np.flip(x-np.mean(x), axis=0), mode='full')]
     iteraxes = list(np.arange(len(vec.shape)))
     del iteraxes[axis]
@@ -243,7 +243,7 @@ def xcorr_centre_period(vec, axis=0):
         f_stack.append(lambda x: np.apply_along_axis(f_stack[axis_id], _axis, x))
     mp = f_stack[-1](vec)
     mp_scalar = np.sum(np.abs(mp)**2, axis=tuple(range(1, len(vec.shape))))
-    mp_scalar[int(len(mp_scalar)/2)-20:int(len(mp_scalar)/2)+20]=0
+    mp_scalar[int(len(mp_scalar)/2)-drop_size:int(len(mp_scalar)/2)+drop_size]=0
     period = int(len(mp_scalar)/2)-np.argmax(mp_scalar[:int(len(mp_scalar)/2)])
 
     xc_max = np.argmax(np.sum(np.abs(mpi)**2, axis=tuple(range(1, len(vec.shape)))))

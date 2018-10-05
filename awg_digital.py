@@ -8,6 +8,7 @@ class awg_digital:
 		self.awg = awg
 		self.channel = channel
 		self.frozen = False
+		self.delay = 0
 	
 	def get_nop(self):
 		return self.awg.get_nop()
@@ -23,7 +24,7 @@ class awg_digital:
 	
 	def set_waveform(self, waveform):
 		if self.mode == 'waveform':
-			self.awg.set_digital(waveform, channel=self.channel)
+			self.awg.set_digital(np.roll(waveform, self.delay), channel=self.channel)
 		if self.mode == 'marker':
 			delay_tock = np.where(waveform)[0][0]
 			delay = int(np.ceil(delay_tock / 10));

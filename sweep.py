@@ -180,6 +180,8 @@ def sweep(measurer,
 		plot_axes = plotting.plot_measurement(mk_measurement(), name=filename)
 		last_plot_update = time.time()
 		plot_update_time = last_plot_update - plot_update_start
+	else:
+		plot_axes=None
 	start_time = time.time()
 	acq_thread = None
 	sweep_error = False

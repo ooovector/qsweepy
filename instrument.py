@@ -262,7 +262,7 @@ class Instrument():
 
 				self.add_parameter(var_name, **chopt)
 
-			return
+			#return
 
 		self._parameters[name] = options
 

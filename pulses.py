@@ -92,6 +92,7 @@ class pulses:
 					tmp[-len(pulse_shape[channel]):]=pulse_shape[channel]
 					pulse_shape[channel] = tmp
 				#print (channel, pulse_shape[channel], len(pulse_shape[channel]))
+				#print ('Calling set_waveform on device '+channel)
 				channel_device.set_waveform(pulse_shape[channel])
 
 		finally:

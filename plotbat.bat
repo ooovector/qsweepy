@@ -1,1 +1,1 @@
-C:\ProgramData\Anaconda2\Scripts\activate.bat py36 && python %QTLAB_PATH%\qsweepy\standalone_plot.py %1
+C:\ProgramData\Anaconda3\Scripts\activate.bat C:\ProgramData\Anaconda3 && python %QTLAB_PATH%\qsweepy\standalone_plot.py %1
