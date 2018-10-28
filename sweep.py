@@ -50,7 +50,8 @@ def sweep(measurer,
 		  time_war_label=True, 
 		  shuffle=False, 
 		  bot=(False,0),
-		  use_deferred=False):
+		  use_deferred=False,
+		  loc=False):
 	'''
 	Performs a n-d parametric sweep.
 	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... , filename=None)
@@ -355,15 +356,19 @@ def sweep(measurer,
 				stop_acq = True
 		header = {'name': filename}
 		if (save):
-			save_pkl.save_pkl(header, mk_measurement(), location = data_dir, plot_axes=plot_axes)
+			filename_location = save_pkl.save_pkl(header, mk_measurement(), location = data_dir, plot_axes=plot_axes)
 		if bot[0]==True:
 			with open(data_dir+"/send_result.txt",'w') as bot_send_file:
 				bot_send_file.write('1')
 			bot_send_file.close()	
 	
 	gc.collect()
-	return mk_measurement()
-
+	if loc==True:
+		return mk_measurement(),data_dir+filename+'.pkl'
+	else:
+		return mk_measurement()
+		
+		
 def sweep_vna(measurer, *params, filename=None, root_dir=None, plot=True, header=None, output=True):
 	return sweep(measurer, *params, filename=filename, root_dir=root_dir, plot=plot, header=header, output=output)['S-parameter']
 	

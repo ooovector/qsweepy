@@ -3,7 +3,7 @@ import numpy as np
 from resonator_tools import circuit
 #resonator_tools = imp.load_source('circuit', 'C:/python27/lib/site-packages/resonator_tools/circuit.py').load_module()
 	
-def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_parameter_name='power', resonator_type='notch_port', use_calibrate=False):
+def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_parameter_name='power', resonator_type='notch_port', delay=None, use_calibrate=False):
 	fitresults = []
 	sweep_parameter = measurement[1][0]
 	f_data = measurement[1][1]
@@ -28,7 +28,7 @@ def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_para
 					fitter = circuit.notch_port(f_data = f_data, z_data_raw=z_data[power_id,:])
 				else:
 					fitter = circuit.reflection_port(f_data = f_data, z_data_raw=z_data[power_id,:])
-				fitter.autofit()
+				fitter.autofit(electric_delay=delay)
 			fitter.fitresults[sweep_parameter_name] = power
 			fitter.fitresults['single_photon_limit'] = fitter.get_single_photon_limit()
 			fitresults.append(fitter.fitresults.copy())

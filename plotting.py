@@ -107,8 +107,8 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 		if len (data) > 4:
 			punits = data[4]
 		
-		if not log and not np.iscomplexobj(data[2]):	filter_none = lambda x: x
-		elif not log:									filter_abs = np.abs
+		filter_none = lambda x: x
+		if not log:										filter_abs = np.abs
 		elif log == 10:									filter_abs = lambda x: np.log10(np.abs(x))*10
 		elif log == 20:									filter_abs = lambda x: np.log10(np.abs(x))*20
 		if not unwrap:									filter_phase = np.angle

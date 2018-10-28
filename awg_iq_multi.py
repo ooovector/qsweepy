@@ -9,12 +9,13 @@ from .save_pkl import *
 from .config import get_config
 from matplotlib import pyplot as plt
 from . import qjson
+#import time
 
 def get_config_float_fmt():
 	return '6.4g'
 
 def build_param_names(params):
-	return '-'.join(['{0}-{1:6.4g}'.format(param_name, param_value) for param_name, param_value in sorted(params.items())])
+	return '-'.join(['{0}-{1:6.4g}'.format(param_name, param_value) if type(param_value) is not str else param_name+'-'+param_value for param_name, param_value in sorted(params.items())])
 	
 class carrier:
 	def __init__(self, parent):#, mixer):
@@ -96,16 +97,20 @@ class awg_iq_multi:
 		self.awg_ch_Q = awg_ch_Q
 		
 		self.carriers = {}
-		
+		self.name='default'
 		self.lo = lo
 		#self._if = 0
 		#self.frequency = lo.get_frequency()
 		self.dc_calibrations = {}
+		self.dc_calibrations_offset = {}
 		self.rf_calibrations = {}
 		self.sideband_id = 0
 		self.ignore_calibration_drift = False
 		#self.mixer = mixer
 		self.frozen = False
+		self.use_offset_I = hasattr(self.awg_I, 'set_offset') # set DC offsets by set_offset
+		self.use_offset_Q = hasattr(self.awg_Q, 'set_offset')
+		self.calibration_switch_setter = lambda: None
 		
 	def get_physical_devices(self):
 		if self.awg_I != self.awg_Q:
@@ -163,6 +168,7 @@ class awg_iq_multi:
 		self.awg_I.run()
 		if self.awg_I != self.awg_Q:
 			self.awg_Q.run()
+		#time.sleep(0.1)
 		#import matplotlib.pyplot as plt
 		#plt.plot(waveform_I)
 		#plt.plot(waveform_Q)
@@ -185,8 +191,10 @@ class awg_iq_multi:
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_I = np.zeros(len(t), dtype=np.complex)
 		waveform_Q = np.zeros(len(t), dtype=np.complex)
-		waveform_I+=np.real(self.calib_dc()['dc'])
-		waveform_Q+=np.imag(self.calib_dc()['dc'])
+		if not self.use_offset_I:
+			waveform_I+=np.real(self.calib_dc()['dc'])
+		if not self.use_offset_Q:
+			waveform_Q+=np.imag(self.calib_dc()['dc'])
 		for carrier_id, carrier in self.carriers.items():
 			if not carrier.status:
 				continue
@@ -195,6 +203,8 @@ class awg_iq_multi:
 			waveform_I += np.real(self.calib_rf(carrier)['I']*waveform_if)
 			waveform_Q += np.imag(self.calib_rf(carrier)['Q']*waveform_if)
 		if not self.frozen:
+			self.awg_I.set_offset(np.real(self.calib_dc()['dc']), channel=self.awg_ch_I)
+			self.awg_I.set_offset(np.imag(self.calib_dc()['dc']), channel=self.awg_ch_Q)
 			self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
@@ -220,8 +230,14 @@ class awg_iq_multi:
 	
 	def _set_dc(self, x):
 		"""Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
-		x = self.clip_dc(x)	
-		self.__set_waveform_IQ_cmplx([x]*self.get_nop())
+		dc = self.clip_dc(x)	
+		if self.use_offset_I:
+			self.awg_I.set_offset(np.real(dc), channel=self.awg_ch_I)
+			dc-=np.real(dc)
+		if self.use_offset_Q:
+			self.awg_Q.set_offset(np.imag(dc), channel=self.awg_ch_Q)
+			dc-=1j*np.imag(dc)
+		self.__set_waveform_IQ_cmplx([dc]*self.get_nop())
 		
 	def _set_if_cw(self, dc, I, Q, _if, half_length):
 		from  scipy.signal import gaussian as gaussian
@@ -230,18 +246,28 @@ class awg_iq_multi:
 		to the minimum SFDR."""
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		dc = self.clip_dc(dc)
+		
 		if half_length:
 			envelope = gaussian(self.get_nop(), self.get_nop()/8)
 		else:
 			envelope = np.ones(self.get_nop())
-		waveform_I = np.real(I*np.exp(2*np.pi*1j*t*_if))*envelope+np.real(dc)
-		waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope+np.imag(dc)
+		if not self.use_offset_I:
+			waveform_I = np.real(I*np.exp(2*np.pi*1j*t*_if))*envelope+np.real(dc)
+		else:
+			waveform_I = np.real(I*np.exp(2*np.pi*1j*t*_if))*envelope
+			self.awg_I.set_offset(np.real(dc), channel=self.awg_ch_I)
+		if not self.use_offset_Q:
+			waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope+np.imag(dc)
+		else:
+			waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope
+			self.awg_Q.set_offset(np.imag(dc), channel=self.awg_ch_Q)
+			
 		self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
 	def dc_cname(self):
 		#return ('fLO-'+get_config_float_fmt()).format(self.lo.get_frequency)
-		return build_param_names({'lo_freq':self.lo.get_frequency()})
+		return build_param_names({'mixer':self.name,'lo_freq':self.lo.get_frequency()})
 		
 	def do_calibration(self, sa=None):
 		"""User-level function to sort out mixer calibration matters. Checks if there is a saved calibration for the given
@@ -276,7 +302,7 @@ class awg_iq_multi:
 	def rf_cname(self, carrier):
 		#return ('fLO-{'+get_config_float_fmt()+'}').format(self.lo.get_frequency)
 		#return ('if', carrier.get_if()), ('frequency', carrier.get_frequency()), ('sideband_id', self.sideband_id)
-		return build_param_names({'if':carrier.get_if(), 'frequency':carrier.get_frequency(), 'sideband_id':self.sideband_id})
+		return build_param_names({'cname':self.name, 'if':carrier.get_if(), 'frequency':carrier.get_frequency(), 'sideband_id':self.sideband_id})
 		
 	def get_rf_calibration(self, carrier, sa=None):
 		"""User-level function to sort out mxer calibration matters. Checks if there is a saved calibration for the given
@@ -329,9 +355,12 @@ class awg_iq_multi:
 	def _calibrate_cw_sa(self, sa, carrier, num_sidebands = 3, use_central = False, num_sidebands_final = 9, half_length = True, use_single_sweep=False):
 		"""Performs IQ mixer calibration with the spectrum analyzer sa with the intermediate frequency."""
 		from scipy.optimize import fmin
-		import time
+		#import time
 		res_bw = 1e4
 		video_bw = 1e3
+		
+		self.calibration_switch_setter()
+		
 		if hasattr(sa, 'set_nop') and use_single_sweep:
 			sa.set_centerfreq(self.lo.get_frequency())
 			sa.set_span((num_sidebands-1)*np.abs(carrier.get_if()))
@@ -339,7 +368,7 @@ class awg_iq_multi:
 			sa.set_detector('POS')
 			sa.set_res_bw(res_bw)
 			sa.set_video_bw(video_bw)
-			sa.set_trigger_mode('CONT')
+			#sa.set_trigger_mode('CONT')
 			sa.set_sweep_time_auto(1)
 		else:
 			sa.set_detector('rms')
@@ -428,6 +457,9 @@ class awg_iq_multi:
 		import time
 		from scipy.optimize import fmin	
 		print(self.lo.get_frequency())
+		
+		self.calibration_switch_setter()
+		
 		res_bw = 1e4
 		video_bw = 1e2
 		sa.set_res_bw(res_bw)
@@ -439,7 +471,7 @@ class awg_iq_multi:
 		if hasattr(sa, 'set_nop'):
 			sa.set_span(0)
 			sa.set_nop(1)
-			self.set_trigger_mode('CONT')
+			#self.set_trigger_mode('CONT')
 		else:
 			sa.set_span(res_bw)	
 		self.lo.set_status(True)
@@ -472,3 +504,124 @@ class awg_iq_multi:
 		if self.frozen:
 			self.frozen = False
 			self.assemble_waveform()
+			
+	def calibrate_wideband(self, 
+						   sa_device, 
+						   num_sample=5, 
+						   calibration_sequence_length = 1600, 
+						   physical_delay = 400, 
+						   calibration_sequence_margin = 600, 
+						   random_sequence_num = 20, 
+						   amplitudes = [0,0.2], 
+						   amplitude_small_id = 1,
+						   amplitude_zero_id = 0):
+		awg_device = self.awg_I
+		sa_device = sa
+		lo_device = self.lo
+		awg_channel_I = self.awg_ch_I
+		awg_channel_Q = self.awg_ch_Q
+
+		sa.set_bandwidth(awg_device.get_clock()/repetition_period/2)
+		sa.set_bandwidth_video(10e3)
+		sa.set_detector('RMS')
+		repetition_period = calibration_sequence_length+physical_delay # in awg samples
+		sa.set_nop(repetition_period)
+		sa.set_centerfreq(lo_device.get_frequency()-awg_device.get_clock()/repetition_period/2.)
+		sa.set_span(awg_device.get_clock()*(repetition_period-1)/repetition_period)
+
+		self.calibration_switch_setter()
+		
+		# Perform background measurements
+		# lo1.set_status(0)
+		# incoherent_bg_samples = [10**(sa.measure()['Power']/10) for i in range(num_samples)]
+		# incoherent_bg = np.mean(incoherent_bg_samples, axis=0)
+		# incoherent_bg_error = np.std(incoherent_bg_samples)/np.sqrt(num_samples-2)
+		# lo1.set_status(1)
+		# awg_device.stop()
+		# #awg_device.set_offset(0, channel=awg_channel_I)
+		# #awg_device.set_offset(0, channel=awg_channel_Q)
+		# awg_device.set_output(1, channel=awg_channel_I)
+		# awg_device.set_output(1, channel=awg_channel_Q)
+		# coherent_bg_samples = [10**(sa.measure()['Power']/10) for i in range(num_samples)]
+		# coherent_bg = np.mean(coherent_bg_samples, axis=0)-incoherent_bg
+		# coherent_bg_std = np.std(coherent_bg_samples)/np.sqrt(num_samples-2)
+
+		lo1.set_status(1)
+		
+		spectra = np.zeros((len(amplitudes), len(amplitudes), random_sequence_num, sa.get_nop()))
+		waveforms_I = np.zeros((random_sequence_num, repetition_period))
+		waveforms_Q = np.zeros((random_sequence_num, repetition_period))
+		awg_device.stop()
+		# measure random waveforms
+		for random_sequence_id in tqdm.tqdm(range(20)):
+			seq_I = np.random.random(calibration_sequence_length)*2.-1.
+			seq_Q = np.random.random(calibration_sequence_length)*2.-1.
+			seq_I[:calibration_sequence_margin] = 0
+			seq_I[-calibration_sequence_margin:]= 0
+			seq_Q[:calibration_sequence_margin] = 0
+			seq_Q[-calibration_sequence_margin:]= 0
+			seq_I_full = np.asarray([0]*physical_delay+seq_I.tolist())
+			seq_Q_full = np.asarray([0]*physical_delay+seq_Q.tolist())
+			waveforms_I[random_sequence_id, :] = seq_I_full
+			waveforms_Q[random_sequence_id, :] = seq_Q_full
+			for amp_I_id, amp_I in enumerate(amplitudes):
+				awg_device.set_waveform(seq_I*amplitudes[amp_I_id], channel=awg_channel_I)
+				for amp_Q_id, amp_Q in enumerate(amplitudes):
+					awg_device.set_waveform(seq_Q*amplitudes[amp_Q_id], channel=awg_channel_Q)
+					awg_device.run()
+					spectra[amp_I_id, amp_Q_id, random_sequence_id, :] = 10**(sa.measure()['Power']/10)
+					awg_device.stop()
+
+		model_I = np.fft.fftshift(np.fft.fft(np.fft.fftshift(waveforms_I, axes=1), axis=1, norm='ortho'), axes=1) # in Watts
+		model_Q = np.fft.fftshift(np.fft.fft(np.fft.fftshift(waveforms_Q, axes=1), axis=1, norm='ortho'), axes=1) # in Watts
+		iq_phase_diff = np.exp(1j*np.angle(model_I*np.conj(model_Q))) 
+		model_I_psd = np.abs(model_I)**2
+		model_Q_psd = np.abs(model_Q)**2
+		model_IQp_psd = np.abs(model_I+1j*model_Q)**2
+		model_IQn_psd = np.abs(model_I-1j*model_Q)**2
+
+		mean_model_I_psd = np.mean(model_I_psd, axis=0)
+		mean_model_Q_psd = np.mean(model_Q_psd, axis=0)
+
+		mean_measurement_I_psd = np.mean(spectra[amplitude_small_id, amplitude_zero_id, :, :], axis=0)
+		mean_measurement_Q_psd = np.mean(spectra[amplitude_zero_id, amplitude_small_id, :, :], axis=0)
+
+		mean_measurement_I_abs = np.mean(np.sqrt(spectra[amplitude_small_id, amplitude_zero_id, :, :]), axis=0)
+		mean_measurement_Q_abs = np.mean(np.sqrt(spectra[amplitude_zero_id, amplitude_small_id, :, :]), axis=0)
+
+		response_function_I_abs = np.sqrt(mean_measurement_I_psd/(mean_model_I_psd*amplitudes[amplitude_small_id]**2))
+		response_function_Q_abs = np.sqrt(mean_measurement_Q_psd/(mean_model_Q_psd*amplitudes[amplitude_small_id]**2))
+
+		interference_term = (spectra[amplitude_small_id, amplitude_small_id, :, :]-\
+							 spectra[amplitude_small_id, amplitude_zero_id, :, :]-\
+							 spectra[amplitude_zero_id, amplitude_small_id, :, :])
+		theory_interference_term = 2*np.sqrt(spectra[amplitude_zero_id, amplitude_small_id, :, :]\
+								  *spectra[amplitude_small_id, amplitude_zero_id, :, :])
+								  
+		interference_term_response = interference_term/theory_interference_term
+		interference_term_exp = (interference_term_response+1j*np.sqrt(1-interference_term_response**2))*iq_phase_diff
+		interference_term_cexp = (interference_term_response-1j*np.sqrt(1-interference_term_response**2))*iq_phase_diff
+		interference_term_response[np.abs(theory_interference_term)<np.percentile(np.abs(theory_interference_term), 5)]=np.nan
+		interference_term_exp[np.abs(theory_interference_term)<np.percentile(np.abs(theory_interference_term), 5)]=np.nan
+		interference_term_cexp[np.abs(theory_interference_term)<np.percentile(np.abs(theory_interference_term), 5)]=np.nan
+
+		interference_term_response_mean = np.nanmean(interference_term_response*iq_phase_diff, axis=0)
+		interference_term_exp_mean = np.nanmean(interference_term_response, axis=0)
+		interference_term_cexp_mean = np.nanmean(interference_term_response, axis=0)
+
+		sorted_phases = np.sort(np.angle(np.vstack([interference_term_cexp, interference_term_exp])), axis=0)
+		response_phase = []
+		for frequency_id in range(sorted_phases.shape[1]):
+			points_current = sorted_phases[:, frequency_id]
+			points_current = points_current[np.logical_not(np.isnan(points_current))].tolist()
+			num_point_initial = len(points_current)
+			for removed_point_id in range(int(num_point_initial/2)+2):
+				if np.median(points_current)-points_current[0]>points_current[-1]-np.median(points_current):
+					del points_current[0]
+				else:
+					del points_current[-1]
+			response_phase.append(np.mean(points_current))
+		response_phase = np.asarray(response_phase)
+		
+		self.response_function_I = np.asarray(response_function_I_abs, dtype=np.complex)
+		self.response_function_Q = response_function_Q_abs*np.exp(1j*response_phase)

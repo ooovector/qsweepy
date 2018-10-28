@@ -17,6 +17,7 @@ class quantum_two_level_dynamics:
 		self.qubit_id = qubit_id
 		self.shuffle = shuffle
 		self.plot_separate_thread = plot_separate_thread
+		self.measurement_name_comment = ''
 		self.plot = plot
 		# self.params = kwargs #### TODO: FIX THIS DESIGN
 		if 'fitter' in kwargs:
@@ -38,6 +39,12 @@ class quantum_two_level_dynamics:
 		# ex_pulse_params=>rabi_freq pair
 		# ex_pulse_params should be a serialization of a pulse params o_0
 		warnings.filterwarnings('ignore')
+	
+	def get_measurement_name_comment(self):
+		if self.measurement_name_comment:
+			return ' '+self.measurement_name_comment
+		else:
+			return ''
 	
 	def load_calibration(self):
 		self.Rabi_rect_result = qjson.load(type='two-level-rabi-rect',name = self.build_calibration_filename())
@@ -74,7 +81,7 @@ class quantum_two_level_dynamics:
 				self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 				self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 
-			measurement_name = 'Rabi 2D rectangular channel {}'.format(self.ex_channel)
+			measurement_name = 'Rabi 2D rectangular channel {}'.format(self.ex_channel)+self.get_measurement_name_comment()
 			root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 			root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 			measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
@@ -110,7 +117,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 
-		measurement_name = 'Rabi rectangular channel {}'.format(self.ex_channel)
+		measurement_name = 'Rabi rectangular channel {}'.format(self.ex_channel)+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
@@ -158,7 +165,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 	
-		measurement_name = 'Ramsey (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)
+		measurement_name = 'Ramsey (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
@@ -209,7 +216,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 				
-		measurement_name = 'Decay, excitation channel {0}'.format(self.ex_channel)
+		measurement_name = 'Decay, excitation channel {0}'.format(self.ex_channel)+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi_pulse = 0.5/self.Rabi_rect_result['rabi_rect_freq']
@@ -260,7 +267,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 		
-		measurement_name = 'Spin echo (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)
+		measurement_name = 'Spin echo (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']

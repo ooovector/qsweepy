@@ -82,7 +82,7 @@ class Spectrum_M3i2132(Instrument):
 		self.add_parameter('timeout', flags=Instrument.FLAG_GETSET, type=int)
 		self.add_parameter('trigger_delay', flags=Instrument.FLAG_GETSET, type=int)
 		self.add_parameter('memsize', flags=Instrument.FLAG_GETSET, type=int)
-		self.add_parameter('post_trigger', flags=Instrument.FLAG_GETSET, type=int)
+		self.add_parameter('posttrigger', flags=Instrument.FLAG_GETSET, type=int)
 		self.add_parameter('input_offset_ch0', flags=Instrument.FLAG_GETSET, type=int)
 		self.add_parameter('input_offset_ch1', flags=Instrument.FLAG_GETSET, type=int)
 		self.add_parameter('input_amp_ch0', flags=Instrument.FLAG_GETSET, type=int)
@@ -514,7 +514,7 @@ class Spectrum_M3i2132(Instrument):
 		# self.select_channel0()
 		# self.set_single_mode()
 		# self.set_memsize(memsize)
-		# self.set_post_trigger(posttrigger)
+		# self.set_posttrigger(posttrigger)
 		# self.set_input_amp_ch0(amp)
 		# self.set_input_offs_ch0(offs)
 
@@ -698,7 +698,7 @@ class Spectrum_M3i2132(Instrument):
 		self.get_memsize()
 		self.get_nop()
 		self.get_loops()
-		self.get_post_trigger()
+		self.get_posttrigger()
 		self.get_clock()
 		self.get_reference_clock()
 		self.get_trigger_delay()
@@ -1680,7 +1680,7 @@ class Spectrum_M3i2132(Instrument):
 		logging.debug(__name__ + ' : Get loop count')
 		return self._get_param(_spcm_regs.SPC_LOOPS)
 
-	def do_set_post_trigger(self, posttrigger):
+	def do_set_posttrigger(self, posttrigger):
 		'''
 		Sets the number of points that are read out
 		after the trigger event
@@ -1694,7 +1694,7 @@ class Spectrum_M3i2132(Instrument):
 		logging.debug(__name__ + ' : Set post trigger to %s' % posttrigger)
 		self._set_param( _spcm_regs.SPC_POSTTRIGGER, posttrigger)
 
-	def do_get_post_trigger(self):
+	def do_get_posttrigger(self):
 		'''
 		Gets the number of points that are read out
 		after the trigger event

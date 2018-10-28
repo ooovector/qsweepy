@@ -63,6 +63,13 @@ class pulses:
 		if channel:
 			pulses[channel] = pulse_type(channel, length, *params)
 		return pulses
+		
+	def pmulti(self, length, *params):
+		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
+		for pulse in params:
+			channel = pulse[0]
+			pulses[channel] = pulse[1](channel, length, pulse[2:])
+		return pulses
 	
 	def awg(self, channel, length, waveform):
 		return waveform

@@ -1,7 +1,6 @@
 from qsweepy.instrument import Instrument
 import sys
 sys.path.append('C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
-from qsweepy.instrument_drivers._Keysight_M3202A.simple_sync import *
 import keysightSD1
 class Keysight_M3202A_Base(Instrument):
 	def __init__(self, name, chassis, slot):
@@ -12,6 +11,7 @@ class Keysight_M3202A_Base(Instrument):
 		self.module_id = self.module.openWithSlotCompatibility("M3202A", chassis, slot, compatibility=keysightSD1.SD_Compatibility.LEGACY)
 		self.amplitudes = [0.2]*4
 		self.offsets = [0.0]*4
+		self.clock = None
 		self.add_parameter('amplitude_channel_{}', type=float,
 							flags=Instrument.FLAG_SOFTGET,
 							channels = (1, 4),
@@ -31,8 +31,13 @@ class Keysight_M3202A_Base(Instrument):
 			self.mask = self.mask & (0xFF ^ (1 << (channel)))
 			self.module.channelWaveShape(channel, keysightSD1.SD_Waveshapes.AOU_HIZ);
 	def set_trigger_mode(self, mode):
-		self.module.triggerIOconfig(mode & 0x1, mode & 0x2)
-		self.module.triggerIOwrite((mode & 0x1)!=0)
+		self.module.triggerIOconfig(mode & 0x1)
+		self.module.triggerIOwrite((mode & 0x1)==0, mode & 0x2)
+	def set_clock_output(self, output):
+		self.module.clockIOconfig(output)
+	def set_clock(self, clock):
+		self.module.clockSetFrequency(clock)
+		self.clock=clock
 	def run(self):
 		self.module.AWGstartMultiple(self.mask)
 	def stop(self):
@@ -40,6 +45,7 @@ class Keysight_M3202A_Base(Instrument):
 	def do_set_amplitude(self, amplitude, channel):
 		return self.set_amplitude(amplitude, channel)
 	def set_amplitude(self, amplitude, channel):
+		self.stop()
 		self.amplitudes[channel] = amplitude
 		self.module.channelAmplitude(channel, amplitude)
 	def do_get_amplitude(self, channel):
@@ -49,10 +55,14 @@ class Keysight_M3202A_Base(Instrument):
 	def do_set_offset(self, offset, channel):
 		return self.set_offset(offset, channel)
 	def set_offset(self, offset, channel):
+		self.stop()
 		self.offsets[channel] = offset
 		self.module.channelOffset(channel, offset)
 	def do_get_offset(self, channel):
 		return self.get_offset(channel)
 	def get_offset(self, channel):
 		return self.amplitudes[channel]
+	def get_clock(self):
+		return self.clock
 
+from qsweepy.instrument_drivers._Keysight_M3202A.simple_sync import *

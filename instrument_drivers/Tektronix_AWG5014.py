@@ -63,6 +63,7 @@ class Tektronix_AWG5014(Instrument):
 
 		self._address = address
 		self._visainstrument = visa.ResourceManager().open_resource(self._address)
+		self._visainstrument.timeout=5000
 		self._values = {}
 		self._values['files'] = {}
 		self._clock = clock

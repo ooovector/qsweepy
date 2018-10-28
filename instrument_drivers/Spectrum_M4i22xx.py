@@ -19,8 +19,12 @@ class Spectrum_M4i22xx(Instrument):
 		logging.info(__name__ + ' : Initializing instrument Spectrum')
 		Instrument.__init__(self, name, tags=['physical'])
 		self._card_is_open = False
+		self.software_nums_multi = 1
+		self.software_averages = 1
 		self._load_dll()
 		self._open()
+		self.nums = self.get_nums()
+		self.set_timeout(10000)
 		
 	def _load_dll(self):
 		oPlatform = platform.architecture()
@@ -143,6 +147,10 @@ class Spectrum_M4i22xx(Instrument):
 		self._spcm_win32.InValidateBuf.argtype = [drv_handle, uint32]
 		self._spcm_win32.InValidateBuf.restype = uint32
 		
+		if (bIs64Bit):
+			self._spcm_win32.GetContBuf = getattr( self._spcm_win32, "spcm_dwGetContBuf_i64")
+			self._spcm_win32.GetContBuf.argtype = [drv_handle, uint32, POINTER(c_void_p), POINTER(c_uint64)]
+			self._spcm_win32.GetContBuf.restype = uint32
 ##########################Basic PC-device communication options########################################
 	def _open(self):
 		logging.debug(__name__ + ' : Try to open card')
@@ -209,6 +217,7 @@ class Spectrum_M4i22xx(Instrument):
 	def set_clock(self, rate):
 		logging.debug(__name__+ ' : set clock value')
 		self._set_param(SPC_SAMPLERATE, int(rate))
+		
 	
 	def get_clock(self):
 		logging.debug(__name__+ ' : get clock value')
@@ -287,17 +296,43 @@ class Spectrum_M4i22xx(Instrument):
 	
 	def set_trigger_delay(self, delay):
 		logging.debug(__name__+ ' :set trigger dellay')
-		time = delay/self._get_param(SPC_SAMPLERATE)
-		self._set_param(SPC_TRIG_DELAY, int(time))
+		#time = delay/self._get_param(SPC_SAMPLERATE)
+		#print ('Trigger delay:', delay)
+		self._set_param(SPC_TRIG_DELAY, int(delay/32)*32)
 		
 	def set_posttrigger(self, posttrigger):
 		logging.debug(__name__+ ' :posttrigger value')
 		self._set_param(SPC_POSTTRIGGER, posttrigger)
+	def set_post_trigger(self, posttrigger):
+		return self.set_posttrigger(posttrigger)
+		
+	def trigger_mode_pos(self):
+		logging.debug(__name__ + ' : Set trigger mode pos')
+		self._set_param(SPC_TRIG_EXT0_MODE, SPC_TM_POS)
+
+	def set_trigger_ext0(self):
+		self._set_param(SPC_TRIG_ANDMASK, SPC_TMASK_EXT0)
+		self._set_param(SPC_TRIG_ORMASK, SPC_TMASK_EXT0)
+		
+	### trigger levels
+	def set_trigger_ext0_level0(self, value):
+		self._set_param(SPC_TRIG_EXT0_LEVEL0, value)
+
+	def set_trigger_ext0_level1(self, value):
+		self._set_param(SPC_TRIG_EXT0_LEVEL1, value)
+		
+	def set_trigger_ext0_pulsewidth(self, width):
+		logging.debug(__name__ + ' : Set trigger pulsewidth to %i' % width)
+		self._set_param(SPC_TRIG_EXT0_PULSEWIDTH, width)
+		
+	def trigger_termination_50Ohm(self):
+		logging.debug(__name__ + ' : Set trigger termination to 50 Ohm')
+		self._set_param(SPC_TRIG_TERM, 1)
 
 ##########################Acquisistion options and state control###########################
 	def set_multi_record_mode(self):
 		logging.debug(__name__+ ' :set multi record mode')
-		self._set_param(SPC_CARDMODE, SPC_REC_STD_MULTI)
+		self._set_param(SPC_CARDMODE, SPC_REC_FIFO_MULTI)
 		
 	def set_timeout(self, time):
 		logging.debug(__name__+ ' :set timeout value')
@@ -313,15 +348,17 @@ class Spectrum_M4i22xx(Instrument):
 		
 	def start(self):
 		logging.debug(__name__+ ' :Start the board and waiting trigger')
-		self._set_param(SPC_M2CMD, M2CMD_CARD_START | M2CMD_CARD_ENABLETRIGGER | M2CMD_CARD_WAITREADY)
+		self._buffer_setup()
+		self._set_param(SPC_M2CMD, M2CMD_CARD_START | M2CMD_CARD_ENABLETRIGGER | M2CMD_CARD_WAITREADY | M2CMD_DATA_WAITDMA)
 		
 	def stop(self):
 		logging.debug(__name__+ ' :Stop runing the board')
-		self._set_P=param(SPC_M2CMD, M2CMD_CARD_STOP)
+		self._set_param(SPC_M2CMD, M2CMD_CARD_STOP)
 		
 	def set_memsize(self, lMemsize):
 		logging.debug(__name__+ ' :Set memsize')
 		self._set_param(SPC_MEMSIZE, lMemsize)
+		#self._buffer_setup()
 	
 	def get_memsize(self):
 		logging.debug(__name__+ ' :Get memsize')
@@ -329,6 +366,7 @@ class Spectrum_M4i22xx(Instrument):
 	
 	def set_nop(self, nop):
 		logging.debug(__name__+ ' :Set nop')
+		self.set_memsize(int(nop*self.nums))
 		self._set_param(SPC_SEGMENTSIZE, nop)
 		
 	def get_nop(self):
@@ -343,29 +381,68 @@ class Spectrum_M4i22xx(Instrument):
 	def get_nums(self):
 		logging.debug(__name__+ ' :Get nums')
 		return (self.get_memsize()/self.get_nop())
-				
+	
 ##########################Buffer and data readout options######################################
 	def _buffer_setup(self):
-		logging.debug(__name__+ ' :setup buffer')
-		lMemsize = self._get_param(SPC_MEMSIZE)
+		'''
+		create a new data buffer
+		(assuming the old one is now owned by another part of the program)
+		'''
+		logging.debug(__name__ + ' : _buffer_setup')
+		lMemsize = self.get_memsize()
 		numchannels = self._get_param(SPC_CHCOUNT)
-		lBufsize = lMemsize*numchannels
+		lBufsize = lMemsize * numchannels
+
+		# setup buffer
+		#if hasattr(self, '_pbuffer') and (len(self._pbuffer.contents) == lBufsize):
+		#	pass
+			# tell the card that the buffer is now available again
+			#err = self._spcm_win32.SetParam32(self._spcm_win32.handel, _spcm_regs.SPC_DATA_AVAIL_CARD_LEN,
+			#	lBufsize)
+			#if (err!=0):
+			#	self._get_error()
+			#	raise ValueError('Error communicating with device')
+		#else:
+		#a = (c_int8 * lBufsize)()
+		#p_data = pointer(a)
+		p_data = POINTER (c_int8)()
+		lBufsize_uint64 = c_int64(lBufsize)
+
+		#int32 _stdcall spcm_dwGetContBuf_i64 ( // Return value is an error code
+	#		drv_handle  hDevice,                // handle to an already opened device
+	#		uint32      dwBufType,              // type of the buffer to read as listed above under SPCM_BUF_XXXX
+	#		void**      ppvDataBuffer,          // address of available data buffer
+	#		uint64*     pqwContBufLen);         // length of available continuous buffer
 		
+		# tell card to use buffer
+		#print ('Attempting to allocate contiguous buffer')
+		err = self._spcm_win32.GetContBuf(self._spcm_win32.handel, SPCM_BUF_DATA, pointer(p_data), pointer(lBufsize_uint64))
+		#print ('Error  code: '+str(err))
+		#print ('Allocated size: '+str(lBufsize_uint64.value), ', need: '+str(lBufsize))
+		
+		#if lBufsize_uint64.value < lBufsize:
 		a = (c_int8 * lBufsize)()
 		p_data = pointer(a)
+		#else:
+		#	a = (c_int8 * lBufsize).from_address(addressof(p_data.contents))
+		#	p_data = pointer(a)
 		
-		err = self._spcm_win32.DefTransfer64(self._spcm_win32.handel, SPCM_BUF_DATA, SPCM_DIR_CARDTOPC, 0, p_data, c_int64(0), c_int64(lBufsize))
+		err = self._spcm_win32.DefTransfer64(self._spcm_win32.handel, SPCM_BUF_DATA, 1,
+			0, p_data, c_int64(0), c_int64(lBufsize))
 		if (err!=0):
 			logging.error(__name__ + ' : Error setting up buffer')
 			self._get_error()
 			raise ValueError('Error communicating with device')
-			
-		err = self._spcm_win32.SetParam32(self._spcm_win32.handel, SPC_M2CMD, M2CMD_DATA_STARTDMA)
+
+		# start DMA transfers
+		err = self._spcm_win32.SetParam32(self._spcm_win32.handel, SPC_M2CMD,
+			M2CMD_DATA_STARTDMA)
 		if (err!=0):
 			logging.error(__name__ + ' : Error starting DMA transfer, error nr: %i' % err)
 			self._get_error()
 			raise ValueError('Error communicating with device')
-			
+
+		# save new buffer possibly freeing old one, will break if DMA is in progress
 		self._pbuffer = p_data
 	
 	def readout_raw_buffer(self, nr_of_channels = 1):
@@ -406,6 +483,23 @@ class Spectrum_M4i22xx(Instrument):
 		data1 = 2.0 * amp1 * (data1 / 255.0) + offset1
 		
 		return (data0, data1)
+		
+	def get_data_bin(self):
+	
+		lMemsize = self.get_memsize()
+		lSegsize = self.get_nop()
+
+		lnumber_of_segments = int(lMemsize / lSegsize)
+
+		data = self.readout_raw_buffer(nr_of_channels=2)
+		if data == 'timeout':
+			return data
+		#print (len(data))
+		data = numpy.frombuffer(data, numpy.int8, 2*lMemsize)
+		#print (data.shape)
+		data = numpy.reshape(data, (lnumber_of_segments, lSegsize, 2))#(lMemsize, 2))
+		data = numpy.rollaxis(data, 2) # channel, segment, sample
+		return data
 
 		
 	def invalidate_buffer(self, buffertype = SPCM_BUF_DATA):
@@ -421,20 +515,49 @@ class Spectrum_M4i22xx(Instrument):
 		# invalidate buffer
 		err = self._spcm_win32.InValidateBuf(self._spcm_win32.handel, buffertype)
 		if (err==0):
-			return 0
-		else:
-			logging.error(__name__+ ' : Error %s while setting reg %s to %s' % (err, regnum, regval))
-			self._get_error()
-			raise ValueError('Error communicating with device')
+			return
+		return {'Voltage':(data[0,:,:]+1j*data[1,:,:])}
+		
+##########################################################################################################
+	def set_software_nums_multi(self, software_nums_multi):
+		self.software_nums_multi = software_nums_multi
+		
+	def get_software_nums_multi(self):
+		return self.software_nums_multi
+		
+	def set_software_averages(self, software_averages):
+		self.software_averages = software_averages
+		
+	def get_software_averages(self):
+		return self.software_averages
+		
+	def get_points(self):
+		return {'Voltage':[('Sample',numpy.arange(self.get_nums()*self.software_nums_multi), ''), 
+							('Time',numpy.arange(self.get_nop())/self.get_clock(), 's')]}
+		
+	def get_dtype(self):
+		return {'Voltage':complex}
+	
+	def get_opts(self):
+		return {'Voltage':{'log': None}}
 
-		del self._pbuffer
+	def measure(self):
+		lMemsize = int(self.get_memsize())
+		lSegsize = int(self.get_nop())
+		lnumber_of_segments = int(lMemsize / lSegsize)
 		
-	def buffer_setup(self):
-		return self._buffer_setup()
-		
-	
-	
-		
+		data = numpy.zeros((2, lnumber_of_segments*self.software_nums_multi, lSegsize), dtype=numpy.float)
+		#print ('Start readout')
+		for i in range(self.software_averages):
+			for j in range(self.software_nums_multi):
+				#print ('Start hardware readout')
+				self.start()
+				#print ('Get data bin')
+				data[:,j*lnumber_of_segments:(j+1)*lnumber_of_segments,:] = self.get_data_bin()/float(self.software_averages)
+				self.stop()
+				#print ('Stop hardware readout')
+		return {'Voltage':(data[0,:,:]+1j*data[1,:,:])}
+		#print ('End readout')
 	
 	
 	
