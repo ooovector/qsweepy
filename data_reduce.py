@@ -202,3 +202,13 @@ def feature_reducer_binary(source, src_meas, axis_mean, bg, feature):
 			  'get_dtype': (lambda : int),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
+	
+def hist_filter(source, *src_meas_values):
+	def filter_func(x):
+		print (x)
+		return np.mean(np.prod([x[m]==v for m, v in src_meas_values], axis=0))
+	filter = {'filter': filter_func,
+			  'get_points': [],
+			  'get_dtype': lambda : float,
+			  'get_opts': lambda : source.get_opts()[src_meas[0]]}
+	return filter

@@ -20,8 +20,26 @@ def readout_fidelity(y_true, y_pred):
 	return np.sum(y_pred == y_true)/len(y_true)
 
 readout_fidelity_scorer = make_scorer(readout_fidelity)
+
+def confusion_matrix(y_true, y_pred):
+	'''
+	Assignment probability of single-shot readout.
 	
-def confusion_matrix(y_true, y_pred_proba):
+	y_pred_proba(numpy.ndarray, shape (M, N)), M -- number of samples, N -- number of classes
+	returns: (N, N) numpy.ndarray assignment
+	'''
+	#print(y_pred_proba.shape)
+	#print (y_true.tolist())
+	#print (y_pred.tolist())
+	#print (set(t_true.tolist()))
+	confusion_matrix = np.zeros((len(set(y_true.tolist())), len(set(y_pred.tolist()))))
+	for true_class_id, true_class in enumerate(sorted(list(set(y_true)))):
+		for pred_class_id, pred_class in enumerate(sorted(list(set(y_pred)))):
+			confusion_matrix[true_class_id,pred_class_id] = np.mean(np.logical_and(y_true==true_class,y_pred==pred_class), axis=0)/np.mean(y_true==true_class)
+	#print (confusion_matrix)
+	return confusion_matrix
+
+def confusion_matrix_with_proba(y_true, y_pred_proba):
 	'''
 	Assignment probability of single-shot readout.
 	
@@ -36,7 +54,7 @@ def confusion_matrix(y_true, y_pred_proba):
 	return confusion_matrix
 	
 def probability_aware_readout_fidelity(y_true, y_pred_proba):
-	return np.trace(confusion_matrix(y_true, y_pred_proba))/y_pred_proba.shape[1]
+	return np.trace(confusion_matrix_with_proba(y_true, y_pred_proba))/y_pred_proba.shape[1]
 
 probability_aware_readout_fidelity_scorer = make_scorer(probability_aware_readout_fidelity, needs_proba=True)
 	
@@ -115,14 +133,21 @@ class linear_classifier(BaseEstimator, ClassifierMixin):
 		#print (probabilities[].shape) 
 		nonzero_points = np.asarray([points[hist_all.ravel()!=0, p_id] for p_id in range(points.shape[1])])
 		zero_points = np.asarray([points[hist_all.ravel()==0, p_id] for p_id in range(points.shape[1])])
-		nonzero_0class_prob = probabilities[0,...][hist_all!=0]
+		#nonzero_0class_prob = probabilities[0,...][hist_all!=0]
 		#print(probabilities[0, ...].shape, nonzero_points.shape, zero_points.shape, nonzero_0class_prob.shape)
 		unnormalized_nearest = [griddata(nonzero_points.T, 
 										 probabilities[y_val_id,...][hist_all!=0], 
 										 zero_points.T, 
 										 method='nearest') for y_val_id, y_val in enumerate(self.class_list)]
+		#print ('predictions:', predictions)
+		#print ('points:', points, 'probabilities:', 	probabilities)
+		#print ('probabilities[0]:', probabilities[0,...] )
+		#print ('hist_all:', hist_all, 'bins:', bins)
+		#print ('unnormalized_nearest:', unnormalized_nearest)
+		#print(nonzero_0class_prob)
 		for y_val_id, y_val in enumerate(self.class_list):
-			probabilities[y_val_id,...][hist_all==0] = unnormalized_nearest[y_val_id] / np.sum(unnormalized_nearest, axis=0)
+		#	if len(unnormalized_nearest[y_val_id]):
+				probabilities[y_val_id,...][hist_all==0] = (unnormalized_nearest[y_val_id] / np.sum(unnormalized_nearest, axis=0)).ravel()
 	
 		self.probabilities = probabilities
 		self.proba_points = tuple(proba_points)

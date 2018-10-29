@@ -77,6 +77,7 @@ class single_shot_readout:
 		scores = readout_classifier.evaluate_classifier(self.readout_classifier, X, y)
 		self.readout_classifier.fit(X, y)
 		self.scores = scores
+		self.confusion_matrix = readout_classifier.confusion_matrix(y, self.readout_classifier.predict(X))
 		
 	def get_opts(self):
 		scores = readout_classifier.readout_classifier_scores
