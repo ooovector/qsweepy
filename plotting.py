@@ -269,7 +269,7 @@ def plot_measurement_sa(measurement, axes):
 			
 			# scatter plot or lines? depends on the opts.
 			if 'scatter' in opts:
-				plot_kwargs = {'marker':'o', 'markerfacecolor':'None', 'linestyle':'none'}
+				plot_kwargs = {'marker':'o', 'markerfacecolor':'None'}
 			else:
 				plot_kwargs = {}
 			

@@ -47,19 +47,19 @@ def ex_rect(amplitude, length, awg_channels):
 			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 
 def pause(length, awg_channels):
-	iq_ex = awg_channels['iq_ex']
-	iq_ro = awg_channels['iq_ro']
+	iq_ex = awg_channels['iq_ex1_q1_F01_min']
+	iq_ro = awg_channels['iq_ro_q1']
 	ro_trg = awg_channels['ro_trg']
-	osc_trg = awg_channels['osc_trg']
+	#osc_trg = awg_channels['osc_trg']
 	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=np.complex),
 			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=np.complex),
-			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
-			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
+			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int)}#,
+			#'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 
 def set_sequence(pulse_seq, awg_channels):
 	initial_delay = 1e-6
 	final_delay = 1e-6
-	channels = {'ex':awg_channels['iq_ex'], 'ro':awg_channels['iq_ro'], 'ro_trg':awg_channels['ro_trg'], 'osc_trg':awg_channels['osc_trg']}
+	channels = {'ex':awg_channels['iq_ex1_q1_F01_min'], 'ro':awg_channels['iq_ro_q1'], 'ro_trg':awg_channels['ro_trg']}#, 'osc_trg':awg_channels['osc_trg']}
 	pulse_seq_padded = [pause(initial_delay, awg_channels)]+[p for p in pulse_seq]+[pause(final_delay, awg_channels)]
 	
 	pulse_shape = {k:[] for k in channels.keys()}

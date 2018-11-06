@@ -11,9 +11,14 @@ class quantum_two_level_dynamics:
 		self.pulse_sequencer = pulse_sequencer
 		self.readout_device = readout_device
 		self.ro_channel = ro_channel
-		self.ex_channel = ex_channel
+		if type(ex_channel) is str:
+			self.ex_channels = (ex_channel, )
+			self.ex_amplitudes = (ex_amplitude, )
+		else:
+			self.ex_channels = ex_channel
+			self.ex_amplitudes = ex_amplitude
 		self.ro_sequence = ro_sequence
-		self.rabi_rect_ex_amplitude = None
+		#self.rabi_rect_ex_amplitude = None
 		self.qubit_id = qubit_id
 		self.shuffle = shuffle
 		self.plot_separate_thread = plot_separate_thread
@@ -32,8 +37,7 @@ class quantum_two_level_dynamics:
 			self.rabi_rect = qjson.load('two-level-rabi-rect', self.build_calibration_filename())
 		except Exception as e:
 			print('Failed loading rabi frequency calibration: '+str(e))
-			
-		self.ex_amplitude = ex_amplitude
+		
 		# Rabi freq depends on excitation pulse parameters
 		# If we want to save to config, we should save in 
 		# ex_pulse_params=>rabi_freq pair
@@ -53,13 +57,14 @@ class quantum_two_level_dynamics:
 		self.pulse_sequencer.set_seq(self.ro_sequence)
 	
 	def build_calibration_filename(self):
-		return 'carrier-{0:7.5g}-amplitude-{1:7.5g}'.format(self.pulse_sequencer.channels[self.ex_channel].get_frequency(), self.ex_amplitude)
+		return '-'.join(['c-{0}-f-{1:07.5g}-amp-{2:07.5g}'.format(c, self.pulse_sequencer.channels[c].get_frequency(), a) for c, a in zip(self.ex_channels, self.ex_amplitudes)])
 	
 	def Rabi_2d_rect(self,lengths,frequencies):
-		ignore_calibration_drift_previous = self.pulse_sequencer.channels[self.ex_channel].get_ignore_calibration_drift()
-		frequency_previous = self.pulse_sequencer.channels[self.ex_channel].get_frequency()
+		ignore_calibration_drift_previous = [self.pulse_sequencer.channels[c].get_ignore_calibration_drift() for c in self.ex_channels]
+		frequency_previous = [self.pulse_sequencer.channels[c].get_frequency() for x in self.ex_channels]
 		try:
-			self.pulse_sequencer.channels[self.ex_channel].set_ignore_calibration_drift(True)
+			for c in self.ex_channels:
+				self.pulse_sequencer.channels[c].set_ignore_calibration_drift(True)
 			readout_begin = np.max(lengths)
 			pg = self.pulse_sequencer
 			sequence = []
@@ -67,12 +72,14 @@ class quantum_two_level_dynamics:
 				pass
 			def set_ex_length(length): 
 				nonlocal sequence
+				channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
 				sequence = [pg.p(None, readout_begin-length), 
-							pg.p(self.ex_channel, length, pg.rect, self.ex_amplitude)]+self.ro_sequence
+							pg.pmulti(length, *tuple(channel_pulses))]+self.ro_sequence
 				if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 					set_seq()
 			def set_frequency(frequency):
-				self.pulse_sequencer.channels[self.ex_channel].set_frequency(frequency)
+				for x in self.ex_channels:
+					self.pulse_sequencer.channels[c].set_frequency(frequency)
 				if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 					set_seq()
 			def set_seq():
@@ -81,7 +88,7 @@ class quantum_two_level_dynamics:
 				self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 				self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 
-			measurement_name = 'Rabi 2D rectangular channel {}'.format(self.ex_channel)+self.get_measurement_name_comment()
+			measurement_name = 'Rabi 2D rectangular channel {}'.format(','.join(self.ex_channels))+self.get_measurement_name_comment()
 			root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 			root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 			measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
@@ -91,15 +98,15 @@ class quantum_two_level_dynamics:
 														   plot_separate_thread= self.plot_separate_thread,
 														   plot=self.plot)
 			
-			annotation = 'Excitation carrier frequency: {0:7.5g}, Readout carrier frequency: {1:7.5g}'.format(
-																						pg.channels[self.ex_channel].get_frequency(),
-																						pg.channels[self.ro_channel].get_frequency())
+			annotation = 'ex carrier f: {0}, ro carrier f: {1:7.5g}'.format(','.join(['{:7.5g}'.format(pg.channels[c].get_frequency()) for c in self.ex_channels]),
+																				 pg.channels[self.ro_channel].get_frequency())
 			save_pkl.save_pkl({'type':'Rabi 2D','name': 'qubit{}'.format(self.qubit_id)}, measurement, annotation=annotation, filename=measurement_name, location=root_dir)
 
 			del measurement, set_ex_length, set_seq
 		finally:
-			self.pulse_sequencer.channels[self.ex_channel].set_ignore_calibration_drift(ignore_calibration_drift_previous)
-			self.pulse_sequencer.channels[self.ex_channel].set_frequency(frequency_previous)
+			for c_id, c in enumerate(self.ex_channels):
+				self.pulse_sequencer.channels[c].set_ignore_calibration_drift(ignore_calibration_drift_previous[c_id])
+				self.pulse_sequencer.channels[c].set_frequency(frequency_previous[c_id])
 	
 	def Rabi_rect(self,lengths):
 		readout_begin = np.max(lengths)
@@ -107,8 +114,9 @@ class quantum_two_level_dynamics:
 		sequence = []
 		def set_ex_length(length): 
 			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
 			sequence = [pg.p(None, readout_begin-length), 
-						pg.p(self.ex_channel, length, pg.rect, self.ex_amplitude)]+self.ro_sequence
+						pg.pmulti(length, *tuple(channel_pulses))]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -117,7 +125,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 
-		measurement_name = 'Rabi rectangular channel {}'.format(self.ex_channel)+self.get_measurement_name_comment()
+		measurement_name = 'Rabi rectangular channels {}'.format(','.join(self.ex_channels))+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		measurement = sweep.sweep(self.readout_device, (lengths, set_ex_length, 'Rabi pulse length', 's'), 
@@ -128,35 +136,93 @@ class quantum_two_level_dynamics:
 								  plot=self.plot)
 		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
 		self.Rabi_rect_result = {}
+		self.Rabi_rect_result['rabi_rect_initial_points']=fitted_parameters['initial_points']
+		self.Rabi_rect_result['rabi_rect_phase']=fitted_parameters['phase']
+		self.Rabi_rect_result['rabi_rect_amplitudes']=fitted_parameters['amplitudes']
 		self.Rabi_rect_result['rabi_rect_freq']=fitted_parameters['freq']
 		self.Rabi_rect_result['rabi_rect_decay']=fitted_parameters['decay']
-		self.Rabi_rect_result['rabi_carrier']=pg.channels[self.ex_channel].get_frequency()
+		self.Rabi_rect_result['rabi_carriers']=[pg.channels[c].get_frequency() for c in self.ex_channels]
 		self.Rabi_rect_result['rabi_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-		self.Rabi_rect_result['rabi_ex_amplitude']=self.ex_amplitude
+		self.Rabi_rect_result['rabi_ex_amplitudes']=self.ex_amplitudes
 		self.Rabi_rect_result['qubit_id']=self.qubit_id
 		
-		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s, \n Excitation carrier frequency: {3:7.5g}, Readout carrier frequency: {4:7.5g}'.format(fitted_parameters['phase'], 
+		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s, \n ex carrier f: {3}, ro carrier f: {4:7.5g}'.format(fitted_parameters['phase'], 
 																					 fitted_parameters['freq'], 
 																					 fitted_parameters['decay'],
-																					 pg.channels[self.ex_channel].get_frequency(),
+																					 ['{:7.5g}'.format(pg.channels[c].get_frequency()) for c in self.ex_channels],
 																					 pg.channels[self.ro_channel].get_frequency())
 		save_pkl.save_pkl({'type':'Rabi','name': 'qubit{}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name, location=root_dir)
 		qjson.dump(type='two-level-rabi-rect',name = self.build_calibration_filename(), params=self.Rabi_rect_result)	
-		self.rabi_rect_ex_amplitude = self.ex_amplitude
+		#self.rabi_rect_ex_amplitude = self.ex_amplitude
 		del measurement, measurement_fitted, set_ex_length, set_seq
 		return self.Rabi_rect_result
 
-	def Ramsey(self,delays,target_freq_offset, *params):
-		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
-			self.load_calibration()
+	def Rabi_rect_amplitude(self,amplitudes,length):
+		readout_begin = length
 		pg = self.pulse_sequencer
 		sequence = []
+		def set_ex_amplitude(amplitude): 
+			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a*amplitude) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
+			sequence = [pg.p(None, readout_begin-length), 
+						pg.pmulti(length, *tuple(channel_pulses))]+self.ro_sequence
+			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
+				set_seq()
+		def set_seq():
+			pg.set_seq(sequence)
+		if hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
+			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
+			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
+
+		measurement_name = 'Rabi rectangular amplitude channels {}'.format(','.join(self.ex_channels))+self.get_measurement_name_comment()
+		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
+		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
+		measurement = sweep.sweep(self.readout_device, (amplitudes, set_ex_amplitude, 'Rabi amplitude'), 
+								  filename=measurement_name, 
+								  shuffle=self.shuffle, 
+								  root_dir=root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
+		measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
+		self.Rabi_rect_amplitude_result = {}
+		self.Rabi_rect_amplitude_result['rabi_rect_freq']=fitted_parameters['freq']
+		self.Rabi_rect_amplitude_result['rabi_rect_decay']=fitted_parameters['decay']
+		self.Rabi_rect_amplitude_result['rabi_carriers']=[pg.channels[c].get_frequency() for c in self.ex_channels]
+		self.Rabi_rect_amplitude_result['rabi_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+		self.Rabi_rect_amplitude_result['rabi_ex_amplitudes']=self.ex_amplitudes
+		self.Rabi_rect_amplitude_result['qubit_id']=self.qubit_id
+		
+		annotation = 'Phase: {0:4.4g} rad, Per-amplitude-rabi-freq: {1:4.4g}, Decay: {2:4.4g}, \n ex carrier f: {3}, ro carrier f: {4:7.5g}'.format(fitted_parameters['phase'], 
+																					 fitted_parameters['freq']/(length), 
+																					 fitted_parameters['decay'],
+																					 ['{:7.5g}'.format(pg.channels[c].get_frequency()) for c in self.ex_channels],
+																					 pg.channels[self.ro_channel].get_frequency())
+		save_pkl.save_pkl({'type':'Rabi amplitude','name': 'qubit{}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name, location=root_dir)
+		qjson.dump(type='two-level-rabi-rect-amplitude',name = self.build_calibration_filename(), params=self.Rabi_rect_amplitude_result)	
+		#self.rabi_rect_ex_amplitude = self.ex_amplitude
+		#del measurement, measurement_fitted, set_ex_length, set_seq
+		return measurement#self.Rabi_rect_amplitude_result
+		
+	def Ramsey(self,delays,target_freq_offset, *params, cross_ex_device=None):
+		#if self.rabi_rect_ex_amplitude != self.ex_amplitude:
+		self.load_calibration()
+		pg = self.pulse_sequencer
+		sequence = []
+		if not cross_ex_device:
+			cross_ex_device = self
+			cross_ex_device_name_addition = ''
+		else: 
+			cross_ex_device_annotation = True
+			cross_ex_device.load_calibration()
+			cross_ex_device_name_addition = ' cross-ex ch '+(','.join(cross_ex_device.ex_channels))
 		def set_delay(delay): 
 			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
+			cross_channel_pulses = [(c, pg.rect, a*np.exp(1j*delay*target_freq_offset*2*np.pi)) for c, a in zip(cross_ex_device.ex_channels, cross_ex_device.ex_amplitudes)]
 			sequence = [pg.p(None, readout_begin - pi2_pulse),
-						pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude), 
+						pg.pmulti(pi2_pulse,*tuple(channel_pulses)), 
 						pg.p(None, delay), 
-						pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi))]+self.ro_sequence
+						pg.pmulti(0.25/cross_ex_device.Rabi_rect_result['rabi_rect_freq'], *tuple(cross_channel_pulses))]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -165,7 +231,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 	
-		measurement_name = 'Ramsey (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)+self.get_measurement_name_comment()
+		measurement_name = 'Ramsey (target offset {0:4.2f} MHz), ex ch {1}'.format(target_freq_offset/1e6, ','.join(self.ex_channels))+cross_ex_device_name_addition+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
@@ -181,11 +247,13 @@ class quantum_two_level_dynamics:
 		try:
 			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
 			self.Ramsey_result = {}
-			self.Ramsey_result['Ramsey_freq']=fitted_parameters['freq']
-			self.Ramsey_result['Ramsey_decay']=fitted_parameters['decay']
-			self.Ramsey_result['Ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
-			self.Ramsey_result['Ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-			self.Ramsey_result['Ramsey_ex_amplitude'] = self.ex_amplitude
+			self.Ramsey_result['ramsey_freq']=fitted_parameters['freq']
+			self.Ramsey_result['ramsey_decay']=fitted_parameters['decay']
+			self.Ramsey_result['ramsey_phase']=fitted_parameters['phase']
+			self.Ramsey_result['ramsey_amplitudes']=fitted_parameters['amplitudes']
+			self.Ramsey_result['ramsey_carrier']=[pg.channels[c].get_frequency() for c in self.ex_channels]
+			self.Ramsey_result['ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+			self.Ramsey_result['ramsey_ex_amplitude'] = self.ex_amplitudes
 			self.Ramsey_result['qubit_id'] = self.qubit_id
 			annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
 																				 fitted_parameters['freq'], 
@@ -195,18 +263,20 @@ class quantum_two_level_dynamics:
 			qjson.dump(type='two-level-ramsey',name=self.build_calibration_filename(), params=self.Ramsey_result)
 			del measurement, measurement_fitted, set_delay, set_seq
 			return self.Ramsey_result
-		except:
+		except Exception as e:
+			print (e)
 			return measurement
 		
 	def decay(self, delays, *params):
 		pg = self.pulse_sequencer
-		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
-			self.load_calibration()
+		#if self.rabi_rect_ex_amplitude != self.ex_amplitude:
+		self.load_calibration()
 		sequence = []
 		def set_delay(delay): 
 			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
 			sequence = [pg.p(None, readout_begin - pi_pulse-delay),
-						pg.p(self.ex_channel, pi_pulse, pg.rect, self.ex_amplitude), 
+						pg.pmulti(pi_pulse, *tuple(channel_pulses)), 
 						pg.p(None, delay)]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
@@ -216,7 +286,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 				
-		measurement_name = 'Decay, excitation channel {0}'.format(self.ex_channel)+self.get_measurement_name_comment()
+		measurement_name = 'Decay, ex channels {0}'.format(','.join(self.ex_channels))+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi_pulse = 0.5/self.Rabi_rect_result['rabi_rect_freq']
@@ -233,9 +303,9 @@ class quantum_two_level_dynamics:
 			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_fit)
 			self.decay_result = {}
 			self.decay_result['decay'] = fitted_parameters['decay']
-			self.decay_result['decay_carrier']=pg.channels[self.ex_channel].get_frequency()
+			self.decay_result['decay_carrier']=[pg.channels[c].get_frequency() for c in self.ex_channels]
 			self.decay_result['decay_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-			self.decay_result['decay_ex_amplitude'] = self.ex_amplitude
+			self.decay_result['decay_ex_amplitude'] = self.ex_amplitudes
 			self.decay_result['qubit_id'] = self.qubit_id
 			annotation = 'Decay: {0:4.6g} s'.format(fitted_parameters['decay'])
 			save_pkl.save_pkl({'type':'Decay', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation, filename=measurement_name,location=root_dir)
@@ -246,19 +316,120 @@ class quantum_two_level_dynamics:
 		except:
 			return measurement
 	
+	def Ramsey_probe(self,pre_pulse_seq,interleaved_pulse_seq,phase_offsets=[0],*params):
+		'''
+		Suppose we want to do Z-pulse calibration (this is what this function was designed for).
+		Z-pulse calibration is done as follows:
+	
+		(optional pi-pulse) (pi/2 along the qubit under investigation) (z-pulse) (pi/2 along along the qubit undeer investigation, perhaps phase offset)
+		there three several types of sweep parameters: 
+			1) z-pulse parameters (amplitude, length, etc.)
+			2) pi/2 pulse phase offset
+			3) external parameters (something completely unrelated to the pulse sequence)
+
+		(1) is set by *params varargs, but the setter in the varags is not directly responsible for the setting,
+			rather it is interleaved_pulse_seq, which, as it's arguments, recieves the n values of *params
+		(2) is controlled via phase_offset argument
+		(3) is set by *params varargs -- with the setter invoked the usual way.
+		'''
+		
+		self.load_calibration()
+		pg = self.pulse_sequencer
+		sequence = []
+		
+		params = [(phase_offsets, lambda: None, 'Phase offset', '')]+[i for i in params] # prepend phase_offset to sweep params with zero setter
+		#param_values[0] is the phase
+		
+		current_param_values = [None]*len(params) # pulse parameters for prepare and interleaved pulse
+		# traverse scan parameters and decorate the param setter with update of current_param_values.
+		params_with_decorated_setters = []
+		for param_id, param in enumerate(params):
+			param_with_decorated_setter = [i for i in param] # copy the param
+			def decorated_param_setter(param_val, param_id=param_id):
+				#print (param_id, param)
+				param[1](param_val) # set param with setter passed to Ramsey_probe (propagate to sweep.sweep)
+				current_param_values[param_id] = param_val # save value (so that we can pass it to pre_pulse_seq and interleave_pulse_seq)
+				if not None in current_param_values:
+					set_pulse_sequence(*tuple(current_param_values))
+			param_with_decorated_setter[1] = decorated_param_setter
+			params_with_decorated_setters.append(tuple(param_with_decorated_setter))
+			
+		params_with_decorated_setters = tuple(params_with_decorated_setters)
+		
+		def set_pulse_sequence(*param_values): 
+			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
+			phase_offset = param_values[0]
+			channel_pulses_phase_offset = [(c, pg.rect, a*np.exp(1j*phase_offset)) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
+			# check if pre_pulse is callable
+			if callable(pre_pulse_seq):
+				pre_pulse_seq_inst = pre_pulse_seq(*tuple(param_values[1:])) # pass all current_param_values except for pi/2 phase offset
+			else:
+				pre_pulse_seq_inst = pre_pulse_seq
+				
+			if callable(interleaved_pulse_seq):
+				interleaved_pulse_seq_inst = interleaved_pulse_seq(*tuple(param_values[1:]))
+			else:
+				interleaved_pulse_seq_inst = interleaved_pulse_seq
+			
+			sequence = pre_pulse_seq_inst+\
+					[pg.pmulti(pi2_pulse, *tuple(channel_pulses))]+\
+					interleaved_pulse_seq_inst+\
+					[pg.pmulti(pi2_pulse, *tuple(channel_pulses_phase_offset))]+self.ro_sequence
+			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
+				set_seq()
+				
+		def set_seq():
+			#print(sequence)
+			pg.set_seq(sequence)
+		if hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
+			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
+			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
+		
+		measurement_name = 'Ramsey probe, probe channels {}'.format(','.join(self.ex_channels))+self.get_measurement_name_comment()
+		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
+		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
+		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
+		#readout_begin = np.max(delays)+pi2_pulse*2
+		#print (params_with_decorated_setters)
+		measurement = sweep.sweep(self.readout_device, *params_with_decorated_setters, filename=measurement_name, shuffle=self.shuffle, root_dir=root_dir,
+								  plot_separate_thread= self.plot_separate_thread,
+								  plot=self.plot)
+		try:
+			measurement_fitted, fitted_parameters = self.fitter(measurement, fitting.exp_sin_fit)
+			Ramsey_probe_result = {}
+			Ramsey_probe_result['ramsey_freq']=fitted_parameters['freq']
+			Ramsey_probe_result['ramsey_decay']=fitted_parameters['decay']
+			Ramsey_probe_result['ramsey_carrier']=[pg.channels[c].get_frequency() for c in self.ex_channels]
+			Ramsey_probe_result['ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
+			Ramsey_probe_result['ramsey_ex_amplitude'] = self.ex_amplitudes
+			Ramsey_probe_result['qubit_id'] = self.qubit_id
+			annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
+																					 fitted_parameters['freq'], 
+																					 fitted_parameters['decay'])
+			save_pkl.save_pkl({'type':'Ramsey probe', 'name': 'qubit {}'.format(self.qubit_id)}, measurement_fitted, annotation=annotation,filename=measurement_name,location=root_dir)
+
+			#qjson.dump(type='two-level-spin-echo',name=self.build_calibration_filename(), params=self.spin_echo_result)
+			#del measurement, measurement_fitted, set_delay, set_seq
+			return Ramsey_probe_result#self.spin_echo_result
+		except:
+			return measurement
+	
 	def spin_echo(self,delays,target_freq_offset,*params):
-		if self.rabi_rect_ex_amplitude != self.ex_amplitude:
-			self.load_calibration()
+		#if self.rabi_rect_ex_amplitude != self.ex_amplitude:
+		self.load_calibration()
 		pg = self.pulse_sequencer
 		sequence = []
 		def set_delay(delay): 
 			nonlocal sequence
+			channel_pulses = [(c, pg.rect, a) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
+			channel_pulses_phase_offset = [(c, pg.rect, a*np.exp(1j*delay*target_freq_offset*2*np.pi)) for c, a in zip(self.ex_channels, self.ex_amplitudes)]
 			sequence = [pg.p(None, readout_begin-pi2_pulse),
-					pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude), 
+					pg.pmulti(pi2_pulse, *tuple(channel_pulses)), 
 					pg.p(None, delay), 
-					pg.p(self.ex_channel, pi2_pulse*2, pg.rect, self.ex_amplitude), 
+					pg.pmulti(pi2_pulse*2, *tuple(channel_pulses)), 
 					pg.p(None, delay), 
-					pg.p(self.ex_channel, pi2_pulse, pg.rect, self.ex_amplitude*np.exp(1j*delay*target_freq_offset*2*np.pi))]+self.ro_sequence
+					pg.pmulti(pi2_pulse, *tuple(channel_pulses_phase_offset))]+self.ro_sequence
 			if not hasattr(self.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
 		def set_seq():
@@ -267,7 +438,7 @@ class quantum_two_level_dynamics:
 			self.readout_device.diff_setter = set_seq # set the measurer's diff setter
 			self.readout_device.zero_setter = self.set_zero_sequence # for diff_readout
 		
-		measurement_name = 'Spin echo (target offset {0:4.2f} MHz), excitation channel {1}'.format(target_freq_offset/1e6, self.ex_channel)+self.get_measurement_name_comment()
+		measurement_name = 'Spin echo (target offset {0:4.2f} MHz), ex channels {1}'.format(target_freq_offset/1e6, ','.join(self.ex_channels))+self.get_measurement_name_comment()
 		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
 		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
 		pi2_pulse = 0.25/self.Rabi_rect_result['rabi_rect_freq']
@@ -280,9 +451,9 @@ class quantum_two_level_dynamics:
 			self.spin_echo_result = {}
 			self.spin_echo_result['ramsey_freq']=fitted_parameters['freq']
 			self.spin_echo_result['ramsey_decay']=fitted_parameters['decay']
-			self.spin_echo_result['ramsey_carrier']=pg.channels[self.ex_channel].get_frequency()
+			self.spin_echo_result['ramsey_carrier']=[pg.channels[c].get_frequency() for c in self.ex_channels]
 			self.spin_echo_result['ramsey_ro_freq']=pg.channels[self.ro_channel].get_frequency()
-			self.spin_echo_result['ramsey_ex_amplitude'] = self.ex_amplitude
+			self.spin_echo_result['ramsey_ex_amplitude'] = self.ex_amplitudes
 			self.spin_echo_result['qubit_id'] = self.qubit_id
 			annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}, Decay: {2:4.4g} s'.format(fitted_parameters['phase'], 
 																					 fitted_parameters['freq'], 

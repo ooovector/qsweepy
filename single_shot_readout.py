@@ -32,6 +32,11 @@ class single_shot_readout:
 		else:
 			self.readout_classifier = _readout_classifier
 		self.adc_measurement_name = adc_measurement_name
+		
+		self.filter_binary = {'get_points':lambda: (self.adc.get_points()[adc_measurement_name][0],),
+                            'get_dtype': lambda: int, 
+                            'get_opts': lambda: {}, 
+                            'filter': self.filter_binary_func}
 	
 	def measure_delay(self, ro_channel):
 		import matplotlib.pyplot as plt
@@ -108,4 +113,7 @@ class single_shot_readout:
 				[np.arange(self.calib_X.shape[0])],
 				self.calib_y)}
 		save_pkl(header, measurement, plot=False)
+		
+	def filter_binary_func(self, x):
+		return self.readout_classifier.predict(x[self.adc_measurement_name])
 	

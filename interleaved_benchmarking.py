@@ -6,7 +6,7 @@ class interleaved_benchmarking:
 	def __init__(self, tomo, random_sequence_num=8):
 		self.tomo = tomo
 		self.interleavers = {}
-		self.initial_state_vector = np.asarray([0, 1]).T
+		self.initial_state_vector = np.asarray([1, 0]).T
 		self.random_sequence_num = random_sequence_num
 		self.sequence_length = 20
 		

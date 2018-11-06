@@ -12,6 +12,7 @@ class pulses:
 	def gauss_hd (self, channel, length, amp_x, sigma, alpha=0.):
 		gauss = gaussian(int(round(length*self.channels[channel].get_clock())), sigma*self.channels[channel].get_clock())
 		gauss -= gauss[0]
+		gauss /= np.max(gauss)
 		gauss_der = np.gradient (gauss)*self.channels[channel].get_clock()
 		return amp_x*(gauss + 1j*gauss_der*alpha)
 		
@@ -48,7 +49,7 @@ class pulses:
 	## generate waveform of a rectangular pulse
 	def rect(self, channel, length, amplitude):
 		return amplitude*np.ones(int(round(length*self.channels[channel].get_clock())), dtype=np.complex)
-
+		
 	def pause(self, channel, length):
 		return self.rect(channel, length, 0)
 		
@@ -68,7 +69,8 @@ class pulses:
 		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
 		for pulse in params:
 			channel = pulse[0]
-			pulses[channel] = pulse[1](channel, length, pulse[2:])
+			#print ('Setting multipulse: \npulse:', pulse[1], 'channel:', channel, 'length:', length, 'other args:', pulse[2:])
+			pulses[channel] = pulse[1](channel, length, *pulse[2:])
 		return pulses
 	
 	def awg(self, channel, length, waveform):

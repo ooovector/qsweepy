@@ -91,8 +91,60 @@ def exp_fit (x, y):
 	#	plt.legend()
 	parameters = {'decay': fitresults[0][0], 'amplitudes':fitresults[0][1:]}
 	return (resample_x_fit(x), fitted_curve), parameters
-	
 
+def sin_fit(x, y, resample=501):
+# фитует результаты измерений синусом
+	def model(x, p):
+		phase = p[0]
+		freq = p[1]
+		A = np.reshape(np.asarray(p[2:]),(len(p[2:]), 1))
+		return A*np.cos(phase+x*freq*2*np.pi)
+
+	cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
+
+	means = np.reshape(np.mean(y, axis=1), (np.asarray(y).shape[0], 1))
+	y = y-means
+
+	ft = np.fft.fft(y-np.reshape(np.mean(y, axis=1), (y.shape[0], 1)), axis=1)/len(x)
+	f = np.fft.fftfreq(len(x), x[1]-x[0])
+	domega = (f[1]-f[0])*2*np.pi
+
+	fR_id = np.argmax(np.sum(np.abs(ft)**2, axis=0))
+	fR_id_conj = len(f)-fR_id
+	if fR_id_conj > fR_id:
+		tmp = fR_id_conj
+		fR_id_conj = fR_id
+		fR_id = tmp
+
+	fR = np.abs((f[fR_id]))
+
+	c = np.real(np.sum(ft[:,fR_id], axis=0))
+	s = np.imag(np.sum(ft[:,fR_id], axis=0))
+	phase = np.arctan2(s, c)
+	#x0 = np.sqrt(np.mean(np.abs(ft[:,fR_id])**2)/np.mean(np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)-1)/domega/2
+	#print (np.abs(ft[:,fR_id])**2, np.abs((ft[:,fR_id-1]+ft[:,fR_id+1])/2)**2)
+
+	A = np.sqrt(np.abs(ft[:,fR_id])**2+np.abs(ft[:,fR_id_conj])**2)
+	p0 = [phase, fR]+A.tolist()
+
+	from scipy.optimize import leastsq
+	fitresults_all = []
+	for random_id in range(100):
+		random_samples = np.random.choice(len(x), int(len(x)*0.7))
+		cost = lambda p: (np.abs(model(x[random_samples], p)-y[:,random_samples])**2).ravel()
+
+		fitresults = leastsq (cost, p0)
+		fitresults_all.append(fitresults[0])
+	fitted_curve = model(resample_x_fit(x), fitresults[0])
+	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'amplitudes':fitresults[0][3:]}
+	#resampled_x = np.linspace(np.min(x), np.max(x), resample)
+	#resampled_y = model(resampled_x, fitresults[0])+means
+
+	return (resample_x_fit(x), fitted_curve+means), parameters
+
+
+	
+	
 def exp_sin_fit(x, y):
 	# фитует результаты измерений экспонентой
 	def model(x, p):
@@ -153,7 +205,7 @@ def exp_sin_fit(x, y):
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
 	
-	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:]}
+	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:], 'initial_points':y[:,0]}
 
 	return (resample_x_fit(x), fitted_curve+means), parameters
 	

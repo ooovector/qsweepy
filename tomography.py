@@ -11,7 +11,8 @@ class tomography:
 		self.reconstruction_basis=reconstruction_basis
 		
 		self.adc_reducer = data_reduce.data_reduce(self.sz_measurer.adc)
-		self.adc_reducer.filters['SZ'] = self.sz_measurer.filter_binary
+		self.adc_reducer.filters['SZ'] = {k:v for k,v in self.sz_measurer.filter_binary.items()}
+		self.adc_reducer.filters['SZ']['filter'] = lambda x: 1-2*self.sz_measurer.filter_binary_func(x)
 		
 	def get_points(self):
 		points = { p:{} for p in self.proj_seq.keys() }
