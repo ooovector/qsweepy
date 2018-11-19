@@ -205,7 +205,7 @@ def feature_reducer_binary(source, src_meas, axis_mean, bg, feature):
 	
 def hist_filter(source, *src_meas_values):
 	def filter_func(x):
-		print (x)
+		#print (x)
 		return np.mean(np.prod([x[m]==v for m, v in src_meas_values], axis=0))
 	filter = {'filter': filter_func,
 			  'get_points': [],

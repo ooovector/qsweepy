@@ -157,6 +157,7 @@ def exp_sin_fit(x, y):
 	cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
 	
 	means = np.reshape(np.mean(y, axis=1), (np.asarray(y).shape[0], 1))
+	z = np.asarray(y)[:,0]
 	y = y-means
 	
 	ft = np.fft.fft(y-np.reshape(np.mean(y, axis=1), (y.shape[0], 1)), axis=1)/len(x)
@@ -205,7 +206,7 @@ def exp_sin_fit(x, y):
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
 	
-	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:], 'initial_points':y[:,0]}
+	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:], 'initial_points':z}
 
 	return (resample_x_fit(x), fitted_curve+means), parameters
 	

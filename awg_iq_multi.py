@@ -356,7 +356,7 @@ class awg_iq_multi:
 		"""Performs IQ mixer calibration with the spectrum analyzer sa with the intermediate frequency."""
 		from scipy.optimize import fmin
 		#import time
-		res_bw = 1e4
+		res_bw = 4e6
 		video_bw = 1e3
 		
 		self.calibration_switch_setter()
@@ -376,7 +376,7 @@ class awg_iq_multi:
 			sa.set_video_bw(video_bw)
 			sa.set_span(res_bw)
 			if hasattr(sa, 'set_nop'): 
-				res_bw = 1e3
+				res_bw = 1e6
 				video_bw = 2e2
 				sa.set_sweep_time(50e-3)
 				sa.set_nop(1)
@@ -460,8 +460,8 @@ class awg_iq_multi:
 		
 		self.calibration_switch_setter()
 		
-		res_bw = 1e4
-		video_bw = 1e2
+		res_bw = 4e6
+		video_bw = 2e2
 		sa.set_res_bw(res_bw)
 		sa.set_video_bw(video_bw)
 		sa.set_detector('rms')

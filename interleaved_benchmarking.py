@@ -57,7 +57,7 @@ class interleaved_benchmarking:
 		
 	def generate_interleaver_sequence_from_names(self, names):
 		sequence_pulses = [self.interleavers[k]['pulses'] for k in names]
-		sequence_unitaries = [self.inbterleavers[k]['unitary'] for k in names]
+		sequence_unitaries = [self.interleavers[k]['unitary'] for k in names]
 		
 		psi = self.initial_state_vector.copy()
 		for U in sequence_unitaries:
