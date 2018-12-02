@@ -17,7 +17,6 @@ import time
 
 from matplotlib.ticker import EngFormatter
 
-
 # high level function. You give the data, it plots everything that can be relatively easily plotted.
 # puts complex into separate windows
 # plots fits in the same axis
@@ -70,13 +69,16 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 		while ((num_cols-1)*num_rows >= num_axes):
 			num_cols -=1			
 
-		fig_window = plt.figure(num=name)
+		fig_window = plt.figure(num=name, figsize=figsize)
 		if len(fig_window.get_axes()) >= num_rows*num_cols:
 			subplot_axes = fig_window.get_axes()[:num_rows*num_cols]
 		else:
 			subplot_figs, subplot_axes = plt.subplots(num_rows, num_cols, figsize=figsize, num=name)
 		subplot_axes = np.reshape(subplot_axes, (num_rows, num_cols))
-		plt.get_current_fig_manager().window.showMaximized()
+		try:
+			plt.get_current_fig_manager().window.showMaximized()
+		except:
+			pass
 	axis_id = 0
 	for mname, data in measurement.items():
 		pnames = data[0]
@@ -226,10 +228,17 @@ def plot_add_annotation(axes, annotation):
 			return
 
 def plot_save(axes, save):
+	plt.rcParams['svg.fonttype'] = 'none'
 	for ax_name, ax in axes.items():
 		if save:
 			ax['axes'].get_figure().savefig('{0}/{1}.png'.format(save, ax_name))
 			ax['axes'].get_figure().savefig('{0}/{1}.pdf'.format(save, ax_name))
+			ax['axes'].get_figure().savefig('{0}/{1}.svg'.format(save, ax_name))
+			with open('{0}/{1}.svg'.format(save, ax_name)) as fd:
+				s = fd.read()
+			with open('{0}/{1}.svg'.format(save, ax_name), 'w') as fd:
+				fd.write(s.replace('stroke-miterlimit:100000;', ''))
+			
 		if ax['subplots']:
 			return
 			

@@ -1,6 +1,8 @@
 from . import data_reduce
 import numpy as np
 from . import readout_classifier
+import cvxopt
+import cvxpy
 
 class tomography:
 	def __init__(self, sz_measurer, pulse_generator, proj_seq, reconstruction_basis={}):
@@ -50,4 +52,5 @@ class tomography:
 		opts = { p:{} for p in self.proj_seq.keys()}
 		opts.update ({ p:{} for p in self.reconstruction_basis.keys()})
 		return opts
+		
 		

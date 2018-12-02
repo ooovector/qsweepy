@@ -26,7 +26,7 @@ class gauss_hd_calibration:
 			self.tld.readout_device.zero_setter = self.tld.set_zero_sequence # for diff_readout
 		def set_ex_amp(amp):
 			nonlocal sequence
-			pulse = [(c, pg.gauss_hd, a*amp, self.sigma, self.alpha) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
+			pulse = [(c, pg.gauss_hd, a*amp, self.sigma, self.alpha/(self.anharmonicity*2*np.pi)) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
 			sequence = [pg.pmulti(self.length, *tuple(pulse))]*num_pulses+self.tld.ro_sequence
 			if not hasattr(self.tld.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
@@ -271,21 +271,22 @@ class gauss_hd_calibration:
 						'-X': 0.5*np.asarray([[0, -1],   [-1, 0]]),
 						'-Y': 0.5*np.asarray([[0, 1j],   [-1j, 0]]),
 						'Z': 0.5*np.asarray([[1, 0],   [0, -1]])}
-		proj_seq = {'Xo':{'pulses': self.get_pulse_seq(np.pi/2., -np.pi/2.)+self.tld.ro_sequence, 
+		ro_seq = single_shot_readout.ro_seq
+		proj_seq = {'Xo':{'pulses': self.get_pulse_seq(np.pi/2., -np.pi/2.)+ro_seq, 
 						 'operator': observables['X']},
-					'Yo':{'pulses': self.get_pulse_seq(np.pi/2., 0)+self.tld.ro_sequence,
+					'Yo':{'pulses': self.get_pulse_seq(np.pi/2., 0)+ro_seq,
 						 'operator': observables['Y']},
-					'-Xo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi/2.)+self.tld.ro_sequence,
+					'-Xo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi/2.)+ro_seq,
 						 'operator': observables['-X']},
-					'-Yo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi)+self.tld.ro_sequence,
+					'-Yo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi)+ro_seq,
 						 'operator': observables['-Y']},
-					'Zo': {'pulses':self.tld.ro_sequence, 'operator':observables['Z']} }
+					'Zo': {'pulses':ro_seq, 'operator':observables['Z']} }
 		reconstruction_basis={'x':{'operator':observables['X']},
 							  'y':{'operator':observables['Y']},
 							  'z':{'operator':observables['Z']}}
 							  
 		#multiqubit_single_shot.filter_binary = multiqubit_single_shot.filters['1']
-		proj_seq = {'Z': {'pulses':self.tld.ro_sequence, 'operator':observables['Z']}}
+		proj_seq = {'Z': {'pulses':ro_seq, 'operator':observables['Z']}}
 		reconstruction_basis={'z':{'operator':observables['Z']}}
 		tomoz = tomography.tomography(single_shot_readout, self.tld.pulse_sequencer, proj_seq, reconstruction_basis=reconstruction_basis)
 

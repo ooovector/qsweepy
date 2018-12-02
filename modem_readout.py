@@ -87,7 +87,7 @@ class modem_readout(data_reduce.data_reduce):
 				self.delay_calibrations[ex_channel_name] = readout_delays[ex_channel]
 		return readout_delays
 	
-	def calibrate_dc(self, save=True):
+	def calibrate_dc(self, amplitude=1.0, save=True):
 		# send nothing
 		self.pulse_sequencer.set_seq(self.trigger_daq_seq)
 		bg = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
@@ -98,6 +98,7 @@ class modem_readout(data_reduce.data_reduce):
 		for ex_channel_name, ex_channel in self.readout_channels.items():
 			# delay calibration pulse sequence
 			dac_sequence, dac_sequence_adc_time = self.random_alignment_sequence(ex_channel)
+			dac_sequence=np.asarray(dac_sequence,dtype=np.float)*amplitude
 			demodulation = self.demodulation(ex_channel, sign=True)
 			# set sequence in sequencer with amplitude & phase
 			seq_I = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, len(dac_sequence)/ex_channel.get_clock(), self.pulse_sequencer.awg, dac_sequence)]

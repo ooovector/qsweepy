@@ -7,7 +7,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	def __init__(self, name, chassis, slot):
 		super().__init__(name, chassis, slot)
 		self.master_channel = None
-		self.repetition_period = 50000
+		self.repetition_period = 50000-500
 		self.trigger_source_types = [0]*4
 		self.trigger_source_channels = [0]*4
 		self.trigger_delays = [0]*4
@@ -22,7 +22,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	def prepare_set_waveform_async(self, waveform, channel):
 		wave = keysightSD1.SD_Wave()
 		if self.waiting_waveform_ids[channel] is None:
-			wave.newFromArrayDouble(0, np.zeros((50000,)).tolist()) # WAVE_ANALOG_32
+			wave.newFromArrayDouble(0, np.zeros((50000-500,)).tolist()) # WAVE_ANALOG_32
 			self.module.waveformLoad(wave, channel)
 			wave = keysightSD1.SD_Wave()
 			self.waiting_waveform_ids[channel] = channel
@@ -39,7 +39,8 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		if self.waiting_waveforms[channel] != waveform: # if the current waveform has not been preloaded by prepare_set_waveform_async
 			wave = keysightSD1.SD_Wave()
 			if self.waveform_ids[channel] is None:
-				wave.newFromArrayDouble(0, np.zeros((50000,)).tolist()) # WAVE_ANALOG_32
+				#print ('Loading waveform with waveformLoad')
+				wave.newFromArrayDouble(0, np.zeros((50000-500,)).tolist()) # WAVE_ANALOG_32
 				self.module.waveformLoad(wave, channel)
 				wave = keysightSD1.SD_Wave()
 				self.waveform_ids[channel] = channel
@@ -47,7 +48,11 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	
 			waveform_data = np.asarray(waveform).tolist()
 			wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
-			self.module.waveformReLoad(wave, waveform_id, 0)
+			#print (waveform_data)
+			error_code = self.module.waveformReLoad(wave, waveform_id, 0)
+			#print ('First waveformReLoad:', error_code)
+			error_code = self.module.waveformReLoad(wave, waveform_id, 0)
+			#print('Second waveformReLoad:', error_code)
 			self.waveforms[channel] = waveform
 		else: # in case the waveform has been preloaded, exchange the current waveform for the waiting_waveform
 			waveform_id = self.waiting_waveform_ids[channel]
@@ -62,7 +67,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		trigger_delay = self.trigger_delays[channel]
 		trigger_behaviour = self.trigger_behaviours[channel]
 		self.stop()
-		self.module.AWGflush(channel)	
+		self.module.AWGflush(channel)
 		self.module.AWGtriggerExternalConfig(channel, trigger_source_channel, trigger_behaviour)
 		self.module.AWGqueueConfig(channel, 1) # inifnite cycles
 		self.module.AWGqueueWaveform(channel, 
@@ -119,12 +124,12 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		pass
 	## TODO: this function is broken
 	def get_repetition_period(self):
-		return 50000*1e9
+		return self.repetition_period*1e9
 	## TODO: this function is broken
 	def set_nop(self, nop):
 		pass
 	def get_nop(self):
-		return 50000	
+		return self.repetition_period 
 	## TODO: this function is broken
 	def set_nop(self, repetition_period):
 		pass
