@@ -27,7 +27,6 @@ class nndac(Instrument):
 				self._visainstrument.ask('VOLT {:d},{:f}'.format(channel,value))
 			self.cached_voltages[channel] = value
 			
-			
 	def get_voltage(self,channel):
 		try:
 			return(float(self._visainstrument.ask('VOLT {:d}?'.format(channel))))

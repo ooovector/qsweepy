@@ -301,6 +301,7 @@ def xcorr_centre_period(vec, axis=0, drop_size=5):
 
     xc_max = np.argmax(np.sum(np.abs(mpi)**2, axis=tuple(range(1, len(vec.shape)))))
     plt.plot(mp_scalar)
+    plt.plot(np.sum(np.abs(mpi)**2, axis=tuple(range(1, len(vec.shape)))))
     return (xc_max/2*(len(mp_scalar)*2)/(len(mp_scalar)*2-1)), period
 	
 def xcorr_scale(vec1, vec2, axis=0, thresh=0.97, centre_reference_pixels=None, max_scale=None):

@@ -31,7 +31,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 	axes = {}
 	
 	if subplots:
-		figsize = (16, 9)
+		figsize = (8, 4.5)
 		num_axes = 0
 		for mname, data in measurement.items():
 			pnames = data[0]
@@ -68,7 +68,9 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			num_rows -=1
 		while ((num_cols-1)*num_rows >= num_axes):
 			num_cols -=1			
-
+			
+		figure_exists = plt.fignum_exists(num=name)
+			
 		fig_window = plt.figure(num=name, figsize=figsize)
 		if len(fig_window.get_axes()) >= num_rows*num_cols:
 			subplot_axes = fig_window.get_axes()[:num_rows*num_cols]
@@ -76,7 +78,8 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			subplot_figs, subplot_axes = plt.subplots(num_rows, num_cols, figsize=figsize, num=name)
 		subplot_axes = np.reshape(subplot_axes, (num_rows, num_cols))
 		try:
-			plt.get_current_fig_manager().window.showMaximized()
+			pass
+			#plt.get_current_fig_manager().window.showMaximized()
 		except:
 			pass
 	axis_id = 0
@@ -215,7 +218,9 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 			plt.suptitle(suptitle)
 	else:
 		plot_add_annotation(axes, annotation)
-	plt.figure(num=name).tight_layout(rect=[0.0, 0.03, 1, 0.95])		
+		
+	if not figure_exists:
+		plt.figure(num=name).tight_layout(rect=[0.0, 0.03, 1, 0.95])		
 	plot_save(axes, save)
 	# return all the axes, filters & plotting instructions for updates
 	return axes
