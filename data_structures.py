@@ -53,6 +53,8 @@ class measurement_state():
 		self.id = 0
 		self.references = {}
 		self.measurement_type = ''
+		self.type_revision = 0
+		### TODO: invalidation synchronization with db!!!
 		self.metadata = {}
 		self.total_sweeps = 0
 		self.request_stop_acq = False
