@@ -1,10 +1,10 @@
 from pony.orm import*
 from datetime import datetime
 from time import gmtime, strftime
-
+from .data_structures import *
 
 def put_to_database(sample_name, start, stop, incomplete, invalid, filename,
-                    devices, values, parameter_names, parameter_units, owner = '', type_revision = '', min_values = '', max_values = '', 
+                    names, values, parameter_names, parameter_units, owner = '', type_revision = '', min_values = '', max_values = '', 
                     num_points = '', type_ref = '', ref_id = 0, comment = ''):
 					
 					
@@ -24,12 +24,12 @@ def put_to_database(sample_name, start, stop, incomplete, invalid, filename,
 		reference_one = Set('Reference', reverse = 'this')
 		reference_two = Set('Reference', reverse = 'that')
 		linear_sweep = Set('Linear_sweep')
-		
+
 	class Metadata(db.Entity):
 		id = PrimaryKey(int, auto=True)
 		data_id = Required(Data)
-		device = Required(str)
-		value = Required(float)
+		name = Required(str)
+		value = Required(str)
 		#data = Required(Data)
 		
 	class Reference(db.Entity):
@@ -62,8 +62,8 @@ def put_to_database(sample_name, start, stop, incomplete, invalid, filename,
 	for minv, maxv, number, name, unit in zip(min_values, max_values, num_points, parameter_names, parameter_units):
 		Linear_sweep(data_id = d, min_value = minv, max_value = maxv, num_points = number, parameter_name = name, parameter_units = unit)
     
-	for device, value in zip(devices, values):
-		Metadata(data_id = d, device = device, value = value)
+	for name, value in zip(names, values):
+		Metadata(data_id = d, name = name, value = value)
         
 	if type_ref != '':
 		id_ref = Data[ref_id]
