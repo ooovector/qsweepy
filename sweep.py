@@ -16,6 +16,7 @@ import pathlib
 import random
 import gc
 from .data_structures import *
+from datetime import datetime
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	from scipy.optimize import fmin
@@ -111,7 +112,7 @@ example: point_parameter(vna) should return
 {'S-parameter':measurement_parameter(vna.get_freqpoints(), None, 'Frequency', 'Hz')}	
 '''	
 	
-def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[], on_finish=[]):
+def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[], on_finish=[], filename, meas_type, reference = {}):
 	'''
 	Performs a n-d parametric sweep.
 	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... , filename=None)
@@ -124,12 +125,13 @@ def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[],
 	point_parameters = measurer_point_parameters(measurer)
 	
 	sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
-	state = measurement_state(sweep_parameters)
+	state = measurement_state(sweep_parameters, filename, meas_type, reference)
 	state.total_sweeps = np.prod([d for d in sweep_dimensions])
 	#all_parameters = {dataset: sweep_parameters+_point_parameters for dataset, _point_parameters in point_parameters.items()}
 	
 	### initialize data
 	for dataset_name, point_parameters in point_parameters.items():
+		print(sweep_parameters, point_parameters)
 		all_parameters = sweep_parameters + point_parameters
 		data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
 		data = np.empty(data_dimensions, dtype = measurer.get_dtype()[dataset_name])
@@ -191,7 +193,7 @@ def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[],
 
 	for event_handler, arguments in on_finish:
 		event_handler(state, *arguments)
-	
+	state.stop = datetime.now()
 	return state
 	
 	
@@ -231,7 +233,7 @@ def sweep(measurer,
 			sweep_state_widget = None
 	
 		print("Started at: ", time.strftime("%b %d %Y %H:%M:%S", time.localtime()))
-		start_time = time.time()
+		start_time = datetime.now()#time.time()
 	
 	setters_time = 0
 	measurement_time = 0
