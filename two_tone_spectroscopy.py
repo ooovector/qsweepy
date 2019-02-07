@@ -5,9 +5,9 @@ def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequ
 		Performs following manipulations:
 		normalized measurement = measurement[dataset_name]-<measurement[dataset_name]>_{excitation_frequency_axis} (median over real and imag parts).
 	'''
-	dataset = measurement[measurement_name]
-	if excitation_freqeuency_axis_name not in dataset[0]:
-		excitation_frequency_axis_id = dataset[0].index(excitation_freqeuency_axis_name)
+	dataset = measurement[dataset_name]
+	if excitation_frequency_axis_name not in dataset[0]:
+		excitation_frequency_axis_id = dataset[0].index(excitation_frequency_axis_name)
 	
 	real_part = np.real(dataset[2])
 	imag_part = np.imag(dataset[2])
