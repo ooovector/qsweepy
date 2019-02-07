@@ -16,7 +16,7 @@ import threading
 import pathlib
 import random
 import gc
-import h5py
+#import h5py
 import os.path
 import numpy
 
