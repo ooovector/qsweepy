@@ -7,8 +7,9 @@ def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequ
 		normalized measurement = measurement[dataset_name]-<measurement[dataset_name]>_{excitation_frequency_axis} (median over real and imag parts).
 	'''
 	dataset = measurement[dataset_name]
-	if excitation_frequency_axis_name not in dataset[0]:
+	if excitation_frequency_axis_name in dataset[0]:
 		excitation_frequency_axis_id = dataset[0].index(excitation_frequency_axis_name)
+	else raise(ValueError('Measurement doesn\'t have axis '+str(excitation_frequency_axis_name)))
 	
 	real_part = np.real(dataset[2])
 	imag_part = np.imag(dataset[2])
