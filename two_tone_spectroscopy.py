@@ -1,5 +1,6 @@
 def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequency_axis_name='Excitation frequency'):
 	import copy
+	import numpy as np
 	'''
 		Normalizes raw measurement of a two-tone spectrum.
 		Performs following manipulations:
