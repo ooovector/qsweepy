@@ -1,5 +1,5 @@
 def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequency_axis_name='Excitation frequency'):
-	import copy.deepcopy
+	import copy
 	'''
 		Normalizes raw measurement of a two-tone spectrum.
 		Performs following manipulations:
@@ -23,7 +23,7 @@ def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequ
 	
 	normalized_data = (real_part-real_part_median)+1j*(imag_part-imag_part_median)
 	
-	normalized_measurement = {dataset_name+' normalized': deepcopy(dataset)}
+	normalized_measurement = {dataset_name+' normalized': copy.deepcopy(dataset)}
 	normalized_measurement[dataset_name+' normalized'] = normalized_data
 	
 	return normalized_measurement
