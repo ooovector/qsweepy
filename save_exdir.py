@@ -27,7 +27,7 @@ from pony.orm import get, select
 def save_exdir(state):
 	parameters = []
 	f = exdir.File(state.filename, 'w', allow_remove=True) 
-	print(state.filename)
+	#print(state.filename)
 	try:
 		for dataset in state.datasets.keys():
 			parameters.append(f.create_group(str(dataset)))
@@ -72,6 +72,7 @@ def read_exdir(filename):
 	
 def read_exdir_new(filename):
 	data = {}
+	#print(filename)
 	f = exdir.File(filename, 'r')
 	attributes = {}
 	attrs = []
@@ -79,7 +80,7 @@ def read_exdir_new(filename):
 	all_parameters = []
 	try:	
 		for k in f.attrs.items():
-			print(k)
+			#print(k)
 			if k[0] != 'parameter_values': attrs.append(k)
 			else: parameter_values = k[1]
 		state = measurement_state(parameter_values)
@@ -103,6 +104,7 @@ def read_exdir_new(filename):
 		for q in query: references.update({q.that.id: q.ref_type})
 		#print(references)
 		state.references = references
+		state.filename = filename
 	except:
 		raise
 	finally:

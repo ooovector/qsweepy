@@ -131,7 +131,7 @@ def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[],
 	
 	### initialize data
 	for dataset_name, point_parameters in point_parameters.items():
-		print(sweep_parameters, point_parameters)
+		#print(sweep_parameters, point_parameters)
 		all_parameters = sweep_parameters + point_parameters
 		data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
 		data = np.empty(data_dimensions, dtype = measurer.get_dtype()[dataset_name])

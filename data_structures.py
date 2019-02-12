@@ -53,7 +53,6 @@ class measurement_state():
 		self.stop = datetime.now()
 		self.measurement_time = 0
 		self.started_sweeps = 0
-		self.sample_name = ''
 		self.done_sweeps = 0
 		self.filename = filename#'C:/Users/User/Documents/PythonScripts/data1'
 		self.id = 0

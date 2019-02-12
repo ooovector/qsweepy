@@ -18,7 +18,7 @@ def string_to_list(string):
 	position = string.find(',')
 	list_res = []
 	while position > -1:
-		print(position, 'and', string[:10], 'and', string[position+1:])
+		#print(position, 'and', string[:10], 'and', string[position+1:])
 		list_res.append(string[:position])
 		string = string[position+2:]
 		position = string.find(',')
@@ -81,7 +81,7 @@ def plot_from_file(meas_ids, fit_ids = '', dim_2 = False):
 		df = pd.DataFrame(list(data_to_dict(x) for x in list(query_for_table)))
 		#for q in query_for_table: 
 			#type_ref.append(get(i.ref_type for i in db.Reference if (i.that.id == q.id)))
-		print(type_ref)
+		#print(type_ref)
 		df = df.assign(reference_type=pd.Series(type_ref))
 		met_arr = ''
 		for k in state.metadata:
@@ -141,7 +141,7 @@ def plot_from_file(meas_ids, fit_ids = '', dim_2 = False):
 
 	def plot_these_measurements(fit_ids_saved, meas_ids_saved): 
 		#print(measurement_to_plot)
-		print(meas_ids_saved)
+		#print(meas_ids_saved)
 		measurement_to_fit = {}
 		measurement_to_plot = {}
 		for index, i in enumerate(meas_ids_saved):
@@ -163,21 +163,22 @@ def plot_from_file(meas_ids, fit_ids = '', dim_2 = False):
 		else: type = 'scatter'
 		number_of_qubits = len(measurement_to_plot)
 		if number_of_qubits < 3: layout['height'] = 900
-		for index, qubit in enumerate(measurement_to_plot.keys()):
+		for qubit_index, qubit in enumerate(measurement_to_plot.keys()):
 			state = measurement_to_plot[qubit]
 			#print(measurement_to_fit)
-			for key in state.datasets.keys():
+			for i, key in enumerate(state.datasets.keys()):
 				number_of_datasets = len(state.datasets.keys())
 				#print(state.datasets[key].parameters[0].values, state.datasets[key].parameters[1].values, state.datasets[key].data)
 				if (number_of_datasets == 1) and (number_of_qubits < 3): layout['width'] = 1000
 				number = number_of_qubits*number_of_datasets
+				index = i + qubit_index
 				layout['xaxis' + str((index + 1)*2)] = {'anchor': 'x' + str((index + 1)*2), 'domain': [index/number, (index + 0.8)/number], 
 									'title': state.datasets[key].parameters[0].name + ', ' + state.datasets[key].parameters[0].unit} #RE
-				layout['yaxis' + str((index + 1)*2)] = {'anchor': 'y' + str((index + 1)*2), 'domain': [0, 0.45],
+				layout['yaxis' + str((index + 1)*2)] = {'anchor': 'x' + str((index + 1)*2), 'domain': [0, 0.45], 
 									'title': state.datasets[key].parameters[1].name + ', ' + state.datasets[key].parameters[1].unit if dim_2 else ''}
 				layout['xaxis' + str((index + 1)*2 + 1)] = {'anchor': 'x' + str((index + 1)*2 + 1), 'domain': [index/number, (index + 0.8)/number],
 									'title': state.datasets[key].parameters[0].name + ', ' + state.datasets[key].parameters[0].unit} #IM
-				layout['yaxis' + str((index + 1)*2 + 1)] = {'anchor': 'y' + str((index + 1)*2 + 1), 'domain': [0.55, 1],
+				layout['yaxis' + str((index + 1)*2 + 1)] = {'anchor': 'x' + str((index + 1)*2 + 1), 'domain': [0.55, 1], 
 									'title': state.datasets[key].parameters[1].name + ', ' + state.datasets[key].parameters[1].unit if dim_2 else ''}
 				dataset = state.datasets[key]
 				figure['data'].append({'colorbar': {'len': 0.4,
@@ -252,7 +253,7 @@ def plot_from_file(meas_ids, fit_ids = '', dim_2 = False):
 							  'y': numpy.memmap.tolist(np.real(dataset.data)) if not dim_2 else numpy.memmap.tolist(np.real(fit_state.datasets[key].parameters[1].values)),
 							  'z': numpy.memmap.tolist(np.real(dataset.data))})
 		figure['layout'] = layout
-		print(layout)
+		#print(figure)
 		return figure
 	#plot_update()
 	app.run_server(debug=False)
