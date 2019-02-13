@@ -26,8 +26,17 @@ def two_tone_normalize(measurement, dataset_name='S-parameter', excitation_frequ
 	
 	normalized_data = (real_part-real_part_median)+1j*(imag_part-imag_part_median)
 	
-	normalized_measurement = {dataset_name+' normalized': copy.deepcopy(dataset)}
-	normalized_measurement[dataset_name+' normalized'] = normalized_data
+	normalized_measurement = {dataset_name+' normalized': [copy.deepcopy(d) for d in dataset]}
+	normalized_measurement[dataset_name+' normalized'][2] = normalized_data
+	normalized_measurement[dataset_name+' normalized'] = tuple(normalized_measurement[dataset_name+' normalized'])
+	
 	
 	return normalized_measurement
 	
+	
+#def xcorr_centre_period(measurement, dataset_name='S-parameter', symmetric_periodic_parameter_name):
+#	'''
+#	Determines period and center of an n-d image along the axis identified 
+#	by symmetric_periodic_parameter_name by cross-correlation.
+#	'''
+#	pass
