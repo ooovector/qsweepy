@@ -59,9 +59,9 @@ class Keysight_M3202A_Base(Instrument):
 		self.offsets[channel] = offset
 		self.module.channelOffset(channel, offset)
 	def do_get_offset(self, channel):
-		return self.get_offset(channel)
+		return self.get_offsets(channel)
 	def get_offset(self, channel):
-		return self.amplitudes[channel]
+		return self.offset[channel]
 	def get_clock(self):
 		return self.clock
 

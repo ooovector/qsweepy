@@ -30,7 +30,7 @@ class Agilent_N9030A(Instrument):
 
 		self._address = address
 		self._visainstrument = visa.ResourceManager().open_resource(self._address)# no term_chars for GPIB!!!!!
-		self._visainstrument.timeout = 240000
+		self._visainstrument.timeout = 400000
 		self._zerospan = False
 		self._freqpoints = 0
 		self._ci = channel_index 
