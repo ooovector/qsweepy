@@ -107,7 +107,8 @@ class pulses:
 		finally:
 			for channel, channel_device in self.channels.items():
 				channel_device.unfreeze()
-				
+		
+		self.last_seq = seq
 		devices = []
 		for channel in self.channels.values():
 			devices.extend(channel.get_physical_devices())

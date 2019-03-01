@@ -43,9 +43,9 @@ class TSW14J56_evm_reducer():
 			points.update({'Voltage':[('Sample',arange(self.adc.nsegm), ''), 
 								 ('Time',arange(self.adc.nsamp)/self.adc.get_clock(), 's')]})
 		if self.last_cov:
-			points.update({'last_cov'+i:[] for i in range(self.adc.num_covariances)})
+			points.update({'last_cov'+str(i):[] for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			points.update({'avg_cov'+i:[] for i in range(self.adc.num_covariances)})
+			points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances)})
 		if self.resultnumber:
 			points.update({'resultnumbers':[arange(2**self.num_covariances)]})
 		return (points)
@@ -55,9 +55,9 @@ class TSW14J56_evm_reducer():
 		if self.output_raw:
 			dtypes.update({'Voltage':complex})
 		if self.last_cov:
-			dtypes.update({'last_cov':int})
-		if self.last_cov:
-			dtypes.update({'avg_cov': real})
+			dtypes.update({'last_cov'+str(i):int for i in range(self.adc.num_covariances)})
+		if self.avg_cov:
+			dtypes.update({'avg_cov'+str(i):float for i in range(self.adc.num_covariances)})
 		if self.resultnumber:
 			dtypes.update({'resultnumbers': int})
 		return (dtypes)
@@ -67,22 +67,25 @@ class TSW14J56_evm_reducer():
 		if self.output_raw:
 			opts.update({'Voltage':{'log': None}})
 		if self.last_cov:
-			opts.update({'last_cov':{'log': None}})
-		if self.last_cov:
-			opts.update({'avg_cov':{'log': None}})
+			opts.update({'last_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances)})
+		if self.avg_cov:
+			opts.update({'avg_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances)})
 		if self.resultnumber:
 			opts.update({'resultnumbers': {'log': None}}) 
 		return (opts)
 
 	def measure(self):
+		
+		if self.avg_cov:
+			avg_covs_initial = [self.adc.get_cov_result_avg(i) for i in range(self.adc.num_covariances)]
 		result = {}
 		self.adc.capture(trig=self.trig, cov = (self.last_cov or self.avg_cov or self.resultnumber))
 		if self.output_raw:
 			result.update({'Voltage':self.adc.get_data()})
 		if self.last_cov:
-			result.update({'last_cov':[self.adc.get_cov_result(i) for i in range(self.adc.num_covariances)]})
+			result.update({'last_cov'+str(i):self.adc.get_cov_result(i) for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			result.update({'last_cov':[self.adc.get_cov_result_avg(i) for i in range(self.adc.num_covariances)]})
+			result.update({'avg_cov'+str(i):self.adc.get_cov_result_avg(i)-avg_covs_initial[i] for i in range(self.adc.num_covariances)})
 		if self.resultnumber:
 			result.update({'resultnumbers':[self.adc.get_resultnumbers()]})
 			
@@ -161,8 +164,8 @@ class TSW14J56_evm():
 		self.write_reg(JESD_BASE, JESD_CTRL, 1)
 		
 	def system_reset(self):
+		self.write_reg(CAP_BASE, CAP_CTRL, 1<<CAP_CTRL_ABORT) # Abort current capture process before reset 
 		self.write_reg(FX3_BASE, FX3_RST, 1)
-		return
 			
 	def reset(self):
 		self.system_reset()
@@ -380,7 +383,7 @@ class TSW14J56_evm():
 		a,v = mk_val_ind((CAP_BASE + COV_RESAVG_BASE + COV_RESAVG_SUBBASE + ncov*4)<<2) 
 		b1 = self.dev.ctrl_transfer(vend_req_dir.RD, vend_req.REG_READ,a,v,4 )
 		q = frombuffer(b1+b0, dtype = dt)[0]
-		return (q/self.cov_cnt)
+		return (q)#/self.cov_cnt)
 		
 	def get_resultnumbers(self):
 		'''

@@ -7,7 +7,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	def __init__(self, name, chassis, slot):
 		super().__init__(name, chassis, slot)
 		self.master_channel = None
-		self.repetition_period = 50000-500
+		self.repetition_period = 100000-500
 		self.trigger_source_types = [0]*4
 		self.trigger_source_channels = [0]*4
 		self.trigger_delays = [0]*4
@@ -22,7 +22,7 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	def prepare_set_waveform_async(self, waveform, channel):
 		wave = keysightSD1.SD_Wave()
 		if self.waiting_waveform_ids[channel] is None:
-			wave.newFromArrayDouble(0, np.zeros((50000-500,)).tolist()) # WAVE_ANALOG_32
+			wave.newFromArrayDouble(0, np.zeros((self.repetition_period,)).tolist()) # WAVE_ANALOG_32
 			self.module.waveformLoad(wave, channel)
 			wave = keysightSD1.SD_Wave()
 			self.waiting_waveform_ids[channel] = channel
@@ -35,38 +35,46 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 		self.waiting_waveforms[channel] = waveform_data
 	
 	### infinite cycles of a single waveform mode with synchronisation across channels
-	def set_waveform(self, waveform, channel):	
-		if self.waiting_waveforms[channel] != waveform: # if the current waveform has not been preloaded by prepare_set_waveform_async
-			wave = keysightSD1.SD_Wave()
-			if self.waveform_ids[channel] is None:
-				#print ('Loading waveform with waveformLoad')
-				wave.newFromArrayDouble(0, np.zeros((50000-500,)).tolist()) # WAVE_ANALOG_32
-				self.module.waveformLoad(wave, channel)
+	def set_waveform(self, waveform, channel):
+		from time import sleep
+		#self.stop()
+		already_set = False
+		if type(self.waveforms[channel]) != type(None):
+			already_set = np.sum(np.abs(np.asarray(self.waveforms[channel]) - np.asarray(waveform)))<1e-5
+		if not already_set:
+			if self.waiting_waveforms[channel] != waveform: # if the current waveform has not been preloaded by prepare_set_waveform_async
 				wave = keysightSD1.SD_Wave()
-				self.waveform_ids[channel] = channel
-			waveform_id = self.waveform_ids[channel];
-	
-			waveform_data = np.asarray(waveform).tolist()
-			wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
-			#print (waveform_data)
-			error_code = self.module.waveformReLoad(wave, waveform_id, 0)
-			#print ('First waveformReLoad:', error_code)
-			error_code = self.module.waveformReLoad(wave, waveform_id, 0)
-			#print('Second waveformReLoad:', error_code)
-			self.waveforms[channel] = waveform
-		else: # in case the waveform has been preloaded, exchange the current waveform for the waiting_waveform
-			waveform_id = self.waiting_waveform_ids[channel]
-			waveform = self.waiting_waveforms[channel]
-			self.waiting_waveform_ids[channel] = self.waveform_ids[channel]
-			self.waiting_waveforms[channel] = self.waveforms[channel]
-			self.waveform_ids[channel] = waveform_id
-			self.waveforms[channel] = waveform
+				if self.waveform_ids[channel] is None:
+					#print ('Loading waveform with waveformLoad')
+					wave.newFromArrayDouble(0, np.zeros((self.repetition_period,)).tolist()) # WAVE_ANALOG_32
+					self.module.waveformLoad(wave, channel)
+					wave = keysightSD1.SD_Wave()
+					self.waveform_ids[channel] = channel
+				waveform_id = self.waveform_ids[channel];
+		
+				waveform_data = np.asarray(waveform).tolist()
+				wave.newFromArrayDouble(0, waveform_data) # WAVE_ANALOG_32
+				#print (waveform_data)
+				error_code = self.module.waveformReLoad(wave, waveform_id, 0)
+				sleep(0.1)
+				#print ('First waveformReLoad:', error_code)
+				#error_code = self.module.waveformReLoad(wave, waveform_id, 0)
+				#print('Second waveformReLoad:', error_code)
+				self.waveforms[channel] = waveform
+			else: # in case the waveform has been preloaded, exchange the current waveform for the waiting_waveform
+				waveform_id = self.waiting_waveform_ids[channel]
+				waveform = self.waiting_waveforms[channel]
+				self.waiting_waveform_ids[channel] = self.waveform_ids[channel]
+				self.waiting_waveforms[channel] = self.waveforms[channel]
+				self.waveform_ids[channel] = waveform_id
+				self.waveforms[channel] = waveform
+		else:
+			waveform_id = self.waveform_ids[channel]
 
 		trigger_source_type = self.trigger_source_types[channel]
 		trigger_source_channel = self.trigger_source_channels[channel]
 		trigger_delay = self.trigger_delays[channel]
 		trigger_behaviour = self.trigger_behaviours[channel]
-		self.stop()
 		self.module.AWGflush(channel)
 		self.module.AWGtriggerExternalConfig(channel, trigger_source_channel, trigger_behaviour)
 		self.module.AWGqueueConfig(channel, 1) # inifnite cycles
