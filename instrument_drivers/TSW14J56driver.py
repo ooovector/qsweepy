@@ -1,7 +1,7 @@
 from numpy import *
 #from usb_intf import *
 #from reg_intf import *
-from ADS54J40EVM import *
+from ADS54J40 import *
 
 from qsweepy.instrument import Instrument
 
@@ -106,13 +106,6 @@ class TSW14J56_evm():
 		self.fpga_firmware = "C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40\qubit_daq.rbf"
 		self.cov_cnt = 0
 		
-		#To do make a register readout to check ADS-programmed status"
-		self.ads = ADS54J40EVM(0)
-		self.ads.load_lmk_config()
-		time.sleep(10)
-		self.ads.load_ads_config()
-		self.ads.device.close()
-		
 		self.dev=usb.core.find(idVendor=id.VENDOR, idProduct=id.PRODUCT)
 		if self.dev is None:
 			raise Exception('TSW14J56: Device not found!')
@@ -134,6 +127,22 @@ class TSW14J56_evm():
 			checksum = zlib.crc32(firmware)	
 			if dev_checksum != checksum:
 				self.fpga_config(firmware = firmware)
+				
+		#To do make a register readout to check ADS-programmed status"
+		self.ads = ADS54J40(0)
+		if self.ads.read_reg(ADS_CTRL_ST_ADDR) == 0x88:
+			print ("ADS54J40 already programmed")
+			self.ads.device.close()
+			if (self.ads.device.status):
+				self.ads.device.close()
+		else:
+			print ("Programming ADS54J40 ")
+			self.ads.load_lmk_config()
+			self.ads.load_ads_config()
+			self.ads.device.close()
+			if (self.ads.device.status):
+				self.ads.device.close()
+			
 				
 		self.sync_req()
 	
