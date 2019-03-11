@@ -236,8 +236,9 @@ def sweep_new(measurer,
 						ascii_file.flush()
 						
 				update_time_info()
-			print(mk_measurement())
-			save_hdf_on_fly(data_for_measurement(), mpoint_m, data_dir, filename, point_dim, sweep_dim, indeces)
+			print(data_for_measurement())
+			print(mpoint_m)
+			save_hdf_new(data_for_measurement(), mpoint_m, data_dir, filename, point_dim, sweep_dim)
 			done_sweeps += 1
 		
 		def update_time_info():
@@ -386,56 +387,76 @@ def sweep_new(measurer,
 	else:
 		return mk_measurement()
 		
-def save_hdf(measurement, location, filename):
-	### Needs measurement = mk_measurement() ###
+def save_hdf(measurement, location, filename, points, sweep_dim_names, points_dim_names, sweep_dim_vals, point_dim_vals):
 	import h5py
 	parameters = []
 	all_arrays = []
 	with h5py.File(location + filename + '.hdf5', 'w') as f:
-		for mname in measurement.keys():# it worked previously with points.keys():
+		for mname in points.keys():
+			#print(str(mname))
 			parameters.append(f.create_group(str(mname)))
 			for sweep_name, sweep_value in zip(measurement[mname][0], measurement[mname][1]):
+				#print(sweep_name, sweep_value)
+				#print(sweep_dim_vals[index])
 				all_arrays.append(parameters[len(parameters)-1].create_dataset(str(sweep_name), data=sweep_value, compression='gzip'))
+			#print(mname)
+			#print(measurement[mname][2])
 			all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', data=measurement[mname][2], compression='gzip'))
 		metadata = {'Date': time.time(),'Power': '','VNA power': ''} #dtype=...?!
 		f.attrs.update(metadata)
 		
-def save_hdf_on_fly(measurement, mdata, location, filename, point_dim, sweep_dim, indeces):
-	### Needs measurement = data_for_measurement() ###
+def save_hdf_new(measurement, mdata, location, filename, point_dim, sweep_dim):
 	import h5py
-	print(os.path.isfile(location + filename + '.hdf5'), location + filename + '.hdf5')
-	if os.path.isfile(location + filename + '.hdf5'):
+	parameters = []
+	all_arrays = []
+	parameter_dim = []
+	if os.path.isfile(location + filename):
+		return
 		with h5py.File(location + filename + '.hdf5', 'a') as f:
 			for mname in measurement.keys():
-				dmdata = f[str(mname) + '/Parameter values'][:]
-				dmdata[[(i) for i in indeces]+[...]] = mdata
-				f[str(mname) + '/Parameter values'][:] = dmdata	
-				print(f[str(mname) + '/Parameter values'][:])
+				
+				i = len(f.attrs['dimensions']) - 1
+				while f.attrs['current_position'][i] >= f.attrs['dimensions'][i] - 1: i -= 1
+				f.attrs['current_position'][i] += 1
+				d = f[str(mname) + '/Parameter values']
+				for position in f.attrs['current_position']: d = d[position]
+				d[:] = mdata
+				
 	else:
 		with h5py.File(location + filename + '.hdf5', 'w') as f:
+			print('I am in')
 			for mname in measurement.keys():
-				parameters = []
-				all_arrays = []
-				parameter_dim = []
 				parameters.append(f.create_group(str(mname)))
 				for sweep_name, sweep_value, sweep_len in zip(measurement[mname][0], measurement[mname][1], sweep_dim + point_dim[mname]):
 					all_arrays.append(parameters[len(parameters)-1].create_dataset(str(sweep_name), data=sweep_value, compression='gzip',  shape=(sweep_len, )))
 					parameter_dim.append(sweep_len)		
 					#print(sweep_name, sweep_len, '+')
-				#print(parameter_dim)
-				#all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', dtype = 'c16', compression='gzip',  shape=(parameter_dim)))
+				print(parameter_dim)
+				#d = np.zeros(parameter_dim)
+				all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', dtype = 'c16', compression='gzip',  shape=(parameter_dim)))
 				#if len(parameter_dim) == 1:
+					#f[str(mname) + '/Parameter values'][:] = measurement[mname][2]
 					#all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', dtype = 'c16', compression='gzip',  shape=(parameter_dim)))
-					#all_arrays[len(all_arrays)-1][:] = mdata
+					#all_arrays[len(all_arrays)-1][:] = mdata#measurement[mname][2]
+					###print(all_arrays[len(all_arrays)-1][:])
 				#else:
-				dmdata = np.zeros(parameter_dim)
-				dmdata[[(i) for i in indeces]+[...]] = mdata
-				all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', shape=(parameter_dim), compression='gzip'))
-				all_arrays[len(all_arrays)-1][:] = dmdata					
-				
+					##d[0] = mdata
+					##print(d, type(d))
+					#all_arrays.append(parameters[len(parameters)-1].create_dataset('Parameter values', dtype = 'c16', compression='gzip',  shape=(parameter_dim)))
+					
+					#all_arrays[len(all_arrays)-1][0, :] = mdata#measurement[mname][2]
+					#print(all_arrays[len(all_arrays)-1][:])
+					
+				d = f[str(mname) + '/Parameter values']
+				for i in range (len(parameter_dim)-1): 
+					print(d)
+					d = d[0]
+				print(d)
 				print(f[str(mname) + '/Parameter values'][:])
-			metadata = {'Date': time.time(),'Power': '','VNA power': ''} #dtype=...?!
+			metadata = {'current_position': numpy.zeros(len(sweep_dim)), 'dimensions': sweep_dim, 'Date': time.time(),'Power': '','VNA power': ''} #dtype=...?!
 			f.attrs.update(metadata)
+			#for k in f[str(mname)].items():
+				#print(k)#f[str(mname) + '/' + str(k)])
 	return
 		
 def read_hdf(filename):

@@ -1,4 +1,6 @@
 import numpy as np
+import time
+from datetime import datetime
 
 def measurer_point_parameters(measurer):
 #	return {dataset: [measurement_parameter(dimension[1], None, dimension[0], dimension[2]) for dimension in point_parameters] for dataset, point_parameters in measurer.get_points().items}
@@ -6,6 +8,8 @@ def measurer_point_parameters(measurer):
 	point_parameters = {}
 	for dataset_name in dataset_names:
 		points = measurer.get_points()[dataset_name]
+		#point_parameters.append(dataset_name)
+		#point_parameters[dataset_name] = {}
 		point_parameters[dataset_name] = []
 		for dimension in points:
 			name, values, unit = dimension
@@ -31,7 +35,7 @@ class measurement_parameter:
 		if 'pre_setter' in kwargs: self.pre_setter = kwargs['pre_setter'] 
 		
 	def __str__(self):
-		return '{name} ({units}): [{min}, {max}] ({num_points} points) {setter_str}'.format(
+		return '{name} ({units}),:[{min}, {max}] ({num_points} points) {setter_str}'.format(#'{name} ({units}): [{min}, {max}] ({num_points} points) {setter_str}'.format(
 			name=self.name, 
 			units=self.unit, 
 			min = np.min(self.values), 
@@ -42,20 +46,24 @@ class measurement_parameter:
 		return str(self)
 		
 class measurement_state():
-	def __init__(self, sweep_parameters):
+	def __init__(self, sweep_parameters, filename = {}, meas_type = {}, references = {}):
 		self.datasets = {} ## here you have datasets
 		self.parameter_values = [None for sweep_parameter in sweep_parameters] 
-		self.start = time.time()
+		self.start = datetime.now()#time.time()
+		self.stop = datetime.now()
 		self.measurement_time = 0
 		self.started_sweeps = 0
 		self.done_sweeps = 0
-		self.filename = ''
+		self.filename = filename#'C:/Users/User/Documents/PythonScripts/data1'
 		self.id = 0
-		self.references = {}
-		self.measurement_type = ''
-		self.type_revision = 0
+		self.owner = 'qtlab'
+		self.sample_name = '1'
+		self.comment = ''
+		self.references = references#{}
+		self.measurement_type = 'Rabi'
+		self.type_revision = '1st attempt'
 		### TODO: invalidation synchronization with db!!!
-		self.metadata = {}
+		self.metadata = {'VNA': '10 dBm'}
 		self.total_sweeps = 0
 		self.request_stop_acq = False
 		self.sweep_error = None
@@ -64,7 +72,7 @@ class measurement_state():
 		#format = '''Sweep parameter names: {names}, Measurement: {measurement}, Measurement time: {measurement_time}, Done sweeps: {done_sweeps}, Sweep error: {sweep_error}'''
 		format =  '''start: {start}, started/done/total sweeps: {started}/{done}/{total}, 
 Measured data: \n{datasets}'''
-		datasets_str = '\n'.join(['\'{}\': {}'.format(dataset_name, dataset.__str__()) for dataset_name, dataset in self.data.items()])
+		datasets_str = '\n'.join(['\'{}\': {}'.format(dataset_name, dataset.__str__()) for dataset_name, dataset in self.datasets.items()])
 		return format.format(start=self.start, started=self.started_sweeps, done=self.done_sweeps, total=self.total_sweeps, datasets=datasets_str)
 	def __repr__(self):
 		return str(self)
