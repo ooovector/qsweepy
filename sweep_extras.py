@@ -22,16 +22,18 @@ Hooks for sweep.
 (3) save_exdir.save_exdir(state)
 '''
 
-
 class sweeper:
 	def mkdir(self):
 		pass
 	def __init__(self, db):
-		import save_exdir
+		from . import save_exdir
 		self.db = db
 		self.default_save_path = ''
-		self.on_start = [self.mkdir, db.create_in_database, save_exdir.save_exdir, db.update_in_database]
-		self.on_update = [lambda x: save_exdir.update_exdir(x, db)]
-		self.on_finish = [db.update_in_database, save_exdir.close_exdir]
+		self.on_start = [(db.create_in_database,tuple()), 
+						 (save_exdir.save_exdir,(True,)), 
+						 (db.update_in_database,tuple())]
+		self.on_update = [(save_exdir.update_exdir,tuple())]
+		self.on_finish = [(db.update_in_database,tuple()), 
+						  (save_exdir.close_exdir,tuple())]
 	def sweep(self, *args, **kwargs):
-		return sweep.sweep(*args, **kwargs)
+		return sweep.sweep(*args, on_start = self.on_start, on_finish = self.on_finish, on_update = self.on_update, **kwargs)

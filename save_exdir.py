@@ -64,16 +64,17 @@ def save_exdir(state, keep_open=False):
 				d.data[:] = np.asarray(parameter_values)
 			data_exdir = dataset_exdir.create_dataset('data', dtype = state.datasets[dataset].data.dtype, data =  state.datasets[dataset].data)
 			if keep_open:
-				state.datasets[dataset] = data_exdir
+				state.datasets[dataset].data_exdir = data_exdir
 	except:
 		raise
 	finally:
 		if not keep_open:
 			f.close()
 	
-def update_exdir(state, dataset, indeces):
-	f.attrs.update(state.metadata)
-	state.datasets[dataset].data_exdir[indeces] = state.datasets[dataset].data[indeces]
+def update_exdir(state, indeces):
+	for dataset in state.datasets.keys():
+		state.exdir.attrs.update(state.metadata)
+		state.datasets[dataset].data_exdir[indeces] = state.datasets[dataset].data[indeces]
 	
 def close_exdir(state):
 	if hasattr(state, 'exdir'):
