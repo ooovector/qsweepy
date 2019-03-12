@@ -3,13 +3,10 @@ import time
 from time import sleep
 import sys
 from matplotlib import pyplot as plt
-import numbers
 import itertools
-import cmath
 from . import save_pkl
 import logging
 from . import plotting
-import pickle as pic
 import shutil as sh
 import threading
 import pathlib
@@ -110,11 +107,20 @@ Creates dict of measurement_parameter data structures for each dataset of measur
 example: point_parameter(vna) should return
 {'S-parameter':measurement_parameter(vna.get_freqpoints(), None, 'Frequency', 'Hz')}	
 '''	
-	
-def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[], on_finish=[]):
+
+
+		
+def sweep_new(measurer, 
+			  *parameters, 
+			  shuffle=False, 
+			  on_start =[], 
+			  on_update=[], 
+			  on_finish=[], 
+			  **kwargs
+			  ):
 	'''
 	Performs a n-d parametric sweep.
-	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... , filename=None)
+	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... )
 	measurer: an object that supports get_points(), measure(), get_dtype() and get_opts() methods.
 	
 	Returns: measurement_state struct after measurement dict of ndarrays each corresponding to a measurment in the sweep
@@ -124,7 +130,8 @@ def sweep_new(measurer, *parameters, shuffle=False, on_start = [], on_update=[],
 	point_parameters = measurer_point_parameters(measurer)
 	
 	sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
-	state = measurement_state(sweep_parameters)
+	state = measurement_state(**kwargs)
+	state.sweep_parameters = [None for d in sweep_dimensions]
 	state.total_sweeps = np.prod([d for d in sweep_dimensions])
 	#all_parameters = {dataset: sweep_parameters+_point_parameters for dataset, _point_parameters in point_parameters.items()}
 	

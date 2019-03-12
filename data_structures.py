@@ -46,27 +46,29 @@ class measurement_parameter:
 		return str(self)
 		
 class measurement_state():
-	def __init__(self, sweep_parameters, filename = {}, meas_type = {}, references = {}):
+	def __init__(self, **kwargs):
 		self.datasets = {} ## here you have datasets
-		self.parameter_values = [None for sweep_parameter in sweep_parameters] 
+		self.parameter_values = [] 
 		self.start = datetime.now()#time.time()
 		self.stop = datetime.now()
 		self.measurement_time = 0
 		self.started_sweeps = 0
 		self.done_sweeps = 0
-		self.filename = filename#'C:/Users/User/Documents/PythonScripts/data1'
-		self.id = 0
+		self.filename = ''
+		self.id = None
 		self.owner = 'qtlab'
-		self.sample_name = '1'
+		self.sample_name = 'anonymous_sample'
 		self.comment = ''
-		self.references = references#{}
-		self.measurement_type = 'Rabi'
-		self.type_revision = '1st attempt'
+		self.references = {}
+		self.measurement_type = 'anonymous_measurement'
+		self.type_revision = '0'
 		### TODO: invalidation synchronization with db!!!
-		self.metadata = {'VNA': '10 dBm'}
+		self.metadata = {}
 		self.total_sweeps = 0
 		self.request_stop_acq = False
 		self.sweep_error = None
+		for key, value in kwargs.items():
+			setattr(self, key, value)
 		
 	def __str__(self):
 		#format = '''Sweep parameter names: {names}, Measurement: {measurement}, Measurement time: {measurement_time}, Done sweeps: {done_sweeps}, Sweep error: {sweep_error}'''
@@ -96,3 +98,4 @@ data: {}'''
 		return format.format('\n'.join(parameter.__str__() for parameter in self.parameters), self.data)
 	def __repr__(self):
 		return str(self)
+		
