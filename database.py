@@ -2,6 +2,7 @@ from pony.orm import *
 from time import gmtime, strftime
 from .data_structures import *
 from datetime import datetime
+from decimal import Decimal
 
 class database:
 	def __init__(self, provider='postgres', user='qsweepy', password='qsweepy', host='localhost', database='qsweepy', port = 5432):
@@ -11,9 +12,9 @@ class database:
 			comment = Optional(str)
 			measurement_type = Required(str)
 			sample_name = Required(str)
-			measurement_time = Optional(float)
-			start = Required(datetime, precision=6)
-			stop = Optional(datetime, precision=6)
+			measurement_time = Optional(Decimal, 8, 2)
+			start = Required(datetime, precision=3)
+			stop = Optional(datetime, precision=3)
 			filename = Optional(str)
 			type_revision = Optional(str)
 			incomplete = Optional(bool)

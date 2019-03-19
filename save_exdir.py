@@ -32,7 +32,7 @@ def default_measurement_save_path(state):
 	day_folder_name = now.strftime('%Y-%m-%d')
 
 	parent = os.path.join(data_root, day_folder_name)
-	print (parent, identifiers)
+	#print (parent, identifiers)
 	fullpath = os.path.join(parent, '-'.join(identifiers.values()))
 	
 	return fullpath
@@ -93,7 +93,7 @@ def load_exdir(filename, db=None):
 		for dataset_name in f.keys():
 			parameters = [None for key in f[dataset_name]['parameters'].keys()]
 			for parameter_id, parameter in f[dataset_name]['parameters'].items():
-				print (parameter.attrs)
+				#print (parameter.attrs)
 				parameter_name = parameter.attrs['name']
 				parameter_setter = parameter.attrs['has_setter']
 				parameter_unit = parameter.attrs['unit']
@@ -103,7 +103,7 @@ def load_exdir(filename, db=None):
 			state.datasets[dataset_name] = measurement_dataset(parameters, data)
 		if db:
 			id = get(i.id for i in db.Data if (i.filename == filename))
-			print (filename)
+			#print (filename)
 			state.id = id
 			state.start = db.Data[id].start
 			state.stop = db.Data[id].stop
