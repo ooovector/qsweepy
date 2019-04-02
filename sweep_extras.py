@@ -7,6 +7,7 @@ from . import sweep
 import shutil as sh
 import pathlib
 from .data_structures import *
+from . import plotly_plot
 
 '''
 Interactive stuff:
@@ -34,6 +35,7 @@ class sweeper:
 						 (db.update_in_database,tuple())]
 		self.on_update = [(save_exdir.update_exdir,tuple())]
 		self.on_finish = [(db.update_in_database,tuple()), 
-						  (save_exdir.close_exdir,tuple())]
+						  (save_exdir.close_exdir,tuple()),
+						  (plotly_plot.save_default_plot,(self.db,))]
 	def sweep(self, *args, **kwargs):
 		return sweep.sweep(*args, on_start = self.on_start, on_finish = self.on_finish, on_update = self.on_update, **kwargs)

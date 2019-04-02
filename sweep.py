@@ -197,6 +197,7 @@ def sweep(measurer,
 		measurer.join_deferred()
 
 	for event_handler, arguments in on_finish:
+		print(event_handler, state, arguments)
 		event_handler(state, *arguments)
 	
 	return state
