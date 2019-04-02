@@ -79,7 +79,14 @@ def update_exdir(state, indeces):
 def close_exdir(state):
 	if hasattr(state, 'exdir'):
 		for dataset in state.datasets.keys():
-			del state.datasets[dataset].data_exdir
+			try:
+				del state.datasets[dataset].data_exdir
+			except AttributeError:
+				continue
+			try:
+				del state.references['current ref']
+			except KeyError:
+				continue
 		state.exdir.close()
 		del state.exdir
 	
