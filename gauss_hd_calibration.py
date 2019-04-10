@@ -166,7 +166,13 @@ class gauss_hd_calibration:
 	#pognali
 	
 	def guess_max_num_pulses(self):
-		num_pulses_max = int(np.floor(self.tld.Ramsey_result['ramsey_decay']/self.length*4))
+		time=2e-6
+		if np.abs(self.tld.Ramsey_result['ramsey_decay'])>time: 
+			num_pulses_max = int(np.floor(time/self.length*4))
+		else:
+			num_pulses_max = int(np.floor(self.tld.Ramsey_result['ramsey_decay']/self.length*4))
+		if num_pulses_max > 64:
+			num_pulses_max=64
 		return num_pulses_max
 	
 	def calibrate_amplitude(self, max_angle = np.pi):
@@ -264,7 +270,14 @@ class gauss_hd_calibration:
 		#print ('with alpha:', sequence_with_alpha)
 		#print ('without alpha:', sequence_without_alpha)
 		return sequence_with_alpha
-	
+		
+	def get_pulse_seq_z(self,z_phase):
+		pg = self.tld.pulse_sequencer
+		z_pulse = [(c, pg.vz, z_phase) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
+		sequence_z= [pg.pmulti(0, *tuple(z_pulse))]
+		return sequence_z
+		
+		
 	def randomized_clifford_benchmarking(self, single_shot_readout, seq_lengths, *params, random_sequence_num=20):
 		observables = { 'X': 0.5*np.asarray([[0, 1],   [1, 0]]),
 						'Y': 0.5*np.asarray([[0, -1j],   [1j, 0]]),
@@ -335,7 +348,88 @@ class gauss_hd_calibration:
 		except:
 			return clifford_bench
 		
-	
+	def randomized_clifford_benchmarking_new(self, single_shot_readout, seq_lengths, *params, random_sequence_num=20):
+		observables = { 'X': 0.5*np.asarray([[0, 1],   [1, 0]]),
+						'Y': 0.5*np.asarray([[0, -1j],   [1j, 0]]),
+						'-X': 0.5*np.asarray([[0, -1],   [-1, 0]]),
+						'-Y': 0.5*np.asarray([[0, 1j],   [-1j, 0]]),
+						'Z': 0.5*np.asarray([[1, 0],   [0, -1]])}
+		ro_seq = single_shot_readout.ro_seq
+		proj_seq = {'Xo':{'pulses': self.get_pulse_seq(np.pi/2., -np.pi/2.)+ro_seq, 
+						 'operator': observables['X']},
+					'Yo':{'pulses': self.get_pulse_seq(np.pi/2., 0)+ro_seq,
+						 'operator': observables['Y']},
+					'-Xo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi/2.)+ro_seq,
+						 'operator': observables['-X']},
+					'-Yo':{'pulses': self.get_pulse_seq(np.pi/2., np.pi)+ro_seq,
+						 'operator': observables['-Y']},
+					'Zo': {'pulses':ro_seq, 'operator':observables['Z']} }
+		reconstruction_basis={'x':{'operator':observables['X']},
+							  'y':{'operator':observables['Y']},
+							  'z':{'operator':observables['Z']}}
+							  
+		#multiqubit_single_shot.filter_binary = multiqubit_single_shot.filters['1']
+		proj_seq = {'Z': {'pulses':ro_seq, 'operator':observables['Z']}}
+		reconstruction_basis={'z':{'operator':observables['Z']}}
+		tomoz = tomography.tomography(single_shot_readout, self.tld.pulse_sequencer, proj_seq, reconstruction_basis=reconstruction_basis)
+
+		pi2 = {'X/2': {'pulses':self.get_pulse_seq(np.pi/2., np.pi),
+					   'unitary': np.sqrt(0.5)*np.asarray([[1, -1j],  [-1j, 1]])},
+			   'Y/2': {'pulses':self.get_pulse_seq(np.pi/2., np.pi/2.),
+					   'unitary': np.sqrt(0.5)*np.asarray([[1, -1],    [1, 1]])},
+			   '-X/2':{'pulses':self.get_pulse_seq(np.pi/2., 0),
+					  'unitary': np.sqrt(0.5)*np.asarray([[1, 1j],   [1j, 1]])},
+			   '-Y/2':{'pulses':self.get_pulse_seq(np.pi/2., -np.pi/2.),
+					   'unitary': np.sqrt(0.5)*np.asarray([[1, 1],   [-1, 1]])},
+			   'I':   {'pulses':[], 'unitary':np.asarray([[1, 0], [0,1]])}
+			}
+			
+		HZ = {'H': {'pulses':self.get_pulse_seq_z(np.pi/2)+self.get_pulse_seq(np.pi/2., np.pi)+self.get_pulse_seq_z(np.pi/2),
+					   'unitary': np.sqrt(0.5)*np.asarray([[1, 1],  [1, -1]])},
+			   'Z': {'pulses':self.get_pulse_seq_z(np.pi),
+					   'unitary': np.asarray([[1, 0],    [0, -1]])},
+			   'Z/2':{'pulses':self.get_pulse_seq_z(np.pi/2),
+					  'unitary': np.asarray([[1, 0],   [0, 1j]])},
+			   '-Z/2':{'pulses':self.get_pulse_seq_z(-np.pi/2.),
+					   'unitary': np.asarray([[1, 0],   [0, -1j]])},
+			   'I':   {'pulses':[], 'unitary':np.asarray([[1, 0], [0,1]])}
+			}
+		clifford_group = clifford.generate_group(pi2)
+		HZ_group = clifford.generate_group(HZ)
+		#print(clifford_group.keys(), len(clifford_group))
+		
+		self.pi2_bench = interleaved_benchmarking.interleaved_benchmarking(tomoz)
+		# self.pi2_bench.interleavers = clifford_group
+		self.pi2_bench.interleavers =HZ_group
+		
+		self.pi2_bench.random_sequence_num = random_sequence_num
+		random_sequence_ids = np.arange(self.pi2_bench.random_sequence_num)
+		
+		self.pi2_bench.prepare_random_interleaving_sequences()
+		clifford_bench = sweep.sweep(self.pi2_bench,
+                             (seq_lengths, self.pi2_bench.set_sequence_length_and_regenerate, 'Gate number', ''), 
+							 *params,
+                             (random_sequence_ids, self.pi2_bench.set_interleaved_sequence, 'Random sequence id', ''))
+		try:
+			clifford_fitresults, clifford_expfit = fitting.exp_fit1d(clifford_bench['distance'][1][0], 
+                                                        np.reshape(np.mean(1-clifford_bench['distance'][2], axis=1), 
+                                                                   (1, len(clifford_bench['distance'][1][0]))))
+																   
+			plt.figure()
+			plt.plot(clifford_bench['distance'][1][0], 1-clifford_bench['distance'][2], 
+				marker='o', 
+				color='black', 
+				linestyle='')
+			plt.plot(clifford_expfit[0].ravel(), clifford_expfit[1].ravel(), label='Clifford set')
+			plt.grid()
+			plt.xlabel('Number of gates')
+			plt.ylabel('Fidelity')
+			plt.legend()
+			print('Clifford fidelity: {0:6.3f}'.format(np.exp(-1/clifford_fitresults[0])))
+			self.clifford_fidelity = np.exp(-1/clifford_fitresults[0])
+			return self.clifford_fidelity
+		except:
+			return clifford_bench
 	# def Rabi_amplitudes_calibration(self,num_pulses,ex_amps,chid):
 		
 		# from scipy.optimize import curve_fit

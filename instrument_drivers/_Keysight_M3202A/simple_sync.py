@@ -37,11 +37,17 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 	### infinite cycles of a single waveform mode with synchronisation across channels
 	def set_waveform(self, waveform, channel):
 		from time import sleep
+		self.stop()
 		#self.stop()
 		already_set = False
 		if type(self.waveforms[channel]) != type(None):
 			already_set = np.sum(np.abs(np.asarray(self.waveforms[channel]) - np.asarray(waveform)))<1e-5
-		if not already_set:
+			#print (channel, np.sum(np.abs(np.asarray(self.waveforms[channel]) - np.asarray(waveform))))
+		
+		if already_set:
+			waveform_id = self.waveform_ids[channel]
+			return
+		else:
 			if self.waiting_waveforms[channel] != waveform: # if the current waveform has not been preloaded by prepare_set_waveform_async
 				wave = keysightSD1.SD_Wave()
 				if self.waveform_ids[channel] is None:
@@ -68,8 +74,6 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 				self.waiting_waveforms[channel] = self.waveforms[channel]
 				self.waveform_ids[channel] = waveform_id
 				self.waveforms[channel] = waveform
-		else:
-			waveform_id = self.waveform_ids[channel]
 
 		trigger_source_type = self.trigger_source_types[channel]
 		trigger_source_channel = self.trigger_source_channels[channel]
@@ -94,8 +98,9 @@ class Keysight_M3202A_S(Keysight_M3202A_Base):
 											self.marker_length[channel], #length5Tclk 
 											self.marker_delay[channel]); #delay5Tclk
 		self.module.AWGqueueSyncMode(channel, 1)
-		#self.run()
 		
+		#self.run()
+		self.run()
 		#time.sleep(0.05)
 		
 	def set_marker(self, delay, length, channel, pxi_channels=0, external=1):

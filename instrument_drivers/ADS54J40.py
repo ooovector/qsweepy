@@ -49,7 +49,7 @@ class ADS54J40():
 		
 	def load_lmk_config(self, filename=None):
 		if filename == None:
-			filename = r'C:\qsweepy\qtlab_replacement\instrument_drivers\_ADS54J40\Config_ADC\LMK_100MHz_osc_10MHz_ref_Dpll.cfg'
+			filename = r'C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40\Config_ADC\LMK_100MHz_osc_10MHz_ref_Dpll.cfg'
 		with open(filename, 'rb') as file:
 			config = [[int (i, 16) for i in row.strip().split()[:2]] for row in file if len(row.strip().split())>1]
 		r = []
@@ -70,7 +70,7 @@ class ADS54J40():
 			
 	def load_ads_config(self, filename=None):
 		if filename == None:
-			filename = r'C:\qsweepy\qtlab_replacement\instrument_drivers\_ADS54J40\Config_ADC\ADS54J40_LMF_8224.cfg'
+			filename = r'C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40\Config_ADC\ADS54J40_LMF_8224.cfg'
 		with open(filename, 'rb') as file:
 			config = [[int (i, 16) for i in row.strip().split()[:2]] for row in file if len(row.strip().split())>1]
 		x = []

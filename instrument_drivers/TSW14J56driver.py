@@ -1,20 +1,24 @@
 from numpy import *
 #from usb_intf import *
 #from reg_intf import *
-from ADS54J40 import *
 
-from qsweepy.instrument import Instrument
+import warnings
 
+
+#from qsweepy.instrument import Instrument
+#from qsweepy.instrument_drivers.ADS54J40 import *
 from qsweepy.instrument_drivers._ADS54J40.usb_intf import *
 from qsweepy.instrument_drivers._ADS54J40.reg_intf import *
-from qsweepy.instrument_drivers._ADS54J40 import *
+from qsweepy.instrument_drivers.ADS54J40 import *
 
 import usb.core
 import time
 import sys
 import zlib
 
-sys.path.append('C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40')
+from qsweepy import config
+
+#sys.path.append('C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40')
 
 class TSW14J56_evm_reducer():
 	def __init__(self, adc):
@@ -75,17 +79,16 @@ class TSW14J56_evm_reducer():
 		return (opts)
 
 	def measure(self):
-		
-		if self.avg_cov:
-			avg_covs_initial = [self.adc.get_cov_result_avg(i) for i in range(self.adc.num_covariances)]
 		result = {}
+		if self.avg_cov:
+			avg_before =  {'avg_cov'+str(i):self.adc.get_cov_result_avg(i) for i in range(self.adc.num_covariances)}
 		self.adc.capture(trig=self.trig, cov = (self.last_cov or self.avg_cov or self.resultnumber))
 		if self.output_raw:
 			result.update({'Voltage':self.adc.get_data()})
 		if self.last_cov:
 			result.update({'last_cov'+str(i):self.adc.get_cov_result(i) for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			result.update({'avg_cov'+str(i):self.adc.get_cov_result_avg(i)-avg_covs_initial[i] for i in range(self.adc.num_covariances)})
+			result.update({'avg_cov'+str(i):self.adc.get_cov_result_avg(i)-avg_before['avg_cov'+str(i)] for i in range(self.adc.num_covariances)})
 		if self.resultnumber:
 			result.update({'resultnumbers':[self.adc.get_resultnumbers()]})
 			
@@ -103,9 +106,22 @@ class TSW14J56_evm():
 		
 		self.usb_reboot_timeout = 10
 		self.debug_print = False
-		self.fpga_firmware = "C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40\qubit_daq.rbf"
+		#self.fpga_firmware = "_ADS54J40/qubit_daq.rbf"
+		self.fpga_firmware = config.get_config()['TSW14J56_firmware']
 		self.cov_cnt = 0
 		
+		#To do make a register readout to check ADS-programmed status"
+		self.ads = ADS54J40()
+		if self.ads.read_reg(ADS_CTRL_ST_ADDR) == ADS_CTRL_ST_VL:
+			print ("ADS54J40 already programmed")
+			self.ads.device.close()
+		else:
+			print ("Programming ADS54J40 ")
+			self.ads.load_lmk_config()
+			time.sleep(5)
+			self.ads.load_ads_config()
+			self.ads.device.close()
+			
 		self.dev=usb.core.find(idVendor=id.VENDOR, idProduct=id.PRODUCT)
 		if self.dev is None:
 			raise Exception('TSW14J56: Device not found!')
@@ -122,32 +138,16 @@ class TSW14J56_evm():
 				firmware_rbf = open(self.fpga_firmware, 'rb')
 				firmware = firmware_rbf.read()
 			except:
-				Warning("TSW14J56: Unable to read FPGA firmware from file. The device may be unprogrammed!")
+				warnings.warn("TSW14J56: Unable to read FPGA firmware from file. The device may be unprogrammed!")
 				return
 			checksum = zlib.crc32(firmware)	
 			if dev_checksum != checksum:
 				self.fpga_config(firmware = firmware)
 				
-		#To do make a register readout to check ADS-programmed status"
-		self.ads = ADS54J40(0)
-		if self.ads.read_reg(ADS_CTRL_ST_ADDR) == 0x88:
-			print ("ADS54J40 already programmed")
-			self.ads.device.close()
-			if (self.ads.device.status):
-				self.ads.device.close()
-		else:
-			print ("Programming ADS54J40 ")
-			self.ads.load_lmk_config()
-			self.ads.load_ads_config()
-			self.ads.device.close()
-			if (self.ads.device.status):
-				self.ads.device.close()
-			
-				
 		self.sync_req()
 	
 	def get_clock(self):
-		###TODO: get this shit right
+		###TODO: get this useless shit right
 		return 1e9
 	
 	def usb_reset(self):
@@ -173,8 +173,8 @@ class TSW14J56_evm():
 		self.write_reg(JESD_BASE, JESD_CTRL, 1)
 		
 	def system_reset(self):
-		self.write_reg(CAP_BASE, CAP_CTRL, 1<<CAP_CTRL_ABORT) # Abort current capture process before reset 
 		self.write_reg(FX3_BASE, FX3_RST, 1)
+		return
 			
 	def reset(self):
 		self.system_reset()
@@ -278,7 +278,6 @@ class TSW14J56_evm():
 		data = reshape(data, (data_len, 2))
 		return reshape(data.T[0,:],(self.nsegm, self.nsamp))+1j*reshape(data.T[1,:], (self.nsegm, self.nsamp))
 
-		
 		#dataiq = reshape(data, (2, self.nsamp*self.nsegm))[0]+ 1j*reshape(data, (2, self.nsamp*self.nsegm))[1]
 		#return (reshape(dataiq, (self.nsegm, self.nsamp)))
 		
@@ -392,7 +391,7 @@ class TSW14J56_evm():
 		a,v = mk_val_ind((CAP_BASE + COV_RESAVG_BASE + COV_RESAVG_SUBBASE + ncov*4)<<2) 
 		b1 = self.dev.ctrl_transfer(vend_req_dir.RD, vend_req.REG_READ,a,v,4 )
 		q = frombuffer(b1+b0, dtype = dt)[0]
-		return (q)#/self.cov_cnt)
+		return (q)
 		
 	def get_resultnumbers(self):
 		'''
@@ -410,3 +409,27 @@ class TSW14J56_evm():
 			a,v = mk_val_ind((CAP_BASE + COV_NUMB_BASE + i*4)<<2) 
 			b0.append(frombuffer(self.dev.ctrl_transfer(vend_req_dir.RD, vend_req.REG_READ,a,v,4 ), dtype = dt)[0])
 		return (b0)
+		
+	def set_trig_src_period(self, period):
+		'''
+		Setst pulse period of the internal pulse generator on "TRIG OUT A" SMA
+		
+		Input:
+			period: int Period in clock cycles (125 MHz)
+		'''
+		period = int(period)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_PERIOD_LO, period)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_PERIOD_HI, period>>32)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_CTRL, 1<<TRIG_SRC_CTRL_UPDATE)
+
+	def set_trig_src_width(self, width):
+		'''
+		Setst pulse width of the internal pulse generator on "TRIG OUT A" SMA
+		
+		Input:
+			width: int Width in clock cycles (125 MHz)
+		'''
+		width = int(width)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_WIDTH_LO, width)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_WIDTH_HI, width>>32)
+		self.write_reg(TRIG_SRC_BASE, TRIG_SRC_CTRL, 1<<TRIG_SRC_CTRL_UPDATE)

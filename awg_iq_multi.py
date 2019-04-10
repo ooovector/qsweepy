@@ -57,7 +57,8 @@ class carrier:
 		return self.frequency
 	def set_waveform(self, waveform):
 		self.waveform = waveform
-		self.parent.assemble_waveform()
+		if not self.parent.frozen:
+			self.parent.assemble_waveform()
 	def freeze(self):
 		self.parent.freeze()
 	def unfreeze(self):
