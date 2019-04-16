@@ -12,7 +12,7 @@ class database:
 			comment = Optional(str)
 			measurement_type = Required(str)
 			sample_name = Required(str)
-			measurement_time = Optional(Decimal, 8, 2)
+			measurement_time = Optional(Decimal, 8, 2, volatile=True)
 			start = Required(datetime, precision=3)
 			stop = Optional(datetime, precision=3)
 			filename = Optional(str)

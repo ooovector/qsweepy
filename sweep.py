@@ -174,7 +174,7 @@ def sweep(measurer,
 				# check which values have changed this sweep
 		old_parameter_values = state.parameter_values
 		state.parameter_values = [sweep_parameters[parameter_id].values[value_id] for parameter_id, value_id in enumerate(indeces)]
-		changed_values = np.equal(old_parameter_values, state.parameter_values)#[old_parameter_values!=state.parameter_values for old_val, val in zip(old_vals, vals)]
+		changed_values = np.logical_not(np.equal(old_parameter_values, state.parameter_values))#[old_parameter_values!=state.parameter_values for old_val, val in zip(old_vals, vals)]
 		# set to new param vals
 		for value, sweep_parameter, changed in zip(state.parameter_values, sweep_parameters, changed_values):
 			if changed:
