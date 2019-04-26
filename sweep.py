@@ -160,10 +160,16 @@ def sweep(measurer,
 		state.done_sweeps += 1
 		
 		for event_handler, arguments in on_update:
-			event_handler(state, indeces, *arguments)
+			try:
+				event_handler(state, indeces, *arguments)
+			except Exception as e:
+				print (e)
 
 	for event_handler, arguments in on_start:
-		event_handler(state, *arguments)
+		try:
+			event_handler(state, *arguments)
+		except Exception as e:
+			print (e)
 		
 		################
 	if hasattr(measurer, 'pre_sweep'):
@@ -198,7 +204,9 @@ def sweep(measurer,
 		measurer.join_deferred()
 
 	for event_handler, arguments in on_finish:
-		print(event_handler, state, arguments)
-		event_handler(state, *arguments)
+		try:
+			event_handler(state, *arguments)
+		except Exception as e:
+			print (e)
 	
 	return state

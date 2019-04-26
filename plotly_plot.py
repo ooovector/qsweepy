@@ -14,6 +14,7 @@ def save_default_plot(state, db):
 
 def default_plot(state, db):
 	measurements = [{'id': state.id}]
+	measurements = add_fits_to_measurements(measurements, db)
 	traces, dropdowns = add_default_traces(measurements, db, interactive=False)
 	traces = pd.DataFrame(traces, columns=['id', 'dataset', 'op', 'style', 'color', 'x-axis', 'y-axis', 'row', 'col'])
 	cross_sections = cross_section_configurations_add_default(traces, db)
@@ -123,9 +124,23 @@ def default_measurements(db):
 			data = [{'id': last_meaningful_measurement[0], 'label': 'current'}, {'id': last_measurement[0], 'label': 'current_meta'}]
 		else:
 			data = [{'id': last_meaningful_measurement[0], 'label': 'current'}]
-		
-	return data
+	return add_fits_to_measurements(data, db)
 
+def add_fits_to_measurements(measurements, db):
+	extra_measurements = []
+	with db_session:
+		for measurement in measurements:
+			references = db.Data[measurement['id']].reference_one
+			for r in references:
+				if r.ref_type == 'fit source':
+					extra_measurements.append({'id': r.that.id, 'label':measurement['label']+' fit source'})
+			references = db.Data[measurement['id']].reference_two
+			for r in references:
+				if r.ref_type == 'fit source':
+					extra_measurements.append({'id': r.this.id, 'label':measurement['label']+' fit'})
+	return measurements+extra_measurements
+		
+	
 def ax_id(ax_id, ax_num):
 	if ax_num ==1:
 		return (0,0)

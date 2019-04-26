@@ -48,7 +48,11 @@ def exp_sin_fit(x, y):
 		A = np.reshape(np.asarray(p[3:]),(len(p[3:]), 1))
 		return A*np.cos(phase+x*freq*2*np.pi)*np.exp(-x/x0)
 	
-	cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
+	finite_vals = np.all(np.isfinite(y), axis=0)
+	print (x[finite_vals], y[:, finite_vals])
+	def cost(p):
+		return (np.abs(model(x[finite_vals], p)-y[:, finite_vals])**2).ravel()
+	#cost = lambda p: (np.abs(model(x[np.isfinite(y)], p)-y[:, np.isfinite(y)])**2).ravel()
 	
 	#means = np.reshape(np.nanmean(y, axis=1), (np.asarray(y).shape[0], 1))
 	means = np.reshape(np.nanmean(y, axis=0), (y.shape[1], 1))
@@ -96,9 +100,21 @@ def exp_sin_fit(x, y):
 	from scipy.optimize import leastsq
 	#plt.plot(x, (model(x, p0)).T)
 	#plt.plot(x, (y).T, marker='o', markerfacecolor='None', linestyle='none')
-	fitresults = leastsq (cost, p0)
-	#print(fitresults)
-	fitted_curve = np.transpose(model(resample_x_fit(x), fitresults[0]))
+	from time import time
+	begin = time()
+	output_dimension = cost(p0)
+	if len(output_dimension) >= len(p0):
+		fitresults = leastsq (cost, p0)
+		fitted_curve = np.transpose(model(resample_x_fit(x), fitresults[0]))
+		parameters = {'phase': str(fitresults[0][0]), 'freq': str(fitresults[0][1]), 'decay': str(fitresults[0][2]), 'amplitudes': str(fitresults[0][3:]), 'initial_points': str(z)}
+	else:
+		fitted_curve = np.nan*np.ones((len(resample_x_fit(x)), y.shape[1]), dtype=y.dtype)
+		parameters = {'phase': str(np.nan), 'freq': str(np.nan), 'decay': str(np.nan), 'amplitudes': str(np.nan), 'initial_points': str(np.nan)}
+	#print (p0)
+	#print (x, y)
+	print ('fit time:', time()-begin)
+	print(parameters)
+	
 	#print(np.asarray(fitted_curve).shape)
 	
 	#for i in range(4):
@@ -108,5 +124,5 @@ def exp_sin_fit(x, y):
 	#	plt.plot(x, model(x, fitresults[0])[i,:], label='fitted')
 	#	plt.legend()
 	
-	parameters = {'phase': str(fitresults[0][0]), 'freq': str(fitresults[0][1]), 'decay': str(fitresults[0][2]), 'amplitudes': str(fitresults[0][3:]), 'initial_points': str(z)}
+	
 	return (resample_x_fit(x), fitted_curve+means), parameters

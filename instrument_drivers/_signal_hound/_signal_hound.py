@@ -3,7 +3,7 @@ import logging
 try:
 	signal_hound_dll = ctypes.WinDLL ("sa_api.dll")
 except Exception as e:
-	print ('')
+	print (e)
 
 # Limits
 sa44_min_freq = 1.

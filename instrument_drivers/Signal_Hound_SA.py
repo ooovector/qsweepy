@@ -34,7 +34,8 @@ class Signal_Hound_SA(Instrument):
 		
 		logging.info(__name__ + ' : Initializing instrument')
 		Instrument.__init__(self, name, tags=['physical'])
-		self._device = _signal_hound.open_device_by_serial_number(serial)
+		self._device = _signal_hound.open_device_by_serial_number(serial_number=serial)
+		#self._device = f(serial_number=serial)
 
 		self._serial = serial
 		

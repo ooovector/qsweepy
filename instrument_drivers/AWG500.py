@@ -46,6 +46,9 @@ FT_FLOW_DTR_DSR		=0x0200
 FT_FLOW_XON_XOFF	=0x0400
 
 class AWG500(Instrument):
+	def get_clock(self):
+		return 500e6
+		
 	def SendPacket(self, id, addr, data):
 		packet = bytes([id, addr])+data
 		#print (packet)
@@ -91,7 +94,7 @@ class AWG500(Instrument):
 		return True if check=='passed' else False
 
 	def ProgVirtex6(self, filename=None):
-		from src.config import get_config
+		from qsweepy.config import get_config
 		if not filename:
 			filename = get_config().get('AWG500_default_firmware')
 		self.SendPacket(ID_PROG, ADDR_RES, self.intToBytes([0]))
@@ -369,11 +372,17 @@ class AWG500(Instrument):
 
 	#Constructor
 	def __init__(self, name, address=0, ver=0, use_internal_trigger=True, mode='master'):
-		from src.config import get_config
+		from qsweepy.config import get_config
+		import numbers
 		#qtlab stuff
 		Instrument.__init__(self, name, tags=['measure'])
 		# Opening ftd2xx connection (USB-COM dongle)
+		
+		if not isinstance(address, numbers.Integral):
+			address = ftd2xx.listDevices().index(address)
+		print ('opening device')
 		self.h = ftd2xx.open(address)
+		print ('device open')
 
 		# QTLab stuff
 		self.add_parameter('repetition_period', type=float,
@@ -449,9 +458,9 @@ class AWG500(Instrument):
 			print ('Virtex is programmed? ', is_programmed)
 			if not is_programmed:
 				if mode=='master':
-					self.ProgVirtex6(filename=get_config().get('AWG500_default_firmware'))
+					self.ProgVirtex6(filename=get_config()['AWG500_default_firmware'])
 				else:
-					self.ProgVirtex6(filename=get_config().get('AWG500_slave_firmware'))
+					self.ProgVirtex6(filename=get_config()['AWG500_slave_firmware'])
 		
 		self.send_control_word()
 		# setting a single trigger per AWG repeat
