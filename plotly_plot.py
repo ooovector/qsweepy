@@ -13,6 +13,8 @@ def save_default_plot(state, db):
 	pio.write_image(plot, state.filename+'.png', width=1200, height=900)
 
 def default_plot(state, db):
+	loaded_measurements = [{'id': state.id}]
+	loaded_measurements = add_fits_to_measurements(loaded_measurements, db)
 	traces, dropdowns = add_default_traces([{'id': state.id}], db)
 	cross_sections = cross_section_configurations_add_default(pd.DataFrame(traces), db)
 	return plot(pd.DataFrame(traces), cross_sections, db)
@@ -118,8 +120,23 @@ def default_measurements(db):
 			data = [{'id': last_meaningful_measurement[0], 'label': 'current'}, {'id': last_measurement[0], 'label': 'current_meta'}]
 		else:
 			data = [{'id': last_meaningful_measurement[0], 'label': 'current'}]
-	return data
+	return add_fits_to_measurements(data, db)
 
+def add_fits_to_measurements(measurements, db):
+	extra_measurements = []
+	with db_session:
+		for measurement in measurements:
+			references = db.Data[measurement['id']].reference_one
+			for r in references:
+				if r.ref_type == 'fit source':
+					extra_measurements.append({'id': r.that.id, 'label':measurement['label']+' fit source'})
+			references = db.Data[measurement['id']].reference_two
+			for r in references:
+				if r.ref_type == 'fit source':
+					extra_measurements.append({'id': r.this.id, 'label':measurement['label']+' fit'})
+	return measurements+extra_measurements
+		
+	
 def ax_id(ax_id, ax_num):
 	if ax_num ==1:
 		return (0,0)

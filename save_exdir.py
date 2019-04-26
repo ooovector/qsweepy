@@ -96,7 +96,7 @@ def load_exdir(filename, db=None):
 	parameter_values = []
 	try:
 		state = measurement_state()
-		state.metadata.update(f.attrs)
+		state.metadata.update({k:v for k,v in f.attrs.items()})
 		for dataset_name in f.keys():
 			parameters = [None for key in f[dataset_name]['parameters'].keys()]
 			for parameter_id, parameter in f[dataset_name]['parameters'].items():

@@ -42,15 +42,15 @@ def sweep_fit(state_to_fit, indeces, db):
 	state = state_to_fit.references['current ref']
 	parameters = {}
 	for key in state_to_fit.datasets.keys():
-		x = state_to_fit.datasets[key].parameters[0].values if len(state_to_fit.datasets[key].parameters[0].values) > 1 else state_to_fit.datasets[key].parameters[1].values
+		x = state_to_fit.datasets[key].parameters[-1].values
 		y = state_to_fit.datasets[key].data#.reshape(1, len(x)) for fitting library
 		#print(x, y)
 		if state_to_fit.measurement_type == 'Ramsey':
-			(state.datasets[key].parameters[0].values, fitted_y), parameters_for_dataset  = fitting_2.exp_sin_fit(x, y)
+			(state.datasets[key].parameters[-1].values, fitted_y), parameters_for_dataset  = fitting_2.exp_sin_fit(x, y)
 		elif state_to_fit.measurement_type == 'Rabi':
-			(state.datasets[key].parameters[0].values, fitted_y), parameters_for_dataset  = fitting_2.exp_sin_fit(x, y)
+			(state.datasets[key].parameters[-1].values, fitted_y), parameters_for_dataset  = fitting_2.exp_sin_fit(x, y)
 		elif state_to_fit.measurement_type == 'Decay':
-			(state.datasets[key].parameters[0].values, fitted_y), parameters_for_dataset = fitting_2.exp_fit(x, np.abs(y))
+			(state.datasets[key].parameters[-1].values, fitted_y), parameters_for_dataset = fitting_2.exp_fit(x, np.abs(y))
 		else: return
 		state.datasets[key].data = fitted_y#np.reshape(fitted_y, (len(state.datasets[key].parameters[0].values), 1)) for fitting library
 		parameters.update({key: parameters_for_dataset})
