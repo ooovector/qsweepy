@@ -74,7 +74,7 @@ def save_exdir(state, keep_open=False):
 def update_exdir(state, indeces):
 	for dataset in state.datasets.keys():
 		state.exdir.attrs.update(state.metadata)
-		state.datasets[dataset].data_exdir[indeces] = state.datasets[dataset].data[indeces]
+		state.datasets[dataset].data_exdir[tuple(indeces)] = state.datasets[dataset].data[tuple(indeces)]
 	
 def close_exdir(state):
 	if hasattr(state, 'exdir'):
@@ -142,8 +142,8 @@ def load_exdir(filename, db=None, lazy=False):
 		else: 
 			state.metadata = f.attrs
 		metadata_time = time()
-		print ('load_exdir: metadata_time', metadata_time-file_open_time)
-		stdout.flush()
+		#print ('load_exdir: metadata_time', metadata_time-file_open_time)
+		#stdout.flush()
 		for dataset_name in f.keys():
 			dataset_start_time = time()
 			parameters = [None for key in f[dataset_name]['parameters'].keys()]
@@ -158,16 +158,16 @@ def load_exdir(filename, db=None, lazy=False):
 				else:
 					parameters[int(parameter_id)] = lazy_measurement_parameter_from_exdir(parameter)
 			parameter_time = time()
-			print ('load_exdir: dataset_parameter_time: ', parameter_time - dataset_start_time)
-			stdout.flush()
+			#print ('load_exdir: dataset_parameter_time: ', parameter_time - dataset_start_time)
+			#stdout.flush()
 			if not lazy:
 				data = f[dataset_name]['data'].data[:].copy()
 			else:
 				data = f[dataset_name]['data'].data
 			state.datasets[dataset_name] = measurement_dataset(parameters, data)
 			dataset_end_time = time()
-			print ('load_exdir: dataset_data_time: ', dataset_end_time - parameter_time)
-			stdout.flush()
+			#print ('load_exdir: dataset_data_time: ', dataset_end_time - parameter_time)
+			#stdout.flush()
 		if db:
 			db_record = get(i for i in db.Data if (i.filename == filename))
 			#print (filename)
@@ -181,8 +181,8 @@ def load_exdir(filename, db=None, lazy=False):
 			#print(references)
 			state.references = references
 			state.filename = filename
-			print ('load_exdir: dataset_db_time: ', time() - dataset_end_time )
-			stdout.flush()
+			#print ('load_exdir: dataset_db_time: ', time() - dataset_end_time )
+			#stdout.flush()
 	except:
 		raise
 	finally:

@@ -13,9 +13,11 @@ def save_default_plot(state, db):
 	pio.write_image(plot, state.filename+'.png', width=1200, height=900)
 
 def default_plot(state, db):
-	traces, dropdowns = add_default_traces([{'id': state.id}], db, interactive=False)
-	cross_sections = cross_section_configurations_add_default(pd.DataFrame(traces), db)
-	return plot(pd.DataFrame(traces), cross_sections, db)
+	measurements = [{'id': state.id}]
+	traces, dropdowns = add_default_traces(measurements, db, interactive=False)
+	traces = pd.DataFrame(traces, columns=['id', 'dataset', 'op', 'style', 'color', 'x-axis', 'y-axis', 'row', 'col'])
+	cross_sections = cross_section_configurations_add_default(traces, db)
+	return plot(traces, cross_sections, db)
 
 def cross_section_configurations_add_default(selected_traces, db, current_config=[]): 
 	measurements_to_load = selected_traces['id'].unique()
@@ -63,7 +65,7 @@ def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropd
 				if np.iscomplexobj(measurement_state.datasets[dataset].data): # if we are dealing with complex object, give the chance of selecting which op we want to apply
 					operations = ['Re', 'Im', 'Abs', 'Ph']
 				else:
-					operations = ''
+					operations = ['']
 				# check if there is a condition already
 				if not (len([True for d in conditional_dropdowns if d['condition']==dropdown_row_condition])):
 					conditional_dropdowns.append({'condition':dropdown_row_condition, 'dropdown':[{'label': p, 'value': p} for p in parameter_names]+[{'label':'data', 'value':'data'}]})
@@ -232,9 +234,11 @@ def plot(selected_traces, cross_sections, db):
 				trace_data = data_flat
 
 		if trace['op'] == 'Im': data_to_plot = np.imag(trace_data)
-		if trace['op'] == 'Re': data_to_plot = np.real(trace_data)
-		if trace['op'] == 'Abs': data_to_plot = np.abs(trace_data)
-		if trace['op'] == 'Ph': data_to_plot = np.angle(trace_data)
+		elif trace['op'] == 'Re': data_to_plot = np.real(trace_data)
+		elif trace['op'] == 'Abs': data_to_plot = np.abs(trace_data)
+		elif trace['op'] == 'Ph': data_to_plot = np.angle(trace_data)
+		else: data_to_plot = trace_data
+		
 		x = dataset_x if x_axis_id != -1 else data_to_plot
 		y = dataset_y if y_axis_id != -1 else data_to_plot
 		#print ('new trace shape:', trace_data.shape, 'x shape:',np.asarray(x).shape, 'y shape:', np.asarray(y).shape)
@@ -267,8 +271,8 @@ def plot(selected_traces, cross_sections, db):
 			plot_trace['colorscale'] = 'Viridis'
 			plot_trace['z'] = data_to_plot.T
 		else:
-			plot_trace['mode'] = style,
-			plot_trace['marker'] = {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']},
+			plot_trace['mode'] = style
+			plot_trace['marker'] = {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']}
 		
 		figure['data'].append(plot_trace) 
 		#print (figure['data'][-1]['xaxis'], figure['data'][-1]['yaxis'])

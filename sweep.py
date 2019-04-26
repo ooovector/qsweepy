@@ -116,6 +116,7 @@ def sweep(measurer,
 			  on_start =[], 
 			  on_update=[], 
 			  on_finish=[], 
+			  use_deferred=False,
 			  **kwargs
 			  ):
 	'''
@@ -131,7 +132,7 @@ def sweep(measurer,
 	
 	sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
 	state = measurement_state(**kwargs)
-	state.sweep_parameters = [None for d in sweep_dimensions]
+	state.parameter_values = [None for d in sweep_dimensions]
 	state.total_sweeps = np.prod([d for d in sweep_dimensions])
 	#all_parameters = {dataset: sweep_parameters+_point_parameters for dataset, _point_parameters in point_parameters.items()}
 	

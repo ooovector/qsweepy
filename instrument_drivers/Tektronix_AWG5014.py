@@ -71,6 +71,7 @@ class Tektronix_AWG5014(Instrument):
 		self._waveforms = [None]*4
 		self._markers = [None]*8
 		self.check_cached = False
+		self.invert_marker = [False]*8
 
 		# Add parameters
 		self.add_parameter('waveform', type=list,
@@ -104,16 +105,16 @@ class Tektronix_AWG5014(Instrument):
 			channels=(1, 4), minval=-2.25, maxval=2.25, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('marker1_low', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
-			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
+			channels=(1, 4), minval=-2, maxval=2.5, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('marker1_high', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
-			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
+			channels=(1, 4), minval=-2, maxval=2.5, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('marker2_low', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
-			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
+			channels=(1, 4), minval=-2, maxval=2.5, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('marker2_high', type=float,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
-			channels=(1, 4), minval=-2, maxval=2, units='Volts', channel_prefix='ch%d_')
+			channels=(1, 4), minval=-2, maxval=2.5, units='Volts', channel_prefix='ch%d_')
 		self.add_parameter('status', type=bool,
 			flags=Instrument.FLAG_GETSET | Instrument.FLAG_GET_AFTER_SET,
 			channels=(1, 4),channel_prefix='ch%d_')
@@ -648,6 +649,9 @@ class Tektronix_AWG5014(Instrument):
 			m1[:len(marker)] = marker
 		else:	
 			m1[:] = marker[:len(m1)]
+		
+		if self.invert_marker[channel-1]:
+			m1 = 1 - m1
 				
 		if not (self._markers[(channel-1+4)%8] is None):
 			if len(self._markers[(channel-1+4)%8])<len(m2):

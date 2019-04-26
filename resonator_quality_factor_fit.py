@@ -5,18 +5,18 @@ from resonator_tools import circuit
 	
 def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_parameter_name='power', resonator_type='notch_port', delay=None, use_calibrate=False):
 	fitresults = []
-	sweep_parameter = measurement[1][0]
-	f_data = measurement[1][1]
-	z_data = measurement[2]
+	sweep_parameter = measurement.datasets['S-parameter'].parameters[0].values
+	f_data = measurement.datasets['S-parameter'].parameters[1].values
+	z_data = measurement.datasets['S-parameter'].data
 
-	#
-	max_power_id = np.argmax(sweep_parameter)
-	if resonator_type == 'notch_port':
-		fitter = circuit.notch_port(f_data = f_data, z_data_raw=z_data[max_power_id,:])
-	else:
-		fitter = circuit.reflection_port(f_data = f_data, z_data_raw=z_data[max_power_id,:])
-	delay, amp_norm, alpha, fr, Ql, A2, frcal = \
-		fitter.do_calibration(f_data, z_data[max_power_id,:],ignoreslope=True,guessdelay=False)
+	if use_calibrate:
+		max_power_id = np.argmax(sweep_parameter)
+		if resonator_type == 'notch_port':
+			fitter = circuit.notch_port(f_data = f_data, z_data_raw=z_data[max_power_id,:])
+		else:
+			fitter = circuit.reflection_port(f_data = f_data, z_data_raw=z_data[max_power_id,:])
+		delay, amp_norm, alpha, fr, Ql, A2, frcal = \
+			fitter.do_calibration(f_data, z_data[max_power_id,:],ignoreslope=True,guessdelay=False)
 
 	for power_id, power in enumerate(sweep_parameter_values):
 		try:
@@ -25,13 +25,19 @@ def resonator_quality_factor_fit(measurement, sweep_parameter_values, sweep_para
 				fitter.fitresults = fitter.circlefit(fitter.f_data,fitter.z_data,fr,Ql,refine_results=True,calc_errors=True)
 			else:
 				if resonator_type == 'notch_port':
+					#print ('notch_port')
 					fitter = circuit.notch_port(f_data = f_data, z_data_raw=z_data[power_id,:])
-				else:
+				elif resonator_type == 'reflection_port':
+					#print ('reflection_port')
 					fitter = circuit.reflection_port(f_data = f_data, z_data_raw=z_data[power_id,:])
+				#print (power_id)
 				fitter.autofit(electric_delay=delay)
+				#print (fitter.fitresults)
 			fitter.fitresults[sweep_parameter_name] = power
 			fitter.fitresults['single_photon_limit'] = fitter.get_single_photon_limit()
 			fitresults.append(fitter.fitresults.copy())
+			#fitter.plotall()
+			#break
 		except:
 			pass
 		#plt.figure(power_id)
