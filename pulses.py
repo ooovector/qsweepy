@@ -3,11 +3,24 @@ from scipy.signal import tukey
 from scipy.signal import hann
 import numpy as np
 
+
+class vz:
+	def __init__(self, channel, length, phi):
+		self.phi = phi
+		
+class vf:
+	def __init__(self, channel, length, freq):
+		self.freq = freq
+		
+class offset:
+	def __init__(self, channel, length, offset):
+		self.offset = offset
+		
 class pulses:
 	def __init__(self, channels = {}):
 		self.channels = channels
 		self.settings = {}
-	
+
 	## generate waveform of a gaussian pulse with quadrature phase mixin
 	def gauss_hd (self, channel, length, amp_x, sigma, alpha=0.):
 		gauss = gaussian(int(round(length*self.channels[channel].get_clock())), sigma*self.channels[channel].get_clock())
@@ -50,6 +63,9 @@ class pulses:
 	def rect(self, channel, length, amplitude):
 		return amplitude*np.ones(int(round(length*self.channels[channel].get_clock())), dtype=np.complex)
 		
+	def vf_pulse(self):
+		return [self.freq*self.clock*t for t in range(0, self.length)]
+		
 	def pause(self, channel, length):
 		return self.rect(channel, length, 0)
 		
@@ -77,18 +93,31 @@ class pulses:
 		return waveform
 	
 	def set_seq(self, seq, force=True):
+		from time import time
 		initial_delay = 1e-6
 		final_delay = 1e-6
 		pulse_seq_padded = [self.p(None, initial_delay, None)]+seq+[self.p(None, final_delay, None)]
-	
 		try:
 			for channel, channel_device in self.channels.items():
 				channel_device.freeze()
-	
+			virtual_phase = {k:0 for k in self.channels.keys()}
+			df = {k:0 for k in self.channels.keys()}
+			offsets = {k:0 for k in self.channels.keys()}
 			pulse_shape = {k:[] for k in self.channels.keys()}
 			for channel, channel_device in self.channels.items():
 				for pulse in pulse_seq_padded:
-					pulse_shape[channel].extend(pulse[channel])
+					if type(pulse[channel]) is vz:
+						virtual_phase[channel] += pulse[channel].phi
+						continue
+					if type(pulse[channel]) is vf:
+						df[channel] = pulse[channel].freq
+						continue
+					if type(pulse[channel]) is offset:
+						offsets[channel] = pulse[channel].offset
+						continue
+					#print (channel, df[channel])
+					pulse_shape[channel].extend(pulse[channel]*np.exp(1j*(virtual_phase[channel] + 2*np.pi*df[channel]/self.channels[channel].get_clock()*np.arange(len(pulse[channel]))))+offsets[channel])
+					virtual_phase[channel] += 2*np.pi*df[channel]/self.channels[channel].get_clock()*len(pulse[channel])
 				pulse_shape[channel] = np.asarray(pulse_shape[channel])
 		
 				if len(pulse_shape[channel])>channel_device.get_nop():
@@ -102,12 +131,16 @@ class pulses:
 					pulse_shape[channel] = tmp
 				#print (channel, pulse_shape[channel], len(pulse_shape[channel]))
 				#print ('Calling set_waveform on device '+channel)
+				#setter_start = time()
 				channel_device.set_waveform(pulse_shape[channel])
-
+				#print ('channel {} time: {}'.format(channel, time() - setter_start))
 		finally:
 			for channel, channel_device in self.channels.items():
+				#setter_start = time()
 				channel_device.unfreeze()
-				
+				#print ('channel {} unfreeze time: {}'.format(channel, time() - setter_start))
+		
+		self.last_seq = seq
 		devices = []
 		for channel in self.channels.values():
 			devices.extend(channel.get_physical_devices())

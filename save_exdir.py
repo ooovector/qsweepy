@@ -43,9 +43,9 @@ def save_exdir(state, keep_open=False):
 	if not state.filename:
 		state.filename = default_measurement_save_path(state)
 		
-	pathlib.Path(state.filename).mkdir(parents=True, exist_ok=True) 
+	pathlib.Path(os.path.abspath(os.path.join(state.filename, os.pardir))).mkdir(parents=True, exist_ok=True) 
 	f = exdir.File(state.filename, 'w', allow_remove=True) 
-	f.attrs.update(state.metadata)
+	f.attrs = {k:v for k,v in state.metadata.items()}
 	if keep_open:
 		if hasattr(state, 'exdir'):
 			close_exdir(state)
@@ -89,40 +89,106 @@ def close_exdir(state):
 				continue
 		state.exdir.close()
 		del state.exdir
+
+class lazy_measurement_parameter_from_exdir:
+	'''
+	Sweep parameter data structure.
+	Data structure has a function (setter), which makes it
+	impractical for serialization.
+	'''
+	def __init__(self, exdir_parameter):
+		self.exdir_parameter = exdir_parameter
 	
-def load_exdir(filename, db=None):
+	@property 
+	def name(self):
+		return self.exdir_parameter.attrs['name']
+	@property
+	def setter(self):
+		return self.exdir_parameter.attrs['has_setter']
+	@property
+	def unit(self):
+		return self.exdir_parameter.attrs['unit']
+	@property
+	def values(self):
+		return self.exdir_parameter.data
+		
+	def __str__(self):
+		return '{name} lazy-loaded ({units}),:[{min}, {max}] ({num_points} points) {setter_str}'.format(#'{name} ({units}): [{min}, {max}] ({num_points} points) {setter_str}'.format(
+			name=self.name, 
+			units=self.unit, 
+			min = np.min(self.values), 
+			max = np.max(self.values), 
+			num_points = len(self.values),
+			setter_str = 'with setter' if self.setter else 'without setter')
+	def __repr__(self):
+		return str(self)
+		
+def load_exdir(filename, db=None, lazy=False):
+	from time  import time
+	from sys import stdout
 	data = {}
-	f = exdir.File(filename, 'r')
 	parameter_values = []
+	
+	load_start = time()
+	f = exdir.File(filename, 'r')
+	file_open_time = time()
+	stdout.flush()
+	print ('load_exdir: file open time: ',  file_open_time - load_start)
+	stdout.flush()
 	try:
 		state = measurement_state()
-		state.metadata.update({k:v for k,v in f.attrs.items()})
+		if not lazy:
+			state.metadata.update(f.attrs)
+		else: 
+			state.metadata = f.attrs
+		metadata_time = time()
+		print ('load_exdir: metadata_time', metadata_time-file_open_time)
+		stdout.flush()
 		for dataset_name in f.keys():
+			dataset_start_time = time()
 			parameters = [None for key in f[dataset_name]['parameters'].keys()]
 			for parameter_id, parameter in f[dataset_name]['parameters'].items():
+				if not lazy:
 				#print (parameter.attrs)
-				parameter_name = parameter.attrs['name']
-				parameter_setter = parameter.attrs['has_setter']
-				parameter_unit = parameter.attrs['unit']
-				parameter_values = parameter.data[:]
-				parameters[int(parameter_id)] = measurement_parameter(parameter_values, parameter_setter, parameter_name, parameter_unit)
-			data = f[dataset_name]['data'].data[:].copy()
+					parameter_name = parameter.attrs['name']
+					parameter_setter = parameter.attrs['has_setter']
+					parameter_unit = parameter.attrs['unit']
+					parameter_values = parameter.data[:].copy()
+					parameters[int(parameter_id)] = measurement_parameter(parameter_values, parameter_setter, parameter_name, parameter_unit)
+				else:
+					parameters[int(parameter_id)] = lazy_measurement_parameter_from_exdir(parameter)
+			parameter_time = time()
+			print ('load_exdir: dataset_parameter_time: ', parameter_time - dataset_start_time)
+			stdout.flush()
+			if not lazy:
+				data = f[dataset_name]['data'].data[:].copy()
+			else:
+				data = f[dataset_name]['data'].data
 			state.datasets[dataset_name] = measurement_dataset(parameters, data)
+			dataset_end_time = time()
+			print ('load_exdir: dataset_data_time: ', dataset_end_time - parameter_time)
+			stdout.flush()
 		if db:
-			id = get(i.id for i in db.Data if (i.filename == filename))
+			db_record = get(i for i in db.Data if (i.filename == filename))
 			#print (filename)
-			state.id = id
-			state.start = db.Data[id].start
-			state.stop = db.Data[id].stop
-			query = select(i for i in db.Reference if (i.this.id == id))
+			state.id = db_record.id
+			state.start = db_record.start
+			state.stop = db_record.stop
+			state.measurement_type = db_record.measurement_type
+			query = select(i for i in db.Reference if (i.this.id == state.id))
 			references = {}
 			for q in query: references.update({q.that.id: q.ref_type})
 			#print(references)
 			state.references = references
 			state.filename = filename
+			print ('load_exdir: dataset_db_time: ', time() - dataset_end_time )
+			stdout.flush()
 	except:
 		raise
 	finally:
-		f.close()
+		if not lazy:
+			f.close()
+		else:
+			state.exdir = f
 	return state
 		

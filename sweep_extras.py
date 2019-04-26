@@ -34,10 +34,12 @@ class sweeper:
 		self.on_start = [(db.create_in_database,tuple()), 
 						 (save_exdir.save_exdir,(True,)), 
 						 (db.update_in_database,tuple()),
-						 (sweep_fit.fit_on_start, (db,))]
+						 #(sweep_fit.fit_on_start, (db,))
+						 ]
 		self.on_update = [(save_exdir.update_exdir,tuple()),
-						  (sweep_fit.sweep_fit, (db, ))]
-		self.on_finish = [(sweep_fit.fit_on_finish, (db, )),
+						  #(sweep_fit.sweep_fit, (db, ))
+						  ]
+		self.on_finish = [#(sweep_fit.fit_on_finish, (db, )),
 						  (db.update_in_database,tuple()), 
 						  (save_exdir.close_exdir,tuple()),
 						  (plotly_plot.save_default_plot,(self.db,))]

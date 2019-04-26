@@ -116,6 +116,7 @@ class modem_readout(data_reduce.data_reduce):
 			#A_Q = meas_Q*np.asarray([demodulation, np.conj(demodulation)])
 			b_I = dac_sequence_adc_time
 			#print (A_I.shape, b_I.shape)
+			print (A_I.shape, b_I.shape)
 			iq_calibration = np.linalg.lstsq(A_I, b_I)[0]
 			feature = demodulation*iq_calibration[0]+np.conj(demodulation)*iq_calibration[1]
 			iq_readout_calibrations[ex_channel_name] = {'iq_calibration': iq_calibration,

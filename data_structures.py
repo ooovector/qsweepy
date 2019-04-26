@@ -70,6 +70,8 @@ class measurement_state():
 		for key, value in kwargs.items():
 			setattr(self, key, value)
 		
+		self.metadata = {k:str(v) for k,v in self.metadata.items()}
+		
 	def __str__(self):
 		#format = '''Sweep parameter names: {names}, Measurement: {measurement}, Measurement time: {measurement_time}, Done sweeps: {done_sweeps}, Sweep error: {sweep_error}'''
 		format =  '''start: {start}, started/done/total sweeps: {started}/{done}/{total}, 

@@ -1,5 +1,10 @@
 from numpy import *
+##############################
+#ADS regs to check program status
+ADS_CTRL_ST_ADDR = 0x156
+ADS_CTRL_ST_VL = 0x64
 
+###############################
 CAP_BASE = 0x0
 
 CAP_CTRL = 0x0
@@ -43,5 +48,15 @@ COV_RES_SUBBASE = 16
 COV_RESAVG_BASE = 200
 COV_RESAVG_SUBBASE = 16
 COV_NUMB_BASE = 400
+
+##############################################
+TRIG_SRC_BASE = 0x60000
+TRIG_SRC_CTRL = 0
+TRIG_SRC_CTRL_UPDATE = 0 #Set this bit after loading of new values
+
+TRIG_SRC_PERIOD_LO = 4	# 64 bit pulse period in clock cycles
+TRIG_SRC_PERIOD_HI =8
+TRIG_SRC_WIDTH_LO = 12	# 64 bit pulse widt in clock cycles
+TRIG_SRC_WIDTH_HI = 16	
 
 
