@@ -28,7 +28,11 @@ class TSW14J56_evm_reducer():
 		self.avg_cov = True
 		self.resultnumber = True
 		self.trig = 'ext'
-
+		self.avg_cov_mode = 'real' ## raw results from device
+		self.cov_norms = {channel_id:1 for channel_id in range(4)}
+		self.cov_signals = {channel_id:None for channel_id in range(4)}
+		#self.avg_cov_mode = 'norm_cmplx' ## normalized results in complex Volts, IQ
+		
 	def get_clock(self):
 		return self.adc.get_clock()
 		
@@ -49,7 +53,10 @@ class TSW14J56_evm_reducer():
 		if self.last_cov:
 			points.update({'last_cov'+str(i):[] for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances)})
+			if self.avg_cov_mode == 'real':
+				points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances)})
+			elif self.avg_cov_mode == 'iq':
+				points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
 			points.update({'resultnumbers':[arange(2**self.num_covariances)]})
 		return (points)
@@ -61,7 +68,10 @@ class TSW14J56_evm_reducer():
 		if self.last_cov:
 			dtypes.update({'last_cov'+str(i):int for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			dtypes.update({'avg_cov'+str(i):float for i in range(self.adc.num_covariances)})
+			if self.avg_cov_mode == 'real':
+				dtypes.update({'avg_cov'+str(i):float for i in range(self.adc.num_covariances)})
+			elif self.avg_cov_mode == 'iq':
+				dtypes.update({'avg_cov'+str(i):complex for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
 			dtypes.update({'resultnumbers': int})
 		return (dtypes)
@@ -73,7 +83,10 @@ class TSW14J56_evm_reducer():
 		if self.last_cov:
 			opts.update({'last_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			opts.update({'avg_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances)})
+			if self.avg_cov_mode == 'real':
+				opts.update({'avg_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances)})
+			elif self.avg_cov_mode == 'iq':
+				opts.update({'avg_cov'+str(i):{'log': None} for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
 			opts.update({'resultnumbers': {'log': None}}) 
 		return (opts)
@@ -86,13 +99,46 @@ class TSW14J56_evm_reducer():
 		if self.output_raw:
 			result.update({'Voltage':self.adc.get_data()})
 		if self.last_cov:
-			result.update({'last_cov'+str(i):self.adc.get_cov_result(i) for i in range(self.adc.num_covariances)})
+			result.update({'last_cov'+str(i):self.adc.get_cov_result(i)/self.cov_norms[i] for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
-			result.update({'avg_cov'+str(i):self.adc.get_cov_result_avg(i)-avg_before['avg_cov'+str(i)] for i in range(self.adc.num_covariances)})
+			result_raw = {'avg_cov'+str(i):(self.adc.get_cov_result_avg(i)-avg_before['avg_cov'+str(i)])/self.cov_norms[i] for i in range(self.adc.num_covariances)}
+			if self.avg_cov_mode == 'real':
+				result.update(result_raw)
+			elif self.avg_cov_mode == 'iq':
+				result.update({'avg_cov0': (result_raw['avg_cov0']+1j*result_raw['avg_cov1']),
+							   'avg_cov1': (result_raw['avg_cov2']+1j*result_raw['avg_cov3'])})
 		if self.resultnumber:
 			result.update({'resultnumbers':[self.adc.get_resultnumbers()]})
 			
 		return (result)
+	
+	def set_feature_iq(self, feature_id, feature):
+		#self.avg_cov_mode = 'norm_cmplx'
+		feature = feature[:2048]/np.max(np.abs(feature[:2048]))
+		feature = np.asarray(2**15*feature, dtype=complex)
+		feature_real_int = np.asarray(np.real(feature), dtype=np.int16)
+		feature_imag_int = np.asarray(np.imag(feature), dtype=np.int16)
+
+		self.adc.set_ram_data([feature_real_int.tolist(),     (feature_imag_int).tolist()],  feature_id*2)
+		self.adc.set_ram_data([(feature_imag_int).tolist(),  (-feature_real_int).tolist()], feature_id*2+1)
+		
+		self.cov_norms[feature_id*2] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
+		self.cov_norms[feature_id*2+1] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
+		
+	def set_feature_real(self, feature_id, feature, threshold=None):
+		#self.avg_cov_mode = 'norm_cmplx'
+		if threshold is not None:
+			threshold = threshold/np.max(np.abs(feature[:2048]))*(2**15)
+			self.adc.set_threshold(thresh=threshold, ncov=feature_id)
+			
+		feature = feature[:2048]/np.max(np.abs(feature[:2048]))
+		feature = np.asarray(2**15*feature, dtype=complex)
+		feature_real_int = np.asarray(np.real(feature), dtype=np.int16)
+		feature_imag_int = np.asarray(np.imag(feature), dtype=np.int16)
+		
+		self.adc.set_ram_data([feature_real_int.tolist(),    (feature_imag_int).tolist()],  feature_id)
+
+		self.cov_norms[feature_id] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
 
 class TSW14J56_evm():
 	def __init__(self, fpga_config = True):
@@ -103,12 +149,14 @@ class TSW14J56_evm():
 		self.timeout = 2
 		self.ram_size = 2048 #in words of 32
 		self.num_covariances = 4
+		self.cov_signatures = [None]*self.num_covariances
 		
 		self.usb_reboot_timeout = 10
 		self.debug_print = False
 		#self.fpga_firmware = "_ADS54J40/qubit_daq.rbf"
 		self.fpga_firmware = config.get_config()['TSW14J56_firmware']
-		self.cov_cnt = 0
+		self.adc_reducer_hooks = []
+		#self.cov_cnt = 0 ### TODO:what's this??? maybe delete it?
 		
 		#To do make a register readout to check ADS-programmed status"
 		self.ads = ADS54J40()
@@ -240,7 +288,7 @@ class TSW14J56_evm():
 		if (cov):
 			self.write_reg(CAP_BASE, COV_LEN, int(self.nsamp/8))
 			self.write_reg(CAP_BASE, CAP_LEN, int(self.nsamp/8))
-			self.cov_cnt = self.cov_cnt + 1
+			#self.cov_cnt = self.cov_cnt + 1
 		else:
 			self.write_reg(CAP_BASE, CAP_LEN, int(self.nsamp/8))
 		if(trig == "man"):
@@ -291,6 +339,7 @@ class TSW14J56_evm():
 		Output:
 			None
 		'''
+		
 		data_RAMLOAD = []
 		### TODO: must be
 		if len(data[0]) > self.ram_size or len(data[1]) > self.ram_size:
@@ -298,7 +347,7 @@ class TSW14J56_evm():
 		
 		for i in range(len(data[0])):
 				data_RAMLOAD.append(int(data[0][i]).to_bytes(2, byteorder = 'big', signed= True) + int(data[1][i]).to_bytes(2, byteorder = 'big', signed = True))
-				
+			
 		for i in range(len(data[0])):
 			Value, Index = mk_val_ind((RAM_BASE + (i + ncov*self.ram_size)*4)<<2)
 			self.dev.ctrl_transfer(vend_req_dir.WR, vend_req.REG_WRITE, Value, Index, data_RAMLOAD[i])

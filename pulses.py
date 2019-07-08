@@ -39,7 +39,13 @@ class pulses:
 		# impulse_der = np.gradient(impulse)*self.channels[channel].get_clock()
 		# return amp*(impulse + 1j*impulse_der*alpha)
 		
-	def rect_cos (self, channel, length, amp, length_tail, alpha=0.):
+	def envelope(self, channel, length, function, impulse):
+		t = np.linspace(0, self.channels[channel].get_nop()/self.channels[channel].get_clock(), self.channels[channel].get_nop(), endpoint=False)
+		#time_arr = [self.channels[channel].get_clock()*i for i in range(int(round(length*self.channels[channel].get_clock())))]
+		#print(function(time_arr[0]))
+		return np.asarray(impulse*function(t))#(1/self.channels[channel].get_clock()*np.arange(len(impulse))))# for i in range(len(impulse))], dtype = complex)
+		
+	def rect_cos (self, channel, length, amp, length_tail, function_for_envelope = lambda x: 1, alpha=0.):
 		length_of_plato = length - length_tail*2
 		length_of_one_tail = int(length_tail*self.channels[channel].get_clock())
 		hann_function = hann(2*length_of_one_tail)
@@ -51,6 +57,8 @@ class pulses:
 		final.extend(second.tolist())
 		impulse = np.asarray(final)
 		impulse -= impulse[0]
+		impulse = self.envelope(channel, length, function_for_envelope, impulse)
+		#print(np.real(impulse)[50:])
 		impulse_der = np.gradient(impulse)*self.channels[channel].get_clock()
 		#print(self.channels[channel].get_clock())
 		#print(length_tail*self.channels[channel].get_clock())

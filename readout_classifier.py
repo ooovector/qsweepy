@@ -70,6 +70,7 @@ class linear_classifier(BaseEstimator, ClassifierMixin):
 	def __init__(self, purify=True, cov_mode='equal'):
 		self.purify = purify
 		self.cov_mode = cov_mode
+		self.class_list = [0, 1]
 		pass
 
 	def fit(self, X, y):

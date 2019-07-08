@@ -1,5 +1,5 @@
 from . import sweep
-from . import save_pkl
+#from . import save_pkl
 from . import fitting
 import numpy as np
 from qsweepy import data_reduce
@@ -20,16 +20,22 @@ class modem_readout(data_reduce.data_reduce):
 	# trigger sequence:
 	#pg.p('ro_trg', trg_length, pg.rect, 1), 
 	
-	def __init__(self, pulse_sequencer, adc, trigger_daq_seq, src_meas='Voltage', axis_mean = 0, trigger_delay=0):
+	def __init__(self, pulse_sequencer, adc, trigger_daq_seq, src_meas='Voltage', axis_mean = 0, trigger_delay=0, exdir_db=None):
 		self.pulse_sequencer = pulse_sequencer
 		self.adc = adc
 		self.src_meas = src_meas 
 		self.axis_mean = axis_mean
 		self.trigger_daq_seq = trigger_daq_seq
 		self.trigger_delay = trigger_delay
+		self.exdir_db = exdir_db
 		
 		self.readout_channels = {}
 		self.delay_calibrations = {}
+		
+		self.calibrations = {}
+		self.iq_readout_calibrations = {}
+		self.calibrated_filters = {}
+		self.calibration_measurements = {}
 		super().__init__(adc) # modem_readout is a 
 	# random pulse sequence for wideband calibration of everything
 	# shot noise with characterisitic timescale 30 time slots should be like 640K of RAM from microsoft
@@ -51,84 +57,138 @@ class modem_readout(data_reduce.data_reduce):
 		else:
 			demodulation = np.ones(len(readout_time_axis)) #otherwise demodulation with unity (multiply by one)
 		return demodulation
-	
-	def calibrate_delay(self, save=True):
+
+	def calibrate_delay(self, ex_channel_name, save=True):
 		from scipy.signal import correlate
 		# delay is calibrated on all lines (we probably don't really need that, but whatever)
-		readout_delays = {}
-		for ex_channel_name, ex_channel in self.readout_channels.items():
+		#readout_delays = {}
+		#for ex_channel_name, ex_channel in self.readout_channels.items():
 			# delay calibration pulse sequence
-			dac_sequence, dac_sequence_adc_time = self.random_alignment_sequence(ex_channel)
-			
-			# set sequence in sequencer
-			seq = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, len(dac_sequence)/ex_channel.get_clock(), self.pulse_sequencer.awg, dac_sequence)]
-			self.pulse_sequencer.set_seq(seq)
-			# readout
-			adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
-			# demodulate
-			demodulation = self.demodulation(ex_channel, sign=True)
-			# depending on how the cables are plugged in, measure
-			xc1 = correlate(adc_sequence*np.conj(demodulation), dac_sequence_adc_time, mode='full') # magic is here
-			xc2 = correlate(adc_sequence*np.conj(demodulation), dac_sequence_adc_time, mode='full') # magic is here
-			xc3 = correlate(np.conj(adc_sequence)*demodulation, dac_sequence_adc_time, mode='full') # magic is here
-			xc4 = correlate(np.conj(adc_sequence)*demodulation, dac_sequence_adc_time, mode='full') # magic is here
-			abs_xc = np.abs(xc1)+np.abs(xc2)+np.abs(xc3)+np.abs(xc4)
-			# maximum correlation:
-			readout_delays[ex_channel] = -(np.argmax(abs_xc)-len(dac_sequence_adc_time))/self.adc.get_clock() # get delay time in absolute units
-			# plt.plot(xc1)
-			# plt.plot(xc2)
-			# plt.plot(xc3)
-			# plt.plot(xc4)
-			# plt.plot(abs_xc)
-			# plt.plot(np.real(adc_sequence))
-			# plt.plot(np.imag(adc_sequence))
-			# plt.plot(dac_sequence_adc_time)
-			if save:
-				self.delay_calibrations[ex_channel_name] = readout_delays[ex_channel]
-		return readout_delays
+		ex_channel = self.readout_channels[ex_channel_name]
+		dac_sequence, dac_sequence_adc_time = self.random_alignment_sequence(ex_channel)
+		
+		# set sequence in sequencer
+		seq = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, len(dac_sequence)/ex_channel.get_clock(), self.pulse_sequencer.awg, dac_sequence)]
+		self.pulse_sequencer.set_seq(seq)
+		# readout
+		adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
+		# demodulate
+		demodulation = self.demodulation(ex_channel, sign=True)
+		# depending on how the cables are plugged in, measure
+		xc1 = correlate(adc_sequence*np.conj(demodulation), dac_sequence_adc_time, mode='full') # magic is here
+		xc2 = correlate(adc_sequence*np.conj(demodulation), dac_sequence_adc_time, mode='full') # magic is here
+		xc3 = correlate(np.conj(adc_sequence)*demodulation, dac_sequence_adc_time, mode='full') # magic is here
+		xc4 = correlate(np.conj(adc_sequence)*demodulation, dac_sequence_adc_time, mode='full') # magic is here
+		abs_xc = np.abs(xc1)+np.abs(xc2)+np.abs(xc3)+np.abs(xc4)
+		# maximum correlation:
+		readout_delay = -(np.argmax(abs_xc)-len(dac_sequence_adc_time))/self.adc.get_clock() # get delay time in absolute units
+		# plt.plot(xc1)
+		# plt.plot(xc2)
+		# plt.plot(xc3)
+		# plt.plot(xc4)
+		# plt.plot(abs_xc)
+		# plt.plot(np.real(adc_sequence))
+		# plt.plot(np.imag(adc_sequence))
+		# plt.plot(dac_sequence_adc_time)
+		if save:
+			self.delay_calibrations[ex_channel_name] = readout_delay
+		return readout_delay
 	
-	def calibrate_dc(self, amplitude=1.0, save=True):
-		# send nothing
+	def create_filters(self, ex_channel_name):
+		ex_channel = self.readout_channels[ex_channel_name] 
+		#for ex_channel_name, ex_channel in self.readout_channels.items():
+		demodulation = self.demodulation(ex_channel, sign=True)
+		feature = demodulation*self.calibrations[ex_channel_name+'+']+np.conj(demodulation)*self.calibrations[ex_channel_name+'-']
+		self.iq_readout_calibrations[ex_channel_name] = {'iq_calibration': [self.calibrations[ex_channel_name+'+'], self.calibrations[ex_channel_name+'-']],
+														 'feature': feature}
+		self.calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas, 1-self.axis_mean, self.bg, feature)
+	
+	def get_dc_bg_calibration(self):
+		try:
+			dc_bg_calibration_measurement = self.exdir_db.select_measurement(references_that={'delay_measurement': self.delay_measurement.id}, measurement_type='modem_dc_bg_calibration')
+			assert(len(dc_bg_calibration_measurement.datasets['bg'].data)==self.adc.get_nop())
+			self.bg = dc_bg_calibration_measurement.datasets['bg'].data
+		except Exception as e:
+			print(str(e), type(e))
+			self.calibrate_dc_bg()
+	
+	def get_dc_calibrations(self, amplitude=1.0, shot_noise_time=30):
+		calibrations = {}
+		for ex_channel_name, ex_channel in self.readout_channels.items():
+			try:
+				metadata = {'ex_channel':ex_channel_name}
+				calibrations_measurement = self.exdir_db.select_measurement(measurement_type='modem_dc_iq_calibration', references_that={'delay_measurement': self.delay_measurement.id}, metadata=metadata)
+				self.calibrations[ex_channel_name+'+'] = np.complex(calibrations_measurement.metadata[ex_channel_name+'+'])
+				self.calibrations[ex_channel_name+'-'] = np.complex(calibrations_measurement.metadata[ex_channel_name+'-'])
+				self.calibration_measurements[ex_channel_name] = calibrations_measurement 
+				self.create_filters(ex_channel_name)
+			except Exception as e:
+				print(str(e), type(e))
+				calibration = self.calibrate_dc(ex_channel_name=ex_channel_name, amplitude=amplitude, shot_noise_time=shot_noise_time)
+				calibration.update(metadata)
+				self.calibration_measurements[ex_channel_name] = self.exdir_db.save(measurement_type='modem_dc_iq_calibration', metadata = calibration, references={'delay_measurement': self.delay_measurement.id})
+				
+		self.calibrations.update(calibrations)
+	
+	def calibrate_dc_bg(self):
+			# send nothing
 		self.pulse_sequencer.set_seq(self.trigger_daq_seq)
-		bg = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
-		self.bg = bg
-		iq_readout_calibrations = {}
+		measurer = data_reduce.data_reduce(self.adc)
+		measurer.filters['bg'] = data_reduce.mean_reducer(self.adc, self.src_meas, self.axis_mean)
+		
+		dc_bg_calibration_measurement = sweep.sweep(measurer, references={'delay_measurement': self.delay_measurement.id}, measurement_type='modem_dc_bg_calibration')
+		self.exdir_db.save_measurement(dc_bg_calibration_measurement)
+		self.bg = dc_bg_calibration_measurement.datasets['bg'].data
+	
+	def calibrate_dc(self, ex_channel_name, amplitude=1.0, shot_noise_time=10, save=True):
+		calibrations = {}
 		calibrated_filters = {}
 		# send I and Q pulses 
-		for ex_channel_name, ex_channel in self.readout_channels.items():
+		ex_channel = self.readout_channels[ex_channel_name]
+		#for ex_channel_name, ex_channel in self.readout_channels.items():
 			# delay calibration pulse sequence
-			dac_sequence, dac_sequence_adc_time = self.random_alignment_sequence(ex_channel)
-			dac_sequence=np.asarray(dac_sequence,dtype=np.float)*amplitude
-			demodulation = self.demodulation(ex_channel, sign=True)
-			# set sequence in sequencer with amplitude & phase
-			seq_I = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, len(dac_sequence)/ex_channel.get_clock(), self.pulse_sequencer.awg, dac_sequence)]
-			#seq_Q = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, sequence_length/ex_channel.get_clock(), self.pulse_sequencer.awg, 1j*dac_sequence)]
-			# measure response on I sequence
-			self.pulse_sequencer.set_seq(seq_I)
-			calibration_measurement = self.adc.measure()
-			meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean) - bg)[:len(dac_sequence_adc_time)]
-			# measure response on Q sequence
-			#self.pulse_sequencer.set_seq(seq_Q)
-			#meas_Q = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)		
-			# solving equation: response(channel, time, complex) * sum(over demodulation_sign){demodulation(time, demodulation_sign, complex)*calibration(demodulation_sign, channel, complex)} = probe(channel, time, real)
-			# In Ax=b form: A(time,demodulation_sign, channel)*x(demodulation_sign, channel)=b(time, channel), (response(channel, time, complex)*demodulation(time, demodulation_sign, complex))*calibration(emodulation_sign, channel, complex)=probe(time, channel)
-			A_I = (meas_I*np.asarray([demodulation[:len(dac_sequence_adc_time)], np.conj(demodulation[:len(dac_sequence_adc_time)])])).T
-			#A_Q = meas_Q*np.asarray([demodulation, np.conj(demodulation)])
-			b_I = dac_sequence_adc_time
-			#print (A_I.shape, b_I.shape)
-			print (A_I.shape, b_I.shape)
-			iq_calibration = np.linalg.lstsq(A_I, b_I)[0]
-			feature = demodulation*iq_calibration[0]+np.conj(demodulation)*iq_calibration[1]
-			iq_readout_calibrations[ex_channel_name] = {'iq_calibration': iq_calibration,
-												   'coherent_background': self.bg,
-												   'feature': feature}
-			calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas, 1-self.axis_mean, self.bg, feature)
+		dac_sequence_I, dac_sequence_adc_time_I = self.random_alignment_sequence(ex_channel, shot_noise_time=shot_noise_time)
+		dac_sequence_Q, dac_sequence_adc_time_Q = self.random_alignment_sequence(ex_channel, shot_noise_time=shot_noise_time)
+		
+		dac_sequence=np.asarray(dac_sequence_I+1j*dac_sequence_Q,dtype=np.complex)*amplitude
+		dac_sequence_adc_time = dac_sequence_adc_time_I+1j*dac_sequence_adc_time_Q
+		demodulation = self.demodulation(ex_channel, sign=True)
+		# set sequence in sequencer with amplitude & phase
+		seq = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, len(dac_sequence)/ex_channel.get_clock(), self.pulse_sequencer.awg, dac_sequence)]
+		#seq_Q = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, sequence_length/ex_channel.get_clock(), self.pulse_sequencer.awg, 1j*dac_sequence)]
+		# measure response on I sequence
+		self.pulse_sequencer.set_seq(seq)
+		calibration_measurement = self.adc.measure()
+		meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean) - self.bg)[:len(dac_sequence_adc_time)]
+		# measure response on Q sequence
+		#self.pulse_sequencer.set_seq(seq_Q)
+		#meas_Q = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)		
+		# solving equation: response(channel, time, complex) * sum(over demodulation_sign){demodulation(time, demodulation_sign, complex)*calibration(demodulation_sign, channel, complex)} = probe(channel, time, real)
+		# In Ax=b form: A(time,demodulation_sign, channel)*x(demodulation_sign, channel)=b(time, channel), (response(channel, time, complex)*demodulation(time, demodulation_sign, complex))*calibration(emodulation_sign, channel, complex)=probe(time, channel)
+		A_I = (meas_I*np.asarray([demodulation[:len(dac_sequence_adc_time)], np.conj(demodulation[:len(dac_sequence_adc_time)])])).T
+		#A_Q = meas_Q*np.asarray([demodulation, np.conj(demodulation)])
+		b_I = dac_sequence_adc_time
+		#print (A_I.shape, b_I.shape)
+		print (A_I.shape, b_I.shape)
+		iq_calibration = np.linalg.lstsq(A_I, b_I)[0]
+		
+		calibrations[ex_channel_name+'+'] = iq_calibration[0]
+		calibrations[ex_channel_name+'-'] = iq_calibration[1]
+		
+			#feature = demodulation*iq_calibration[0]+np.conj(demodulation)*iq_calibration[1]
+			#print('scalar product of feature and measured:', np.sum(feature[:len(dac_sequence_adc_time)]*meas_I*np.conj(dac_sequence)))
+			#iq_readout_calibrations[ex_channel_name] = {'iq_calibration': iq_calibration,
+			#									   'coherent_background': self.bg,
+			#									   'feature': feature}
+			#calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas, 1-self.axis_mean, self.bg, feature)
 			
-			del calibration_measurement, meas_I, A_I, b_I, seq_I
+			
+			#del calibration_measurement, meas_I, A_I, b_I, seq
 		if save:
-			self.iq_readout_calibrations = iq_readout_calibrations
-			self.calibrated_filters = calibrated_filters
-		return iq_readout_calibrations
+			self.calibrations.update(calibrations)
+			#self.calibrated_filters = calibrated_filters
+			self.create_filters(ex_channel_name)
+		return calibrations
 		
 			# real parts of "calibration" correspond to response to real sources,
 			# imaginary part of "calibration" corresponds to response to imaginary sources.

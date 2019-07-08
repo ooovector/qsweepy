@@ -43,11 +43,11 @@ def invalidate_calibrations():
 	config['earliest_calibration_date'] = datetime.datetime.now().strftime(get_datetime_fmt())
 	config.save()
 		
-def load(type,name):
+def load(type,name,ignore_invalidation=False):
 	loc = save_pkl.get_location()
 	data_dir = loc[0]+'/calibrations/'+type+'/'
 	#find last data dir and lsat save file
-	file_to_load = find_last(data_dir, name)
+	file_to_load = find_last(data_dir, name, ignore_invalidation=ignore_invalidation)
 #	if not file_to_load:
 #		raise
 		#or raise?

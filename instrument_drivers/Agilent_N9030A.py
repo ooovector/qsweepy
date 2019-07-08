@@ -192,31 +192,28 @@ class Agilent_N9030A(Instrument):
 		Output:
 			'AmpPha':_ Amplitude and Phase
 		'''
-		try:
-			#Clear status, initiate measurement
-			self.set_trigger_source("MAN")
-			self.write("*ESE 1")
-			self.write("*CLS")
-			self.init()
+		#Clear status, initiate measurement
+		self.set_trigger_source("MAN")
+		self.write("*ESE 1")
+		self.write("*CLS")
+		self.init()
 			#Set bit in ESR when operation complete
 			
-			self.write("*OPC")
-			#Wait until ready and let plots to handle events (mouse drag and so on)
-			while int(self.ask("*ESR?"))==0:
-				plt.pause(0.05)
-			
-			self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
-			#data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
-			#data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
-			#data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)      
-			#test
-			data = self._visainstrument.query_binary_values( "CALCulate:DATA?",datatype=u'f') 
-			data_size = numpy.size(data)
-			datax = numpy.array(data[0:data_size:2])
-			datay = numpy.array(data[1:data_size:2])
-			return [datax, datay]
-		finally:
-			self.set_trigger_source("IMM")
+		self.write("*OPC")
+		#Wait until ready and let plots to handle events (mouse drag and so on)
+		while int(self.ask("*ESR?"))==0:
+			plt.pause(0.05)
+		
+		self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
+		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
+		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
+		#data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)      
+		#test
+		data = self._visainstrument.query_binary_values( "CALCulate:DATA?",datatype=u'f') 
+		data_size = numpy.size(data)
+		datax = numpy.array(data[0:data_size:2])
+		datay = numpy.array(data[1:data_size:2])
+		return [datax, datay]
 			
 		#data_size = numpy.size(data)
 		

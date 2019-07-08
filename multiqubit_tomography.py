@@ -66,7 +66,7 @@ class multiqubit_tomography:
 			measurement_ordered = [measurement[readout_name] for readout_name in self.readout_names]
 			print (rot)
 			print ('uncorreted:', measurement)
-			measurement_corrected = np.linalg.solve(self.confusion_matrix.T, measurement_ordered)
+			measurement_corrected = np.linalg.lstsq(self.confusion_matrix.T, measurement_ordered)[0]
 			measurement = {readout_name:measurement for readout_name, measurement in zip(self.readout_names, measurement_corrected)}
 			print ('corrected:', measurement)
 			
@@ -81,34 +81,10 @@ class multiqubit_tomography:
 		reconstruction_matrix_pinv = np.linalg.pinv(reconstruction_matrix)
 		self.reconstruction_matrix = reconstruction_matrix
 		self.reconstruction_matrix_pinv = reconstruction_matrix_pinv
-				#resonstruction_matrix[projection_operator_name] = {}
-				#for reconstruction_operator_name, operator in self.reconstruction_basis.items():
-			#		reconstruction_matrix[projection_operator_name][reconstruction_operator_name] = np.sum(projection_operator*np.conj(operator['operator']))
-			#
-		
-		#for rot, projection in self.proj_seq.items():
-		#	
-		#	meas.update({str(rot)+'-P'+str(p):v for p,v in measurement.items()})
-		#	
-		#	if len(self.reconstruction_basis.keys()):
-		#		projection_operators = projection['operators']
-		#		for projection_operator in projection_operators.items():
-		#			for r in basis_axis_names:
-						
-		
-		#proj_names = self.proj_seq.keys()
-		
-		#TODO: fix this norm stuff in accordance with theory
-		
-		
-		#if len(self.reconstruction_basis.keys()):
-		#	reconstruction_matrix = np.real(np.asarray([[np.sum(self.proj_seq[p]['operator']*np.conj(self.reconstruction_basis[r]['operator'])) \
-		#								for r in basis_axes_names] \
-		#								for p in proj_names]))
+
 		print ('reconstruction_matrix: ', np.real(reconstruction_matrix).astype(int))
 		print ('measured projections: ', measurement_results)
 		if len(reconstruction_operators) > 0:
-			#projections = np.linalg.lstsq(reconstruction_matrix, measurement_results)#[0]*(basis_vector_norms**2)
 			projections = np.dot(reconstruction_matrix_pinv, measurement_results)
 			print ('reconstruction_results: ', np.real(projections))
 			meas.update({k:v for k,v in zip(basis_axes_names, projections)})

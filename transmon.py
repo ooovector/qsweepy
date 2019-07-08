@@ -9,12 +9,11 @@ from .database import*
 from .save_exdir import*
 from . import sweep_extras
 from . import pulses
-from copy import copy
 import imp
 imp.reload(pulses)
 
 # Maybe we should call this "two-level dynamics"?
-class quantum_two_level_dynamics:
+class transmon:
 	def __init__(self, pulse_sequencer, readout_device, ex_channel, ro_channel, ro_sequence, ex_amplitude, readout_measurement_name, qubit_id, exdir_db, sample_name = 'anonymous_sample', comment = '', shuffle=False, **kwargs):
 		self.pulse_sequencer = pulse_sequencer
 		self.readout_device = readout_device

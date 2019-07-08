@@ -25,7 +25,7 @@ class measurement_parameter:
 	def __init__(self, *param, **kwargs):
 		self.values = param[0] if len(param)>0 else kwargs['values']
 		self.setter = param[1] if len(param)>1 else kwargs['setter']
-		self.name = param[2] if len(param)>2 else 'param_{0}'.format(param_id)
+		self.name = param[2] if len(param)>2 else kwargs['name']
 		self.unit = param[3] if len(param)>3 else ''
 		self.pre_setter = param[4] if len(param)>4 else None
 		self.setter_time = 0
@@ -46,7 +46,12 @@ class measurement_parameter:
 		return str(self)
 		
 class measurement_state():
-	def __init__(self, **kwargs):
+	def __init__(self, *args, **kwargs):
+		# copy constructor?
+		if len(args) and not len(kwargs):
+			if isinstance(args[0], measurement_state):
+				kwargs = args[0].__dict__
+		# if not copy constructor, leave blank
 		self.datasets = {} ## here you have datasets
 		self.parameter_values = [] 
 		self.start = datetime.now()#time.time()
@@ -87,7 +92,10 @@ class measurement_dataset:
 		self.nonunity_parameters = [parameter for parameter in self.parameters if len(parameter.values)>1] ###TODO: rename to parameters_squeezed
 		self.indices_updated = []
 		self.data = data
-		self.data_squeezed = np.squeeze(self.data)
+		try:
+			self.data_squeezed = np.squeeze(self.data)
+		except RuntimeError:
+			self.data_squeezed = self.data.ravel()
 	def __getattr__(attr_name):
 		if attr_name != 'data':
 			return self.parameters[attr_name]

@@ -59,6 +59,8 @@ def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropd
 			measurement_id = m['id']
 			measurement_state = save_exdir.load_exdir(db.Data[int(measurement_id)].filename, db, lazy=True)
 			for dataset in measurement_state.datasets.keys():
+				if len(measurement_state.datasets[dataset].parameters) < 1:
+					continue
 				parameter_names = [p.name for p in measurement_state.datasets[dataset].parameters]
 				#dropdown_row_condition = 'id eq "{}" and dataset eq "{}"'.format(measurement_id, dataset)
 				dropdown_row_condition = 'dataset eq "{}"'.format(dataset)

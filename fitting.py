@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from qsweepy.data_structures import *
 
 def resample_x_fit(x):
 	if len(x) < 500:
@@ -209,41 +210,66 @@ def exp_sin_fit(x, y):
 	parameters = {'phase':fitresults[0][0], 'freq':fitresults[0][1], 'decay': fitresults[0][2], 'amplitudes':fitresults[0][3:], 'initial_points':z}
 
 	return (resample_x_fit(x), fitted_curve+means), parameters
-	
-def fit1d(measurement, fitter, measurement_name=None):
-	if len(measurement)==1 and not measurement_name: # if there is only one measurement name in dict, fit items
-		measurement_name = [mname for mname in measurement.keys()][0]
-	elif not measurement_name:
-		raise(ValueError('No measurement_name passed to fit1d. Available names are: '+', '.join([str(mname) for mname in measurement.keys()])))
-	
-	t = measurement[measurement_name][1][0]
-	if np.iscomplexobj(measurement[measurement_name][2]):
-		fitdata = [ np.real(measurement[measurement_name][2]), 
-			        np.imag(measurement[measurement_name][2]) ]
+
+def fit1d(measurement, fitter, dataset_name=None, db=None):
+	if len(measurement.datasets) and not dataset_name:
+		dataset_name = [mname for mname in measurement.datasets.keys()][0]
+	elif not dataset_name:
+		raise(ValueError('No measurement_name passed to fit1d. Available names are: '+', '.join([str(mname) for mname in measurement.datasets.keys()])))
+		
+	dataset = measurement.datasets[dataset_name]
+	t = np.asarray(dataset.parameters[0].values)
+	if np.iscomplexobj(dataset.data):
+		fitdata = [ np.real(dataset.data), 
+			        np.imag(dataset.data) ]
 	else:
-		fitdata = [ measurement[measurement_name][2]]
+		fitdata = [ dataset.data ]
+		
 	fitted_curve, parameters = fitter(t, fitdata)
-	#if fitter is exp_sin_fit:
-	#	parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
-	#elif fitter is exp_fit:
-	#	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
+	fitresult = measurement_state(sample_name=measurement.sample_name, measurement_type=measurement.measurement_type+'-fit', references={measurement.id:'fit_source'})
 	
-	measurement[measurement_name+' fit'] = [t for t in measurement[measurement_name]]
-	measurement[measurement_name+' fit'][1] = [a for a in measurement[measurement_name][1]]
-	measurement[measurement_name+' fit'][1][0] = fitted_curve[0]
-	if np.iscomplexobj(measurement[measurement_name][2]):
-		measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]+fitted_curve[1][1,:]*1j
-	else:
-		measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]
+	fitted_parameter = measurement_parameter(fitted_curve[0], False, dataset.parameters[0].name, dataset.parameters[0].unit, dataset.parameters[0].pre_setter)
 	
-	if len(measurement[measurement_name+' fit'])>3:
-		measurement[measurement_name+' fit'][3] = dict(measurement[measurement_name+' fit'][3])
-		if 'scatter' in measurement[measurement_name+' fit'][3]:
-			del measurement[measurement_name+' fit'][3]['scatter']
+	fitresult.datasets = {dataset_name+'-fit':measurement_dataset(parameters=[fitted_parameter], data=fitted_curve[1])}
+	fitresult.metadata.update({k:str(v) for k,v in parameters.items()})
+	
+	return fitresult
+	
+	
+# def fit1d(measurement, fitter, measurement_name=None):
+	# if len(measurement)==1 and not measurement_name: # if there is only one measurement name in dict, fit items
+		# measurement_name = [mname for mname in measurement.keys()][0]
+	# elif not measurement_name:
+		# raise(ValueError('No measurement_name passed to fit1d. Available names are: '+', '.join([str(mname) for mname in measurement.keys()])))
+	
+	# t = measurement[measurement_name][1][0]
+	# if np.iscomplexobj(measurement[measurement_name][2]):
+		# fitdata = [ np.real(measurement[measurement_name][2]), 
+			        # np.imag(measurement[measurement_name][2]) ]
+	# else:
+		# fitdata = [ measurement[measurement_name][2]]
+	# fitted_curve, parameters = fitter(t, fitdata)
+	# #if fitter is exp_sin_fit:
+	# #	parameters = {'phase':parameters[0], 'freq':parameters[1], 'decay': parameters[2], 'amplitudes':parameters[3:]}
+	# #elif fitter is exp_fit:
+	# #	parameters = {'decay': parameters[0], 'amplitudes':parameters[1:]}
+	
+	# measurement[measurement_name+' fit'] = [t for t in measurement[measurement_name]]
+	# measurement[measurement_name+' fit'][1] = [a for a in measurement[measurement_name][1]]
+	# measurement[measurement_name+' fit'][1][0] = fitted_curve[0]
+	# if np.iscomplexobj(measurement[measurement_name][2]):
+		# measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]+fitted_curve[1][1,:]*1j
+	# else:
+		# measurement[measurement_name+' fit'][2] = fitted_curve[1][0,:]
+	
+	# if len(measurement[measurement_name+' fit'])>3:
+		# measurement[measurement_name+' fit'][3] = dict(measurement[measurement_name+' fit'][3])
+		# if 'scatter' in measurement[measurement_name+' fit'][3]:
+			# del measurement[measurement_name+' fit'][3]['scatter']
 			
-	measurement[measurement_name+' fit'] = tuple(measurement[measurement_name+' fit'])
+	# measurement[measurement_name+' fit'] = tuple(measurement[measurement_name+' fit'])
 	
-	return measurement, parameters
+	# return measurement, parameters
 	
 	
 def S21pm_fit(measurement, fitter):

@@ -69,6 +69,8 @@ class carrier:
 		return self.parent.ignore_calibration_drift
 	def set_ignore_calibration_drift(self, v):
 		self.parent.ignore_calibration_drift = v
+	def get_calibration_measurement(self):
+		return self.parent.exdir_db.select_measurement(measurement_type='iq_rf_calibration', metadata=self.parent.rf_calibration_identifier(self)).id
 
 class awg_iq_multi:
 	"""Interface for IQ modulation of RF signals wth two AWG channels.
@@ -89,7 +91,7 @@ class awg_iq_multi:
 		
 	"""
 		
-	def __init__(self, awg_I, awg_Q, awg_ch_I, awg_ch_Q, lo):#, mixer):
+	def __init__(self, awg_I, awg_Q, awg_ch_I, awg_ch_Q, lo, exdir_db):#, mixer):
 		"""
 		"""
 		self.awg_I = awg_I
@@ -100,6 +102,8 @@ class awg_iq_multi:
 		self.carriers = {}
 		self.name='default'
 		self.lo = lo
+		self.exdir_db = exdir_db
+		#self._if = 0
 		#self._if = 0
 		#self.frequency = lo.get_frequency()
 		self.dc_calibrations = {}
@@ -268,7 +272,10 @@ class awg_iq_multi:
 
 	def dc_cname(self):
 		#return ('fLO-'+get_config_float_fmt()).format(self.lo.get_frequency)
-		return build_param_names({'mixer':self.name,'lo_freq':self.lo.get_frequency()})
+		return build_param_names(self.dc_calibration_identifier())
+		
+	def dc_calibration_identifier(self):
+		return {'mixer':self.name,'lo_freq':self.lo.get_frequency()}
 		
 	def do_calibration(self, sa=None):
 		"""User-level function to sort out mixer calibration matters. Checks if there is a saved calibration for the given
@@ -283,12 +290,21 @@ class awg_iq_multi:
 	def get_dc_calibration(self, sa=None):
 		#name = 'iq-dc-'+self.dc_cname()
 		try:
-			self.dc_calibrations[self.dc_cname()] = qjson.load(type='iq-dc',name=self.dc_cname())
+			calibration = self.exdir_db.select_measurement(measurement_type='iq_dc_calibration', metadata=self.dc_calibration_identifier()).metadata
+			self.dc_calibrations[self.dc_cname()] = {}
+			for k,v in calibration.items():
+				if k not in self.dc_calibration_identifier():
+					try:
+						self.dc_calibrations[self.dc_cname()][k] = float(v)
+					except Exception as e:
+						print(type(e), e)
+						self.dc_calibrations[self.dc_cname()][k] = complex(v)
+			#self.dc_calibrations[self.dc_cname()] = qjson.load(type='iq-dc',name=self.dc_cname())
 		except Exception as e:
 			if not sa:
 				logging.error('No ready calibration found and no spectrum analyzer to calibrate')
 			else:
-				print (e)
+				print (type(e), e)
 				self._calibrate_zero_sa(sa)
 				self.save_dc_calibration()
 		return self.dc_calibrations[self.dc_cname()]
@@ -298,12 +314,18 @@ class awg_iq_multi:
 		#print (calibration_path)
 		#filename = 'iq-dc-'+self.dc_cname()
 		#save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
-		qjson.dump(type='iq-dc',name=self.dc_cname(), params=self.dc_calibrations[self.dc_cname()])
+		#qjson.dump(type='iq-dc',name=self.dc_cname(), params=self.dc_calibrations[self.dc_cname()])
+		calibration = self.dc_calibration_identifier()
+		calibration.update({k:str(v) for k,v in self.dc_calibrations[self.dc_cname()].items()})
+		self.exdir_db.save(measurement_type='iq_dc_calibration', metadata=calibration, type_revision='1')
+		
+	def rf_calibration_identifier(self, carrier):
+		return {'cname':self.name, 'if':carrier.get_if(), 'frequency':carrier.get_frequency(), 'sideband_id':self.sideband_id}
 		
 	def rf_cname(self, carrier):
 		#return ('fLO-{'+get_config_float_fmt()+'}').format(self.lo.get_frequency)
 		#return ('if', carrier.get_if()), ('frequency', carrier.get_frequency()), ('sideband_id', self.sideband_id)
-		return build_param_names({'cname':self.name, 'if':carrier.get_if(), 'frequency':carrier.get_frequency(), 'sideband_id':self.sideband_id})
+		return build_param_names(self.rf_calibration_identifier(carrier))
 		
 	def get_rf_calibration(self, carrier, sa=None):
 		"""User-level function to sort out mxer calibration matters. Checks if there is a saved calibration for the given
@@ -314,7 +336,15 @@ class awg_iq_multi:
 		#calibration_path = get_config()['datadir']+'/calibrations/'
 		#filename = 'iq-rf-'+self.rf_cname(carrier)
 		try:
-			self.rf_calibrations[self.rf_cname(carrier)] = qjson.load(type='iq-rf',name=self.rf_cname(carrier))
+			calibration = self.exdir_db.select_measurement(measurement_type='iq_rf_calibration', metadata=self.rf_calibration_identifier(carrier)).metadata
+			self.rf_calibrations[self.rf_cname(carrier)] = {}
+			for k,v in calibration.items():
+				if k not in self.rf_calibration_identifier(carrier):
+					try:
+						self.rf_calibrations[self.rf_cname(carrier)][k] = float(v)
+					except:
+						self.rf_calibrations[self.rf_cname(carrier)][k] = complex(v)
+			#self.rf_calibrations[self.rf_cname(carrier)] = qjson.load(type='iq-rf',name=self.rf_cname(carrier))
 			#self.rf_calibrations[self.rf_cname(carrier)] = load_pkl(filename, location=calibration_path)
 		except Exception as e:
 			if not sa:
@@ -330,7 +360,10 @@ class awg_iq_multi:
 		#print (calibration_path)
 		#filename = 'iq-rf-'+self.rf_cname(carrier)
 		#save_pkl(None, self.rf_calibrations[self.rf_cname(carrier)], location=calibration_path, filename=filename, plot=False)
-		qjson.dump(type='iq-rf',name=self.rf_cname(carrier), params=self.rf_calibrations[self.rf_cname(carrier)])
+		#qjson.dump(type='iq-rf',name=self.rf_cname(carrier), params=self.rf_calibrations[self.rf_cname(carrier)])
+		calibration = self.rf_calibration_identifier(carrier)
+		calibration.update({k:str(v) for k,v in self.rf_calibrations[self.rf_cname(carrier)].items()})
+		self.exdir_db.save(measurement_type='iq_rf_calibration', metadata=calibration, type_revision='1')
 		
 	def calib_dc(self):
 		cname = self.dc_cname()

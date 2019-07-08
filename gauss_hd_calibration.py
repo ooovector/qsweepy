@@ -1,11 +1,11 @@
-from qsweepy import save_pkl
-from qsweepy import plotting
-from qsweepy import sweep
+from qsweepy import fitting, tomography, clifford, interleaved_benchmarking
+#from qsweepy import plotting
+#from qsweepy import sweep
 from qsweepy import fitting
 from qsweepy import qjson
-from qsweepy import tomography
-from qsweepy import clifford
-from qsweepy import interleaved_benchmarking
+#from qsweepy import tomography
+#from qsweepy import clifford
+#from qsweepy import interleaved_benchmarking
 from matplotlib import pyplot as plt
 import numpy as np
 class gauss_hd_calibration:
@@ -30,24 +30,32 @@ class gauss_hd_calibration:
 			sequence = [pg.pmulti(self.length, *tuple(pulse))]*num_pulses+self.tld.ro_sequence
 			if not hasattr(self.tld.readout_device, 'diff_setter'): # if this is a sifferential measurer
 				set_seq()
-		measurement_name = 'Rabi ampl excitation channel {}'.format(','.join(self.tld.ex_channels))#+self.get_measurement_name_comment()
-		root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
-		root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
-		measurement = sweep.sweep(self.tld.readout_device, 
+		metadata = {'ex_channels': ','.join(self.tld.ex_channels),
+					'sigma': str(self.sigma),
+					'length': str(self.length),
+					'alpha': str(self.alpha),
+					'anharmonicity': str(self.anharmonicity),
+					'ex_amplitudes': ','.join([str(i) for i in self.tld.ex_channels])}
+		measurement = self.tld.sweeper.sweep(self.tld.readout_device, 
 								  (ex_amps, set_ex_amp, 'Rabi pulse amplitude', 'v'), 
 								  *params, 
-								  filename=measurement_name, 
+								  sample_name = self.tld.sample_name,
+								  measurement_type = 'Rabi-gauss-hd-amplitude',
 								  shuffle=self.tld.shuffle, 
-								  root_dir = root_dir,
-								  plot_separate_thread= self.tld.plot_separate_thread,
-								  plot=self.tld.plot)
-		measurement_fitted, fitted_parameters_rabi = self.tld.fitter(measurement, fitting.sin_fit)
-		annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}'.format(fitted_parameters_rabi['phase'], 
-																			 fitted_parameters_rabi['freq'])
+								  metadata = metadata
+								  #root_dir = root_dir,
+								  #plot_separate_thread= self.tld.plot_separate_thread,
+								  #plot=self.tld.plot
+								  )
+		measurement_fitted = self.tld.fitter(measurement, fitting.exp_sin_fit)
+		self.tld.exdir_db.save_measurement(measurement_fitted)
+		
+		#annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}'.format(fitted_parameters_rabi['phase'], 
+		#																	 fitted_parameters_rabi['freq'])
 		#print( measurement_fitted)
-		plotting.plot_measurement(measurement_fitted, measurement_name,save=root_dir,annotation=annotation,\
-								  subplots=True)
-		return (measurement_fitted,fitted_parameters_rabi)
+		#plotting.plot_measurement(measurement_fitted, measurement_name,save=root_dir,annotation=annotation,\
+		#						  subplots=True)
+		return measurement, measurement_fitted
 	
 	def ape(self,num_pulses_array=None,y_sign='+',ape_phase=np.pi/2.,*params):
 		y_sign_mul = 1 if y_sign == '-' else -1
@@ -175,7 +183,7 @@ class gauss_hd_calibration:
 			num_pulses_max=64
 		return num_pulses_max
 	
-	def calibrate_amplitude(self, max_angle = np.pi):
+	def calibrate_amplitude(self, max_angle = np.pi, num_pulses_max=None):
 		from scipy.interpolate import interp1d
 		from scipy.special import erf
 		num_pulses_max = self.guess_max_num_pulses()
@@ -183,6 +191,8 @@ class gauss_hd_calibration:
 		min_pulse_num_log2 = int(np.ceil(np.log(2*np.pi/max_angle)/np.log(2)))
 		min_pulse_num = 2**min_pulse_num_log2
 		num_pulses = 2**np.arange(min_pulse_num_log2, num_pulses_log2_max)
+		if num_pulses_max != None:
+			num_pulses = num_pulses[num_pulses<num_pulses_max]
 		print ('num_pulses_in_scan: ', num_pulses)
 		amplitude_scan_points = 12
 		
@@ -230,8 +240,9 @@ class gauss_hd_calibration:
 			
 			for angle_id, angle in enumerate(target_angles_padded[1:-1]):
 				amplitude_scan_range = np.linspace(range_mins[angle_id], range_maxs[angle_id], amplitude_scan_points, endpoint=False)
-				measurement_result, fitresults = self.rabi_amplitudes(amplitude_scan_range, num_pulses)
-				amplitude_max = measurement_result[self.tld.readout_measurement_name][1][0][np.argmin(np.abs(measurement_result[self.tld.readout_measurement_name][2]-thermal_state_readout_result))]
+				measurement_result, fit = self.rabi_amplitudes(amplitude_scan_range, num_pulses)
+				dataset = measurement_result.datasets[self.tld.readout_measurement_name]
+				amplitude_max = dataset.parameters[0].values[np.argmin(np.abs(dataset.data-thermal_state_readout_result))]
 				amplitude_guesses[angle] = amplitude_max
 		self.amplitude_guesses = amplitude_guesses
 		return amplitude_guesses

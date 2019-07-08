@@ -27,11 +27,12 @@ class database:
 		self.Data = Data
 			
 		class Metadata(db.Entity):
-			id = PrimaryKey(int, auto=True)
+			#id = PrimaryKey(int, auto=True)
 			data_id = Required(self.Data)
 			name = Required(str)
 			value = Required(str)
 			#data = Required(Data)
+			PrimaryKey(data_id, name)
 		self.Metadata = Metadata
 			
 		class Reference(db.Entity):
@@ -39,7 +40,8 @@ class database:
 			this = Required(self.Data)
 			that = Required(self.Data)
 			ref_type = Required(str)
-			PrimaryKey(this, that)
+			ref_comment = Required(str)
+			PrimaryKey(this, ref_type, ref_comment)
 		self.Reference = Reference
 			
 		class Linear_sweep(db.Entity):
@@ -52,14 +54,15 @@ class database:
 		self.Linear_sweep = Linear_sweep
 			
 		class Invalidations(db.Entity):
-			this_type = Required(str)
-			that_type = Required(str)
+#			this_type = Required(str)
+#			that_type = Required(str)
 			ref_type = Required(str)
-			id = PrimaryKey(int, auto=True)
+#			id = PrimaryKey(int, auto=True)
 		self.Invalidations = Invalidations
 	
 		db.bind(provider, user=user, password=password, host=host, database=database, port = port)
 		db.generate_mapping(create_tables=True)
+		self.db = db
 	
 	def create_in_database(self, state):
 		d = self.Data(comment = state.comment, measurement_type = state.measurement_type, sample_name = state.sample_name, start = state.start,   
@@ -77,10 +80,13 @@ class database:
 		for name, value in state.metadata.items():
 			#print(name, value)
 			self.Metadata(data_id = d, name = name, value = value)
-		print(state.references)
-		for ref_id, ref_type in state.references.items():
-			self.Reference(this = d, that = ref_id, ref_type = ref_type)
-        
+		print('Inserting references:', state.references)
+		for ref_description, ref_that in state.references.items():
+			if type(ref_description) is tuple:
+				self.Reference(this = d, that = ref_that, ref_type = ref_description[0], ref_comment = ref_description[1])
+			else: 
+				self.Reference(this = d, that = ref_that, ref_type = ref_description, ref_comment='-')
+		
 		commit()   
 		state.id = d.id 
 		return d.id
@@ -96,6 +102,12 @@ class database:
 		d.start = state.start
 		d.stop = state.stop
 		d.filename = state.filename
+		for k,v in state.metadata.items():
+			if not k in d.metadata.name:
+				self.Metadata(data_id=d, name=k, value=str(v))
+			else:
+				self.Metadata[d,k].value = str(v)
+		#d.metadata.update(state.metadata)
 		commit()    
 		return d.id
 		

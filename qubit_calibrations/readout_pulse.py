@@ -1,0 +1,147 @@
+from ..data_structures import *
+from .. import data_reduce
+from .. import single_shot_readout
+from . import excitation_pulse
+from . import calibrated_readout
+
+import traceback
+class qubit_readout_pulse(measurement_state):
+	def __init__(self, *args, **kwargs):
+		if len(args) and not len(kwargs): # copy constructor
+			super().__init__(*args, **kwargs)
+		else:
+			super().__init__(measurement_type='qubit_readout_pulse', *args, **kwargs)
+	def get_pulse_sequence(self):
+		return self.pulse_sequence
+	
+def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
+	references = {'passthrough_measurement':passthrough_measurement.id}
+	if 'channel_calibration' in passthrough_measurement.metadata:
+		references['channel_calibration'] = passthrough_measurement.references['channel_calibration']
+		
+	compression_1db = float(passthrough_measurement.metadata['compression_1db'])
+	additional_noise_appears = float(passthrough_measurement.metadata['additional_noise_appears'])
+	if np.isfinite(compression_1db):
+		calibration_type = 'compression_1db'
+		amplitude = compression_1db
+	elif np.isfinite(additional_noise_appears):
+		calibration_type = 'additional_noise_appears'
+		amplitude = additional_noise_appears
+	else:
+		raise Exception('Compession_1db and additional_noise_appears not found on passthourgh scan!')
+	readout_channel = passthrough_measurement.metadata['channel']
+	length = float(passthrough_measurement.metadata['length'])
+	metadata={'pulse_type': 'rect',
+			  'channel': readout_channel,
+			  'qubit_id': passthrough_measurement.metadata['qubit_id'], 
+	          'amplitude':amplitude, 
+			  'calibration_type': calibration_type,
+			  'length': passthrough_measurement.metadata['length']}
+	try:
+		readout_pulse = qubit_readout_pulse(device.exdir_db.select_measurement(measurement_type='qubit_readout_pulse', references_that=references, metadata=metadata))
+	except Exception as e:
+		print (type(e), str(e))
+		readout_pulse = qubit_readout_pulse(references=references, metadata=metadata, sample_name=device.exdir_db.sample_name)
+		device.exdir_db.save_measurement(readout_pulse)
+	readout_pulse.pulse_sequence = [device.pg.p(readout_channel, length, device.pg.rect, amplitude)]
+	return readout_pulse
+	
+def get_qubit_readout_pulse(device, qubit_id, length=None):
+	from .readout_passthrough import readout_passthrough
+	## identify metadata
+	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
+	references = {}
+	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
+		references['channel_calibration'] = device.awg_channels[readout_channel].get_calibration_measurement()
+	## strategy: if we have a ready readout pulse, use it.
+	## otherwise, try to calibrate a readout pulse. If that fails,
+	## jump to passthrough measurements
+	try:
+		metadata={'qubit_id':qubit_id, 'channel':readout_channel}
+		if length:
+			metadata['length'] = str(length)
+		measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata, references_that=references)
+		pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+		length = float(measurement.metadata['length'])
+	except Exception as e:
+		print (type(e), str(e))
+		# if there is no passthrough, calibrate passthrough
+		points = int(device.get_qubit_constant(name='readout_passthrough_points', qubit_id=qubit_id))
+		amplitude = float(device.get_qubit_constant(name='readout_passthrough_amplitude', qubit_id=qubit_id))
+		if not length:
+			length = float(device.get_qubit_constant(name='readout_length', qubit_id=qubit_id))
+		amplitudes = np.linspace(0, amplitude, points)
+		measurement = readout_passthrough(device, qubit_id, length=length, amplitudes=amplitudes)
+		pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+	try:
+		return pulse
+		#return readout_pulse
+	except:
+		## TODO: print error to log and suggest changing points, amplitude and length.... or checking the readout system altogether.
+		##
+		raise
+	
+def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None):
+	qubit_id = qubit_readout_pulse.metadata['qubit_id']
+	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
+	metadata = {'qubit_id':qubit_id}
+	references = {'readout_pulse': qubit_readout_pulse.id, 
+				  'modem_calibration': device.modem.calibration_measurements[readout_channel].id}
+	if excitation_pulse is not None:
+		references['excitation_pulse'] = excitation_pulse.id
+	try:
+		return device.exdir_db.select_measurement(measurement_type='readout_background_calibration', metadata=metadata, references_that=references)
+	except Exception as e:
+		print (traceback.print_exc())
+		new_measurement = measure_readout(device, qubit_readout_pulse)
+		new_measurement.measurement_type = 'readout_background_calibration'
+		device.exdir_db.db.update_in_database(new_measurement)
+		return new_measurement
+		
+def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=None):
+	qubit_id = qubit_readout_pulse.metadata['qubit_id']
+	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
+	adc, mnames =  device.setup_adc_reducer_iq(qubit_id, raw=True)
+	
+	if not nums:
+		nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
+	old_nums = adc.get_nums()
+	
+	mean_sample = data_reduce.data_reduce(adc)
+	mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
+	mean_sample.filters['Std_Voltage_AC'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)
+	mean_sample.filters['S21'] = data_reduce.thru(adc, mnames[qubit_id], diff=0, scale=nums)
+	
+	excitation_pulse_sequence = excitation_pulse.get_pulse_sequence(0) if excitation_pulse is not None else []
+	
+	device.pg.set_seq(excitation_pulse_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
+	
+	# refers to awg_iq_multi calibrations
+	metadata = {'qubit_id':qubit_id, 'averages': nums}
+	references = {'readout_pulse': qubit_readout_pulse.id, 'modem_calibration': device.modem.calibration_measurements[readout_channel].id}
+	if excitation_pulse is not None:
+		references['excitation_pulse'] = excitation_pulse.id
+	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
+		references[('channel_calibration', readout_channel)] = device.awg_channels[readout_channel].get_calibration_measurement()
+	
+	try:
+		adc.set_nums(nums)
+		measurement = device.sweeper.sweep(mean_sample, 
+							measurement_type='readout_response',
+							metadata=metadata,
+							references=references)
+	except:
+		raise
+	finally:
+		adc.set_nums(old_nums)
+	
+	return measurement
+	
+def get_uncalibrated_measurer(device, qubit_id, qubit_readout_pulse):
+	background_calibration = get_readout_calibration(device, qubit_readout_pulse)
+	adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=False)
+	measurer = data_reduce.data_reduce(adc_reducer)
+	measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id], background_calibration.datasets['S21'].data, adc_reducer.get_nums())
+	measurer.references = {'readout_background_calibration': background_calibration.id}
+	return measurer
+	

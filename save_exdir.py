@@ -74,7 +74,10 @@ def save_exdir(state, keep_open=False):
 def update_exdir(state, indeces):
 	for dataset in state.datasets.keys():
 		state.exdir.attrs.update(state.metadata)
-		state.datasets[dataset].data_exdir[tuple(indeces)] = state.datasets[dataset].data[tuple(indeces)]
+		try:
+			state.datasets[dataset].data_exdir[tuple(indeces)] = state.datasets[dataset].data[tuple(indeces)]
+		except Exception as e:
+			state.datasets[dataset].data_exdir[...] = state.datasets[dataset].data[...]
 	
 def close_exdir(state):
 	if hasattr(state, 'exdir'):
@@ -161,7 +164,10 @@ def load_exdir(filename, db=None, lazy=False):
 			#print ('load_exdir: dataset_parameter_time: ', parameter_time - dataset_start_time)
 			#stdout.flush()
 			if not lazy:
-				data = f[dataset_name]['data'].data[:].copy()
+				try:
+					data = f[dataset_name]['data'].data[:].copy()
+				except: 
+					data = f[dataset_name]['data'].data
 			else:
 				data = f[dataset_name]['data'].data
 			state.datasets[dataset_name] = measurement_dataset(parameters, data)
@@ -177,7 +183,7 @@ def load_exdir(filename, db=None, lazy=False):
 			state.measurement_type = db_record.measurement_type
 			query = select(i for i in db.Reference if (i.this.id == state.id))
 			references = {}
-			for q in query: references.update({q.that.id: q.ref_type})
+			for q in query: references.update({q.ref_type: q.that.id})
 			#print(references)
 			state.references = references
 			state.filename = filename

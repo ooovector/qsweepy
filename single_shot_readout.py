@@ -25,7 +25,11 @@ class single_shot_readout:
 		self.save_last_samples = False
 		self.train_test_split = 0.8
 		self.measurement_name = ''
-		self.dump_measured_samples = False
+		# self.dump_measured_samples = False
+		
+		self.measure_avg_samples = True
+		self.measure_cov_samples = False
+		
 		#self.cutoff_start = 0
 		if not _readout_classifier:
 			self.readout_classifier = readout_classifier.linear_classifier()
@@ -38,27 +42,27 @@ class single_shot_readout:
                             'get_opts': lambda: {}, 
                             'filter': self.filter_binary_func}
 	
-	def measure_delay(self, ro_channel):
-		import matplotlib.pyplot as plt
-		from scipy.signal import resample
+	# def measure_delay(self, ro_channel):
+		# import matplotlib.pyplot as plt
+		# from scipy.signal import resample
 		
-		self.pulse_generator.set_seq(self.ro_delay_seq)
-		first_nonzero = int(np.nonzero(np.abs(self.pulse_generator.channels[ro_channel].get_waveform()))[0][0]/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock())
-		ro_dac_waveform = self.pulse_generator.channels[ro_channel].awg_I.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_I)+\
-					   1j*self.pulse_generator.channels[ro_channel].awg_Q.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_Q)
-		ro_dac_waveform = resample(ro_dac_waveform, num=int(len(ro_dac_waveform)/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock()))
-		ro_adc_waveform = np.mean(self.adc.measure()['Voltage'], axis=0)
-		ro_dac_waveform = ro_dac_waveform - np.mean(ro_dac_waveform)
-		ro_adc_waveform = ro_adc_waveform - np.mean(ro_adc_waveform)
-		xc = np.abs(np.correlate(ro_dac_waveform, ro_adc_waveform, 'same'))
-		xc_max = np.argmax(xc)
-		delay = int((xc_max - first_nonzero)/2)
-		#plt.figure('delay')
-		#plt.plot(ro_dac_waveform[first_nonzero:])
-		#plt.plot(ro_adc_waveform[delay:])
-		#plt.plot(ro_adc_waveform)
-		#print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
-		return delay
+		# self.pulse_generator.set_seq(self.ro_delay_seq)
+		# first_nonzero = int(np.nonzero(np.abs(self.pulse_generator.channels[ro_channel].get_waveform()))[0][0]/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock())
+		# ro_dac_waveform = self.pulse_generator.channels[ro_channel].awg_I.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_I)+\
+					   # 1j*self.pulse_generator.channels[ro_channel].awg_Q.get_waveform(channel=self.pulse_generator.channels[ro_channel].awg_ch_Q)
+		# ro_dac_waveform = resample(ro_dac_waveform, num=int(len(ro_dac_waveform)/self.pulse_generator.channels[ro_channel].get_clock()*self.adc.get_clock()))
+		# ro_adc_waveform = np.mean(self.adc.measure()['Voltage'], axis=0)
+		# ro_dac_waveform = ro_dac_waveform - np.mean(ro_dac_waveform)
+		# ro_adc_waveform = ro_adc_waveform - np.mean(ro_adc_waveform)
+		# xc = np.abs(np.correlate(ro_dac_waveform, ro_adc_waveform, 'same'))
+		# xc_max = np.argmax(xc)
+		# delay = int((xc_max - first_nonzero)/2)
+		# #plt.figure('delay')
+		# #plt.plot(ro_dac_waveform[first_nonzero:])
+		# #plt.plot(ro_adc_waveform[delay:])
+		# #plt.plot(ro_adc_waveform)
+		# #print ('Measured delay is {} samples'.format(delay), first_nonzero, xc_max)
+		# return delay
 	
 	def calibrate(self):
 		X = []
@@ -75,9 +79,9 @@ class single_shot_readout:
 				y.extend([class_id]*len(self.adc.get_points()[self.adc_measurement_name][0][1]))
 		X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1]))) # last dimension is the feature dimension
 		y = np.asarray(y)
-		if self.dump_measured_samples or self.save_last_samples:
-			self.calib_X = X#np.reshape(X, (len(self.prepare_seqs), -1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
-			self.calib_y = y
+		# if self.dump_measured_samples or self.save_last_samples:
+			# self.calib_X = X#np.reshape(X, (len(self.prepare_seqs), -1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
+			# self.calib_y = y
 		
 		scores = readout_classifier.evaluate_classifier(self.readout_classifier, X, y)
 		self.readout_classifier.fit(X, y)
@@ -86,33 +90,50 @@ class single_shot_readout:
 		
 	def get_opts(self):
 		scores = readout_classifier.readout_classifier_scores
-		return {score_name:{'log':False} for score_name in scores}
+		scores_datasets = {score_name:{'log':False} for score_name in scores}
+		if self.measure_avg_samples:
+			avg_samples = {'avg_sample'+str(_class):{'log':False} for _class in self.readout_classifier.class_list}
+			avg_samples.update(scores_datasets)
+			return avg_samples
+		return
 	
 	def measure(self):
 		self.calibrate()
 		meas = self.scores
-		if self.dump_measured_samples:
-			self.dump_samples(name=self.measurement_name)
+		# if self.dump_measured_samples:
+			# self.dump_samples(name=self.measurement_name)
+		if self.measure_avg_samples:
+			avg_samples = {'avg_sample'+str(_class):self.readout_classifier.class_averages[_class] for _class in self.readout_classifier.class_list}
+			avg_samples.update(meas)
+			return avg_samples
 		return meas
 		
 	def get_points(self):
 		scores = readout_classifier.readout_classifier_scores
-		return {score_name:{} for score_name in scores}
+		scores_datasets = {score_name:[] for score_name in scores}
+		if self.measure_avg_samples:
+			avg_samples = {'avg_sample'+str(_class):[('Time',np.arange(self.adc.get_nop())/self.adc.get_clock(), 's')] for _class in self.readout_classifier.class_list}
+			scores_datasets.update(avg_samples)
+		return scores_datasets
 				
 	def get_dtype(self):
 		scores = readout_classifier.readout_classifier_scores
-		return {score_name:float for score_name in scores}
+		scores_datasets = {score_name:float for score_name in scores}
+		if self.measure_avg_samples:
+			avg_samples = {'avg_sample'+str(_class):self.adc.get_dtype()[self.adc_measurement_name] for _class in self.readout_classifier.class_list}
+			scores_datasets.update(avg_samples)
+		return scores_datasets
 	
-	def dump_samples(self, name):
-		from .save_pkl import save_pkl
-		header = {'type':'Readout classification X', 'name':name}
-		measurement = {'Readout classification X':(['Sample ID', 'time'], 
-				[np.arange(self.calib_X.shape[0]), np.arange(self.calib_X.shape[1])/self.adc.get_clock()],
-				self.calib_X),
-				'Readout classification y':(['Sample ID'],
-				[np.arange(self.calib_X.shape[0])],
-				self.calib_y)}
-		save_pkl(header, measurement, plot=False)
+	# def dump_samples(self, name):
+		# from .save_pkl import save_pkl
+		# header = {'type':'Readout classification X', 'name':name}
+		# measurement = {'Readout classification X':(['Sample ID', 'time'], 
+				# [np.arange(self.calib_X.shape[0]), np.arange(self.calib_X.shape[1])/self.adc.get_clock()],
+				# self.calib_X),
+				# 'Readout classification y':(['Sample ID'],
+				# [np.arange(self.calib_X.shape[0])],
+				# self.calib_y)}
+		# save_pkl(header, measurement, plot=False)
 		
 	def filter_binary_func(self, x):
 		return self.readout_classifier.predict(x[self.adc_measurement_name])

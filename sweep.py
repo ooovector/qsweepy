@@ -13,6 +13,7 @@ import pathlib
 import random
 import gc
 from .data_structures import *
+import traceback
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	from scipy.optimize import fmin
@@ -141,7 +142,8 @@ def sweep(measurer,
 		all_parameters = sweep_parameters + point_parameters
 		data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
 		data = np.empty(data_dimensions, dtype = measurer.get_dtype()[dataset_name])
-		data.fill(np.nan)
+		if np.iscomplexobj(data): data.fill(np.nan+1j*np.nan)
+		else:                     data.fill(np.nan)
 		state.datasets[dataset_name] = measurement_dataset(parameters = all_parameters, data = data)
 	
 	all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dimensions))
@@ -154,7 +156,7 @@ def sweep(measurer,
 	def set_single_measurement_result(single_measurement_result, indeces):
 		nonlocal state
 		indeces = list(indeces)
-		for dataset in state.datasets.keys():
+		for dataset in single_measurement_result.keys():
 			state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
 			state.datasets[dataset].indeces_updates = tuple(indeces+[...])
 		state.done_sweeps += 1
@@ -163,13 +165,13 @@ def sweep(measurer,
 			try:
 				event_handler(state, indeces, *arguments)
 			except Exception as e:
-				print (e)
+				traceback.print_exc()
 
 	for event_handler, arguments in on_start:
 		try:
 			event_handler(state, *arguments)
 		except Exception as e:
-			print (e)
+			traceback.print_exc()
 		
 		################
 	if hasattr(measurer, 'pre_sweep'):
