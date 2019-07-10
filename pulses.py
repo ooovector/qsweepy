@@ -7,15 +7,15 @@ import numpy as np
 class vz:
 	def __init__(self, channel, length, phi):
 		self.phi = phi
-		
+
 class vf:
 	def __init__(self, channel, length, freq):
 		self.freq = freq
-		
+
 class offset:
 	def __init__(self, channel, length, offset):
 		self.offset = offset
-		
+
 class pulses:
 	def __init__(self, channels = {}):
 		self.channels = channels
@@ -28,7 +28,7 @@ class pulses:
 		gauss /= np.max(gauss)
 		gauss_der = np.gradient (gauss)*self.channels[channel].get_clock()
 		return amp_x*(gauss + 1j*gauss_der*alpha)
-		
+
 	# def rect_cos (self, channel, length, amp, alpha=0.):
 		# alfa = 0.5
 		# impulse = tukey(int(round(length*self.channels[channel].get_clock())), alfa)
@@ -38,13 +38,13 @@ class pulses:
 		# impulse -= impulse[0]
 		# impulse_der = np.gradient(impulse)*self.channels[channel].get_clock()
 		# return amp*(impulse + 1j*impulse_der*alpha)
-		
+
 	def envelope(self, channel, length, function, impulse):
 		t = np.linspace(0, self.channels[channel].get_nop()/self.channels[channel].get_clock(), self.channels[channel].get_nop(), endpoint=False)
 		#time_arr = [self.channels[channel].get_clock()*i for i in range(int(round(length*self.channels[channel].get_clock())))]
 		#print(function(time_arr[0]))
 		return np.asarray(impulse*function(t))#(1/self.channels[channel].get_clock()*np.arange(len(impulse))))# for i in range(len(impulse))], dtype = complex)
-		
+
 	def rect_cos (self, channel, length, amp, length_tail, function_for_envelope = lambda x: 1, alpha=0.):
 		length_of_plato = length - length_tail*2
 		length_of_one_tail = int(length_tail*self.channels[channel].get_clock())
@@ -52,7 +52,7 @@ class pulses:
 		first = hann_function[:length_of_one_tail]
 		second = hann_function[length_of_one_tail:]
 		plato = np.ones(int(round(length_of_plato*self.channels[channel].get_clock())))
-		final = first.tolist() 
+		final = first.tolist()
 		final.extend(plato.tolist())
 		final.extend(second.tolist())
 		impulse = np.asarray(final)
@@ -66,29 +66,29 @@ class pulses:
 		#print(second)
 		#print(plato)
 		return amp*(impulse + 1j*impulse_der*alpha)
-		
+
 	## generate waveform of a rectangular pulse
 	def rect(self, channel, length, amplitude):
 		return amplitude*np.ones(int(round(length*self.channels[channel].get_clock())), dtype=np.complex)
-		
+
 	def vf_pulse(self):
 		return [self.freq*self.clock*t for t in range(0, self.length)]
-		
+
 	def pause(self, channel, length):
 		return self.rect(channel, length, 0)
-		
+
 	def p(self, channel, length, pulse_type=None, *params):
 		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
 		if channel:
 			pulses[channel] = pulse_type(channel, length, *params)
 		return pulses
-		
+
 	def ps(self, channel, length, pulse_type=None, *params):
 		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
 		if channel:
 			pulses[channel] = pulse_type(channel, length, *params)
 		return pulses
-		
+
 	def pmulti(self, length, *params):
 		pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
 		for pulse in params:
@@ -96,10 +96,10 @@ class pulses:
 			#print ('Setting multipulse: \npulse:', pulse[1], 'channel:', channel, 'length:', length, 'other args:', pulse[2:])
 			pulses[channel] = pulse[1](channel, length, *pulse[2:])
 		return pulses
-	
+
 	def awg(self, channel, length, waveform):
 		return waveform
-	
+
 	def set_seq(self, seq, force=True):
 		from time import time
 		initial_delay = 1e-6
@@ -127,7 +127,7 @@ class pulses:
 					pulse_shape[channel].extend(pulse[channel]*np.exp(1j*(virtual_phase[channel] + 2*np.pi*df[channel]/self.channels[channel].get_clock()*np.arange(len(pulse[channel]))))+offsets[channel])
 					virtual_phase[channel] += 2*np.pi*df[channel]/self.channels[channel].get_clock()*len(pulse[channel])
 				pulse_shape[channel] = np.asarray(pulse_shape[channel])
-		
+
 				if len(pulse_shape[channel])>channel_device.get_nop():
 					tmp = np.zeros(channel_device.get_nop(), dtype=pulse_shape[channel].dtype)
 					tmp = pulse_shape[channel][-channel_device.get_nop():]
@@ -147,7 +147,7 @@ class pulses:
 				#setter_start = time()
 				channel_device.unfreeze()
 				#print ('channel {} unfreeze time: {}'.format(channel, time() - setter_start))
-		
+
 		self.last_seq = seq
 		devices = []
 		for channel in self.channels.values():

@@ -11,8 +11,9 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	mean_sample.filters['S21'] = data_reduce.thru(adc, mnames[qubit_id])
 
 	def set_amplitude(amplitude):
+		print (readout_channel, length, device.pg.rect, amplitude)
 		device.pg.set_seq(device.trigger_readout_seq+[device.pg.p(readout_channel, length, device.pg.rect, amplitude)])
-	
+
 	# refers to awg_iq_multi calibrations
 	metadata = {'channel': readout_channel, 'qubit_id':qubit_id, 'averages': device.modem.adc.get_nums(), 'length': length}
 	references = {}
@@ -22,36 +23,36 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	def create_compression_dataset(measurement):
 		parameters = [measurement_parameter(values=amplitudes[2:], name='amplitude', setter=False)]
 		measurement.datasets['compression'] = measurement_dataset(parameters, np.zeros(len(amplitudes)-2)*np.nan)
-		
-	measurement = device.sweeper.sweep(mean_sample, 
-							(amplitudes, set_amplitude, 'amplitude'), 
-							#(lengths, set_pulse_length, 'length'), 
+
+	measurement = device.sweeper.sweep(mean_sample,
+							(amplitudes, set_amplitude, 'amplitude'),
+							#(lengths, set_pulse_length, 'length'),
 							measurement_type='readout_passthrough',
 							metadata=metadata,
 							references=references,
-							on_start = [(create_compression_dataset, tuple())], 
+							on_start = [(create_compression_dataset, tuple())],
 							on_update = [(compression, tuple()),
 										 (spread,      tuple())])
-	
+
 	return measurement
 
 def spread(measurement, _):
 	zero_noise = np.mean(measurement.datasets['Std_Voltage_AC'].data[0,:])
 	zero_noise_std = np.std(measurement.datasets['Std_Voltage_AC'].data[0,:])
-	
+
 	drive_amplitudes = measurement.datasets['Mean_Voltage_AC'].parameters[0].values[1:]
 	noise = measurement.datasets['Std_Voltage_AC'].data[1:,:]
 
 	additional_noise_ratio = np.mean(np.abs(noise-zero_noise), axis=1)/zero_noise_std
 	#print (additional_noise_ratio)
-	spread_point = np.argmax(additional_noise_ratio>2) ###TODO: statistics doesn't work this way, there is a cleaner way of checking 
+	spread_point = np.argmax(additional_noise_ratio>2) ###TODO: statistics doesn't work this way, there is a cleaner way of checking
 	if np.any(spread_point):
 		measurement.metadata['additional_noise_appears'] = str(drive_amplitudes[spread_point+1])
 	else:
 		measurement.metadata['additional_noise_appears'] = 'nan'#ro_amplitude = drive_amplitudes[-1]
-		
+
 	#print (spread/noise_spread)
-	
+
 def compression(measurement, _):
 	zero_response = measurement.datasets['Mean_Voltage_AC'].data[0,:]
 	drive_amplitudes = measurement.datasets['Mean_Voltage_AC'].parameters[0].values[1:]
@@ -74,6 +75,6 @@ def compression(measurement, _):
 		measurement.metadata['compression_1db'] = str(drive_amplitudes[db_compression_point+1])
 	else:
 		measurement.metadata['compression_1db'] = 'nan'#ro_amplitude = drive_amplitudes[-1]
-	
+
 	measurement.datasets['compression'].data[:] = compression[:]
-	#print("Readout amplitude:",ro_amplitude)	 
+	#print("Readout amplitude:",ro_amplitude)

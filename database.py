@@ -25,7 +25,7 @@ class database:
 			reference_two = Set('Reference', reverse = 'that')
 			linear_sweep = Set('Linear_sweep')
 		self.Data = Data
-			
+
 		class Metadata(db.Entity):
 			#id = PrimaryKey(int, auto=True)
 			data_id = Required(self.Data)
@@ -34,7 +34,7 @@ class database:
 			#data = Required(Data)
 			PrimaryKey(data_id, name)
 		self.Metadata = Metadata
-			
+
 		class Reference(db.Entity):
 			#id = PrimaryKey(int, auto=True)
 			this = Required(self.Data)
@@ -43,7 +43,7 @@ class database:
 			ref_comment = Required(str)
 			PrimaryKey(this, ref_type, ref_comment)
 		self.Reference = Reference
-			
+
 		class Linear_sweep(db.Entity):
 			data_id = Required(self.Data)
 			min_value = Optional(float)
@@ -52,20 +52,20 @@ class database:
 			parameter_name = Required(str)
 			parameter_units = Optional(str)
 		self.Linear_sweep = Linear_sweep
-			
+
 		class Invalidations(db.Entity):
 #			this_type = Required(str)
 #			that_type = Required(str)
 			ref_type = Required(str)
 #			id = PrimaryKey(int, auto=True)
 		self.Invalidations = Invalidations
-	
+
 		db.bind(provider, user=user, password=password, host=host, database=database, port = port)
 		db.generate_mapping(create_tables=True)
 		self.db = db
-	
+
 	def create_in_database(self, state):
-		d = self.Data(comment = state.comment, measurement_type = state.measurement_type, sample_name = state.sample_name, start = state.start,   
+		d = self.Data(comment = state.comment, measurement_type = state.measurement_type, sample_name = state.sample_name, start = state.start,
 			filename = state.filename, type_revision = state.type_revision, owner = state.owner, incomplete = True)
 
 		for dataset in state.datasets.keys():
@@ -76,7 +76,7 @@ class database:
 				name = parameter.name
 				unit = parameter.unit
 				self.Linear_sweep(data_id = d, min_value = minv, max_value = maxv, num_points = number, parameter_name = name, parameter_units = unit)
-    
+
 		for name, value in state.metadata.items():
 			#print(name, value)
 			self.Metadata(data_id = d, name = name, value = value)
@@ -84,20 +84,20 @@ class database:
 		for ref_description, ref_that in state.references.items():
 			if type(ref_description) is tuple:
 				self.Reference(this = d, that = ref_that, ref_type = ref_description[0], ref_comment = ref_description[1])
-			else: 
+			else:
 				self.Reference(this = d, that = ref_that, ref_type = ref_description, ref_comment='-')
-		
-		commit()   
-		state.id = d.id 
+
+		commit()
+		state.id = d.id
 		return d.id
-		
+
 	def update_in_database(self, state):
 		d = self.Data[state.id]
 		d.comment = state.comment
 		d.measurement_type = state.measurement_type
 		d.sample_name = state.sample_name
 		d.type_revision = state.type_revision
-		d.incomplete = state.total_sweeps == state.done_sweeps
+		d.incomplete = state.total_sweeps != state.done_sweeps
 		d.measurement_time = state.measurement_time
 		d.start = state.start
 		d.stop = state.stop
@@ -108,9 +108,9 @@ class database:
 			else:
 				self.Metadata[d,k].value = str(v)
 		#d.metadata.update(state.metadata)
-		commit()    
+		commit()
 		return d.id
-		
+
 	def get_from_database(self, filename = ''):
 		#print(select(i for i in self.Data))
 		id = get(i.id for i in self.Data if (i.filename == filename))
@@ -118,23 +118,23 @@ class database:
 		#d = self.Data[id]
 		#state = read_exdir_new(d.filename)
 		return id#tate
-	
-		
+
+
 	# def put_to_database(self, sample_name, start, stop, incomplete, invalid, filename,
-                    # names, values, parameter_names, parameter_units, measurement_type, owner = '', type_revision = '', min_values = '', max_values = '', 
+                    # names, values, parameter_names, parameter_units, measurement_type, owner = '', type_revision = '', min_values = '', max_values = '',
                     # num_points = '', type_ref = '', ref_id = 0, comment = ''):
-		# d = self.Data(comment = comment, sample_name = sample_name, time_start = start, time_stop = stop, 
+		# d = self.Data(comment = comment, sample_name = sample_name, time_start = start, time_stop = stop,
 			# filename = filename, type_revision = type_revision, incomplete = incomplete, invalid = invalid, owner = owner, measurement_type = measurement_type)
-    
+
 		# for minv, maxv, number, name, unit in zip(min_values, max_values, num_points, parameter_names, parameter_units):
 			# self.Linear_sweep(data_id = d, min_value = minv, max_value = maxv, num_points = number, parameter_name = name, parameter_units = unit)
-    
+
 		# for name, value in zip(names, values):
 			# self.Metadata(data_id = d, name = name, value = value)
-        
+
 		# if type_ref != '':
 			# id_ref = self.Data[ref_id]
 			# self.Reference(this = d, that = id_ref, ref_type = type_ref)
-    
-		# commit()    
+
+		# commit()
 		# return d.id

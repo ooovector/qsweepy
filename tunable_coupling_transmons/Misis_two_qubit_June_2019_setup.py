@@ -23,7 +23,7 @@ pulsed_settings = {'lo1_power': 18,
 				   'rep_rate': 10e3,
 				   'global_num_points_delta':500,
 				   'awg1_ch0_amplitude':0.3,
-				   'awg1_ch1_amplitude':0.3, 
+				   'awg1_ch1_amplitude':0.3,
 				   'awg1_ch2_amplitude':0.5,
 				   'awg1_ch3_amplitude':0.5,
 				   'awg2_ch0_amplitude':0.5,
@@ -38,8 +38,8 @@ pulsed_settings = {'lo1_power': 18,
 				   'awg_tek_ch2_offset':0.0,
 				   'awg_tek_ch3_offset':0.0,
 				   'awg_tek_ch4_offset':0.0,
-				   'lo1_freq':3.32e9,
-				   'pna_freq':6.35e9,
+				   'lo1_freq':3.41e9,
+				   'pna_freq':6.07e9,
 				   'calibrate_delay_nop':65536,
 				   'calibrate_delay_nums':200,
 				   'trigger_readout_channel_name': 'ro_trg',
@@ -60,9 +60,9 @@ class hardware_setup():
 		# RF switch for making sure we know what sample we are measuring
 		self.pna = Agilent_N5242A('pna', address = self.settings['vna_address'])
 		self.lo1 = Agilent_E8257D('lo1', address = self.settings['lo1_address'])
-		
+
 		self.lo1._visainstrument.timeout = self.settings['lo1_timeout']
-		
+
 		if self.settings['use_rf_switch']:
 			self.rf_switch = nn_rf_switch('rf_switch', address=self.settings['rf_switch_address'])
 
@@ -84,30 +84,30 @@ class hardware_setup():
 		self.adc.last_cov = False
 		self.adc.avg_cov = False
 		self.adc.resultnumber = False
-		
+
 		self.adc_device.set_trig_src_period(self.settings['adc_trig_rep_period']) # 10 kHz period rate
 		self.adc_device.set_trig_src_width(self.settings['adc_trig_width']) # 80 ns trigger length
 		#self.hardware_state = 'undefined'
-		
+
 	def set_pulsed_mode(self):
 		self.lo1.set_status(1)
 		self.lo1.set_power(self.pulsed_settings['lo1_power'])
 		self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
-		
+
 		self.pna.set_power(self.pulsed_settings['vna_power'])
 		self.pna.write("OUTP ON")
 		self.pna.write("SOUR1:POW1:MODE ON")
 		self.pna.write("SOUR1:POW2:MODE OFF")
 		self.pna.set_sweep_mode("CW")
 		self.pna.set_frequency(self.pulsed_settings['pna_freq'])
-		
+
 		self.awg1.stop()
 		self.awg2.stop()
 		self.awg_tek.stop()
 
 		self.awg1.check_cached=True
 		self.awg2.check_cached=True
-		
+
 		self.awg_tek.set_clock(self.pulsed_settings['ex_clock']) # клок всех авгшк
 		self.awg1.set_clock(self.pulsed_settings['ex_clock'])
 		self.awg2.set_clock(self.pulsed_settings['ex_clock'])
@@ -116,7 +116,7 @@ class hardware_setup():
 		self.awg1.set_nop(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate']) # репрейт нужно задавать по=хорошему только на управляющей,
 		self.awg2.set_nop(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate']) # репрейт нужно задавать по=хорошему только на управляющей,
 		global_num_points = int(np.round(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate'] - self.pulsed_settings['global_num_points_delta']))
-		
+
 		self.awg1.repetition_period = global_num_points
 		self.awg2.repetition_period = global_num_points
 
@@ -157,7 +157,7 @@ class hardware_setup():
 			self.awg1.set_offset(0.0,channel=channel)
 			self.awg1.set_output(1, channel=channel)
 			self.awg1.set_waveform(waveform =[0]*global_num_points, channel=channel)
-		
+
 		self.awg1.set_amplitude(self.pulsed_settings['awg1_ch0_amplitude'], channel=0)
 		self.awg1.set_amplitude(self.pulsed_settings['awg1_ch1_amplitude'], channel=1)
 		self.awg1.set_amplitude(self.pulsed_settings['awg1_ch2_amplitude'], channel=2)
@@ -166,10 +166,10 @@ class hardware_setup():
 		self.awg2.set_amplitude(self.pulsed_settings['awg2_ch1_amplitude'], channel=1)
 		self.awg2.set_amplitude(self.pulsed_settings['awg2_ch2_amplitude'], channel=2)
 		self.awg2.set_amplitude(self.pulsed_settings['awg2_ch3_amplitude'], channel=3)
-		
+
 		self.awg1.module.clockResetPhase(3, 0)
 		self.awg2.module.clockResetPhase(3, 0)
-		
+
 		self.awg2.set_marker(length=100, delay=0, channel=0, pxi_channels=1)
 		self.awg1.set_marker(length=200, delay=0, channel=0, pxi_channels=2)
 		self.awg2.run()
@@ -207,18 +207,18 @@ class hardware_setup():
 		self.awg_tek._visainstrument.write('SOUR4:DEL:ADJ 400 NS')
 		#paramp pump power
 		#awg_tek._visainstrument.write('SOUR4:MARK1:VOLT:HIGH 1.5')
-		
+
 		#self.hardware_state = 'pulsed'
-		
+
 		self.ro_trg = awg_digital.awg_digital(self.awg_tek, 3, delay_tolerance=20e-9) # triggers readout card
 		#ro_trg.mode = 'set_delay' #M3202A
 		#ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
 		self.ro_trg.mode = 'waveform' #AWG5014C
-		
+
 		self.adc.set_nop(self.pulsed_settings['adc_nop'])
 		self.adc.set_nums(self.pulsed_settings['adc_nums'])
-		
-		
+
+
 	def setup_iq_channel_connections(self, exdir_db):
 		# промежуточные частоты для гетеродинной схемы new:
 		self.iq_devices = {'iq_ex1': awg_iq_multi.awg_iq_multi(self.awg1, self.awg1, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
@@ -236,11 +236,11 @@ class hardware_setup():
 		#iq_ex2.calibration_switch_setter = lambda: self.rf_switch.do_set_switch(2, channel=1) if not self.rf_switch.do_get_switch(channel=1)==2 else None
 		self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.rf_switch.do_set_switch(3, channel=1) if not self.rf_switch.do_get_switch(channel=1)==3 else None
 		self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.rf_switch.do_set_switch(4, channel=1) if not self.rf_switch.do_get_switch(channel=1)==4 else None
-		
+
 		self.iq_devices['iq_ex1'].sa = self.sa
 		self.iq_devices['iq_ex3'].sa = self.sa
 		self.iq_devices['iq_ro'].sa = self.sa
-		
+
 	def set_readout_delay_calibration_mode(self):
 		old_settings = {'adc_nums': self.adc.get_nums(),
 						'adc_nop':  self.adc.get_nop()}
@@ -249,12 +249,12 @@ class hardware_setup():
 		if hasattr(self.adc, 'set_posttrigger'):
 			old_settings['adc_posttrigger'] = self.adc.get_posttrigger()
 			self.adc.set_posttrigger(self.adc.get_nop()-32)
-			
+
 		return old_settings
-	
+
 	def get_readout_trigger_pulse_length(self):
 		return self.pulsed_settings['trigger_readout_length']
-	
+
 	def get_modem_dc_calibration_amplitude(self):
 		return self.pulsed_settings['modem_dc_calibration_amplitude']
 
@@ -265,7 +265,7 @@ class hardware_setup():
 		#		modem, 'iq_ro_q{}'.format(_qubit_id), axis=0)}
 		#	adc_reducers[_qubit_id].extra_opts['scatter'] = True
 		#	adc_reducers[_qubit_id].extra_opts['realimag'] = True
-	
+
 	def revert_setup(self, old_settings):
 		if 'adc_nums' in old_settings:
 			self.adc.set_nums(old_settings['adc_nums'])
@@ -273,39 +273,3 @@ class hardware_setup():
 			self.adc.set_nop(old_settings['adc_nop'])
 		if 'adc_posttrigger' in old_settings:
 			self.adc.set_posttrigger(old_settings['adc_posttrigger'])
-			
-	def set_adc_features_and_thresholds(self, features, thresholds, raw=False):
-		adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-		adc_reducer.output_raw = raw
-		adc_reducer.last_cov = False
-		adc_reducer.avg_cov = False
-		adc_reducer.resultnumber = True
-		
-		feature_id = 0
-		for feature, threshold in zip(features, thresholds):
-			adc_reducer.set_feature_real(feature_id=feature_id, feature=feature, threshold=threshold)
-			feature_id += 1
-			
-	def setup_adc_reducer_iq(self, qubits, raw=False): ### pimp this code to make it more universal. All the hardware belongs to the hardware
-	# file, but how do we do that here without too much boilerplate???
-		feature_id = 0
-
-		adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-		adc_reducer.output_raw = raw
-		adc_reducer.last_cov = False
-		adc_reducer.avg_cov = True
-		adc_reducer.resultnumber = False
-		
-		adc_reducer.avg_cov_mode = 'iq'
-		
-		qubit_measurement_dict = {}
-		for qubit_id in qubits:
-			if feature_id > 1:
-				raise ValueError('Cannot setup hardware adc_reducer for more that 2 qubits')
-			readout_channel_name = [i for i in self.get_qubit_readout_channel_list(qubit_id=qubit_id).keys()][0]
-			calibration = self.modem.iq_readout_calibrations[readout_channel_name]
-			qubit_measurement_dict[qubit_id] = 'avg_cov'+str(feature_id)
-			
-			adc_reducer.set_feature_iq(feature_id=feature_id, feature=calibration['feature'])
-			feature_id += 1
-	
