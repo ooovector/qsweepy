@@ -58,7 +58,7 @@ class TSW14J56_evm_reducer():
 			elif self.avg_cov_mode == 'iq':
 				points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
-			points.update({'resultnumbers':[arange(2**self.adc.num_covariances)]})
+			points.update({'resultnumbers':[('State', arange(2**self.adc.num_covariances), '')]})
 		return (points)
 
 	def get_dtype(self):
@@ -458,7 +458,7 @@ class TSW14J56_evm():
 		dt = dtype(int32)
 		dt = dt.newbyteorder('>')
 		b0 = []
-		for i in range(15):
+		for i in range(16):
 			a,v = mk_val_ind((CAP_BASE + COV_NUMB_BASE + i*4)<<2)
 			b0.append(frombuffer(self.dev.ctrl_transfer(vend_req_dir.RD, vend_req.REG_READ,a,v,4 ), dtype = dt)[0])
 		return (b0)

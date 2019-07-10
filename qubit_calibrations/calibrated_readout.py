@@ -14,25 +14,17 @@ def get_calibrated_measurer(device, qubit_ids):
 
 	references = {'readout_pulse': qubit_readout_pulse.id}
 	for qubit_id in qubit_ids:
-		metadata = {'qubit_id':qubit_id}
-		try:
-			measurement = device.exdir_db.select_measurement(measurement_type='readout_calibration', metadata=metadata, references_that=references)
-		except Exception as e:
-			print (traceback.print_exc())
-			measurement = calibrate_readout(device, qubit_id, qubit_readout_pulse)
+	    metadata = {'qubit_id':qubit_id}
+	    try:
+	        kk
+	        measurement = device.exdir_db.select_measurement(measurement_type='readout_calibration', metadata=metadata, references_that=references)
+	    except Exception as e:
+	        print (traceback.print_exc())
+	        measurement = calibrate_readout(device, qubit_id, qubit_readout_pulse)
 
-		features.append(np.conj(measurement.datasets['feature'].data))
-		#features.append(measurement.datasets['avg_sample1'].data - measurement.datasets['avg_sample0'].data)
-		#thresholds.append(np.sum(np.conj(features[-1])*(measurement.datasets['avg_sample1'].data + measurement.datasets['avg_sample0'].data)/2.)) ###TODO: ugly way of getting a threshold
+	    features.append(measurement.datasets['feature'].data)
+	    thresholds.append(measurement.datasets['threshold'].data.ravel()[0])
 
-		# this works for 1d
-		# which is OK I think
-		cdfs = np.cumsum(measurement.datasets['hists'].data, axis=1)
-		threshold = np.max(cdfs)-cdfs[1,:]-cdfs[0,:]
-		threshold_bin = np.argmax(threshold<0)
-
-
-	#print (features, thresholds)
 	readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True)
 	return qubit_readout_pulse, readout_device, features, thresholds
 

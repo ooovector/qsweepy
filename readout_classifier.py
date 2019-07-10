@@ -208,7 +208,7 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 		self.naive_bayes(X,y)
 
 	def naive_bayes(self, X, y):
-		from matplotlib.pyplot import plot
+		#from matplotlib.pyplot import plot
 		predictions = self.dimreduce(X)
 
 		hist_all, bins = np.histogram(predictions, bins=self.nbins)
@@ -227,7 +227,7 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 		self.probabilities = probabilities
 		self.proba_points = proba_points
 		self.hists = hists
-		plot(np.max(cdf)-cdf[0,:]-cdf[1,:])
+		#plot(np.max(cdf)-cdf[0,:]-cdf[1,:])
 
 	def predict_proba(self, X):
 		return np.reshape(np.interp(self.dimreduce(X), self.proba_points, self.probabilities[1,:], left=0., right=1.), (-1, 1))
