@@ -120,7 +120,7 @@ def calibrate_all_T2(device):
 			#Ramsey_adaptive(device, qubit_id, set_frequency=True)
 
 def calibrate_all_crosstalks(device):
-	for control_qubit_id in device.get_qubit_list()):
+	for control_qubit_id in device.get_qubit_list():
 		for target_qubit_id in device.get_qubit_list():
 			if control_qubit_id != target_qubit_id:
 				Ramsey_crosstalk(device, target_qubit_id, control_qubit_id)
@@ -133,8 +133,7 @@ def get_Ramsey_crosstalk_measurement(device,
 	if frequency_controls is None:
 		frequency_controls = device.get_frequency_control_measurement_id(qubit_id)
 
-	Ramsey_crosstalk_measurements = device.exdir_db.db.Data.select_by_sql(
-	'''
+	Ramsey_crosstalk_measurements = device.exdir_db.db.Data.select_by_sql('''
 	SELECT
 		Ramsey_fit.*
 		FROM data Ramsey_fit
@@ -242,12 +241,13 @@ def Ramsey_crosstalk(device,
 
 	# if we don't have a ramsey coherence scan, get one
 	if lengths is None:
-		ramsey_coherence_scan = get_Ramsey_coherence_measurement(device, target_qubit_id)
+		ramsey_coherence_measurement = get_Ramsey_coherence_measurement(device, target_qubit_id)
 		lengths = ramsey_coherence_measurement.datasets['iq'+target_qubit_id].parameters[-1].values
 	if target_freq_offset is None: ###TODO: make sure we don't skip oscillations due to decoherence
 		##(improbable but possible if the qubits are very coherent even at high crosstalks AHAHAHA)
-		ramsey_coherence_scan = get_Ramsey_coherence_measurement(device, target_qubit_id)
-		target_freq_offset = float(ramsey_coherence_measurement.metadata['target_freq_offset'])
+		ramsey_coherence_measurement = device.exdir_db.select_measurement_by_id(get_Ramsey_coherence_measurement(device, target_qubit_id).references['fit_source'])
+		print (ramsey_coherence_measurement.metadata)
+		target_freq_offset = float(ramsey_coherence_measurement.metadata['target_offset_freq'])
 
 	readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
 	measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
@@ -273,10 +273,10 @@ def Ramsey_crosstalk(device,
 	references = {'ex_control_pulse':ex_control_pulse.id,
 				  'ex_pulse1':ex_pulse1.id,
 				  'ex_pulse2':ex_pulse2.id,
-				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
+				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=target_qubit_id)}
 	references.update(measurer.references)
 
-	fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+	fitter_arguments = ('iq'+target_qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 
 	metadata = {'target_qubit_id': target_qubit_id,
 				'control_qubit_id': control_qubit_id,

@@ -7,6 +7,38 @@ from .. import readout_classifier
 
 import traceback
 
+def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, readout_device):
+	qubit_ids = qubit_readout_pulse.metadata['qubit_ids'].split(',')
+	target_qubit_states = [0]*len(qubit_ids)
+	excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi) for qubit_id in qubit_ids}
+	references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
+	references['readout_pulse'] = qubit_readout_pulse.id
+
+	def set_target_state(state):
+		excitation_sequence = []
+		for _id, qubit_id in enumerate(qubit_ids):
+			qubit_state = (1 << _id) & state
+			if qubit_state:
+				excitation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
+		device.pg.set_seq(excitation_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
+
+	return device.sweeper.sweep(readout_device,
+						(np.arange(2**len(qubit_ids)), set_target_state, 'Target state', ''),
+						measurement_type='confusion_matrix',
+						references=references,
+						metadata={'qubit_ids':qubit_readout_pulse.metadata['qubit_ids']})
+	#def set_qubit_target_state(state, qubit_id):
+	#	nonlocal target_qubit_states
+	#	target_qubit_states[qubit_id] = state
+	#	excitation_sequence = []
+	#	for qubit_id, qubit_state in enumerate(target_qubit_state):
+	#		if qubit_state:
+	#			excitation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
+	#	device.pg.set_seq(excitation_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
+
+	#sweep_args = (([0, 1], lambda x: set_qubit_target_state(), 'n{}'.format(qubit_id), '') for _id, qubit_id in enumerate(qubit_ids))
+#		def qubit_state_setter
+
 def get_calibrated_measurer(device, qubit_ids):
 	qubit_readout_pulse = get_multi_qubit_readout_pulse(device, qubit_ids)
 	features = []
@@ -26,7 +58,7 @@ def get_calibrated_measurer(device, qubit_ids):
 	    thresholds.append(measurement.datasets['threshold'].data.ravel()[0])
 
 	readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True)
-	return qubit_readout_pulse, readout_device, features, thresholds
+	return qubit_readout_pulse, readout_device#, features, thresholds
 
 
 def calibrate_readout(device, qubit_id, qubit_readout_pulse):
