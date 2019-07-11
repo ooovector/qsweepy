@@ -1,26 +1,31 @@
 from qsweepy.instruments import *
 from qsweepy import *
-device_settings = { 'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
-					'lo1_address': 'TCPIP0::10.20.61.59::inst0::INSTR',
-					'lo1_timeout': 5000,
-					'rf_switch_address': '10.20.61.224',
-					'use_rf_switch': True,
-					'pxi_chassis_id': 0,
-					'slot_awg1': 3,
-					'slot_awg2': 5,
-					'awg_tek_address': 'TCPIP0::10.20.61.186::inst0::INSTR',
-					'use_awg_tek': True,
-					'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
-					'adc_timeout': 10,
-					'adc_trig_rep_period': 100*125, #10 kHz rate period
-					'adc_trig_width': 2, # 80 ns trigger length
-			}
+import numpy as np
+
+
+device_settings = {'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
+				   'lo1_address': 'TCPIP0::10.20.61.59::inst0::INSTR',
+				   'lo1_timeout': 5000, 'rf_switch_address': '10.20.61.224',
+				   'use_rf_switch': True,
+				   'pxi_chassis_id': 0,
+				   'slot_awg1': 3,
+				   'slot_awg2': 5,
+				   'awg_tek_address': 'TCPIP0::10.20.61.186::inst0::INSTR',
+				   'use_awg_tek': True,
+				   'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
+				   'adc_timeout': 10,
+				   'adc_trig_rep_period': 100*125, #10 kHz rate period
+				   'adc_trig_width': 2, # 80 ns trigger length
+				   }
 
 cw_settings = {}
 pulsed_settings = {'lo1_power': 18,
 				   'vna_power': 16,
-				   'ex_clock':1000e6,
-				   'rep_rate': 10e3,
+				   'ex_clock':1000e6, # 1 GHz - clocks of some devices
+				   'rep_rate': 10e3, # 10 kHz - pulse sequence repetition rate
+				   # 500 ex_clocks - all waves is shorten by this amount of clock cycles
+				   # to verify that M3202 will not miss next trigger
+				   # (awgs are always missing trigger while they are still outputting waveform)
 				   'global_num_points_delta':500,
 				   'awg1_ch0_amplitude':0.3,
 				   'awg1_ch1_amplitude':0.3,
@@ -50,47 +55,62 @@ pulsed_settings = {'lo1_power': 18,
 				  }
 
 class hardware_setup():
-	def __init__(self, settings, pulsed_settings):
-		self.settings = settings
+	def __init__(self, device_settings, pulsed_settings):
+		self.device_settings = device_settings
 		self.pulsed_settings = pulsed_settings
 		self.cw_settings = cw_settings
 		self.hardware_state = 'undefined'
 
+		self.pna = None
+		self.lo1 = None
+		self.rf_switch = None
+		self.awg_tek = None
+		self.sa = None
+		self.coil_device = None
+		self.awg1 = None
+		self.awg2 = None
+		self.adc_device = None
+		self.adc = None
+
+		self.ro_trg = None
+		self.coil = None
+		self.iq_devices = None
+
 	def open_devices(self):
 		# RF switch for making sure we know what sample we are measuring
-		self.pna = Agilent_N5242A('pna', address = self.settings['vna_address'])
-		self.lo1 = Agilent_E8257D('lo1', address = self.settings['lo1_address'])
+		self.pna = Agilent_N5242A('pna', address=self.device_settings['vna_address'])
+		self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
-		self.lo1._visainstrument.timeout = self.settings['lo1_timeout']
+		self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
 
-		if self.settings['use_rf_switch']:
-			self.rf_switch = nn_rf_switch('rf_switch', address=self.settings['rf_switch_address'])
+		if self.device_settings['use_rf_switch']:
+			self.rf_switch = nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
-		if self.settings['use_awg_tek']:
-			self.awg_tek = Tektronix_AWG5014('awg_tek', address=self.settings['awg_tek_address'])
-		self.sa = Agilent_N9030A('pxa', address = self.settings['sa_address'])
+		if self.device_settings['use_awg_tek']:
+				self.awg_tek = Tektronix_AWG5014('awg_tek', address=self.device_settings['awg_tek_address'])
+		self.sa = Agilent_N9030A('pxa', address = self.device_settings['sa_address'])
 
-		self.coil_device=self.awg_tek
+		self.coil_device = self.awg_tek
 
-		self.awg1 = Keysight_M3202A_S('awg1', self.settings['pxi_chassis_id'], self.settings['slot_awg1'])
-		self.awg2 = Keysight_M3202A_S('awg2', self.settings['pxi_chassis_id'], self.settings['slot_awg2'])
+		self.awg1 = Keysight_M3202A_S('awg1', self.device_settings['pxi_chassis_id'], self.device_settings['slot_awg1'])
+		self.awg2 = Keysight_M3202A_S('awg2', self.device_settings['pxi_chassis_id'], self.device_settings['slot_awg2'])
 		self.awg1.get_clock = lambda: 1e9
 		self.awg2.get_clock = lambda: 1e9
 
 		self.adc_device = TSW14J56_evm()
-		self.adc_device.timeout = self.settings['adc_timeout']
+		self.adc_device.timeout = self.device_settings['adc_timeout']
 		self.adc = TSW14J56_evm_reducer(self.adc_device)
 		self.adc.output_raw = True
 		self.adc.last_cov = False
 		self.adc.avg_cov = False
 		self.adc.resultnumber = False
 
-		self.adc_device.set_trig_src_period(self.settings['adc_trig_rep_period']) # 10 kHz period rate
-		self.adc_device.set_trig_src_width(self.settings['adc_trig_width']) # 80 ns trigger length
+		self.adc_device.set_trig_src_period(self.device_settings['adc_trig_rep_period']) # 10 kHz period rate
+		self.adc_device.set_trig_src_width(self.device_settings['adc_trig_width']) # 80 ns trigger length
 		#self.hardware_state = 'undefined'
 
 	def set_pulsed_mode(self):
-		self.lo1.set_status(1)
+		self.lo1.set_status(1)  # turn on lo1 output
 		self.lo1.set_power(self.pulsed_settings['lo1_power'])
 		self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
@@ -187,7 +207,7 @@ class hardware_setup():
 		self.awg_tek.set_nop(global_num_points) # репрейт нужно задавать по=хорошему только на управляющей_t
 		self.awg_tek.check_cached = True
 
-		for channel in range(1,5):
+		for channel in range(1, 5):
 			self.awg_tek.set_amplitude(self.pulsed_settings['awg_tek_ch{}_amplitude'.format(channel)], channel=channel)
 			self.awg_tek.set_offset(self.pulsed_settings['awg_tek_ch{}_offset'.format(channel)],channel=channel)
 			self.awg_tek.set_output(1, channel=channel)
@@ -211,6 +231,7 @@ class hardware_setup():
 		#self.hardware_state = 'pulsed'
 
 		self.ro_trg = awg_digital.awg_digital(self.awg_tek, 3, delay_tolerance=20e-9) # triggers readout card
+		self.coil = awg_channel.awg_channel(self.awg_tek, 4) # coil control
 		#ro_trg.mode = 'set_delay' #M3202A
 		#ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
 		self.ro_trg.mode = 'waveform' #AWG5014C

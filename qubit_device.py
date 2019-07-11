@@ -3,10 +3,11 @@ from .instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
 import numpy as np
 
 class qubit_device:
-	def __init__(self, exdir_db, sweeper):
+	def __init__(self, exdir_db, sweeper, controls = {}):
 		self.exdir_db = exdir_db
 		self.ftol = 100
 		self.sweeper = sweeper
+		self.controls = controls
 	def set_qubits_from_dict(self, _dict):
 		try:
 			assert set(_dict.keys()) == set(self.get_qubit_list())
@@ -66,15 +67,49 @@ class qubit_device:
 		except:
 			return self.exdir_db.select_measurement(measurement_type=name, metadata={'scope': 'sample'}).metadata[name]
 
-	def get_qubit_fq(self, qubit_id, transition_name='01'):
-		fq_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fq',
-														  metadata={'qubit_id':qubit_id,
-																	'transition_name':transition_name})
+	def get_frequency_control_measurement_id(self, qubit_id, control_values={}):
+		frequency_control_values = {}
+		for frequency_control in self.get_frequency_controls(qubit_id=qubit_id):
+			if frequency_control not in control_values:
+				frequency_control_values[frequency_control] = self.controls[frequency_control].get_offset()
+			else:
+				frequency_control_values[frequency_control] = control_values[frequency_control]
+		metadata = {'qubit_id':qubit_id}
+		metadata.update(frequency_control_values)
+		try:
+			frequency_controls = self.exdir_db.select_measurement(measurement_type='frequency_control', metadata=metadata)
+		except:
+			frequency_controls = self.exdir_db.save(measurement_type='frequency_control', metadata=metadata)
+		return frequency_controls.id
+
+	def set_frequency_controls(self, qubit_id, controls):
+		try:
+			assert(sorted(self.get_frequency_controls(qubit_id))==sorted(controls))
+		except:
+			metadata = {control:'-' for control in controls}
+			metadata['qubit_id'] = qubit_id
+			self.exdir_db.save(measurement_type='qubit_frequency_controls', metadata=metadata)
+
+	def get_frequency_controls(self, qubit_id):
+		frequency_controls = self.exdir_db.select_measurement(measurement_type='qubit_frequency_controls', metadata={'qubit_id':qubit_id})
+		return [k for k,v in frequency_controls.metadata.items() if k != 'qubit_id']
+
+	def get_qubit_fq(self, qubit_id, transition_name='01', control_values={}):
+		metadata={'qubit_id':qubit_id, 'transition_name':transition_name}
+		try:
+			fq_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fq',
+				metadata=metadata,
+				references={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id, control_values=control_values)})
+		except:
+			fq_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fq', metadata=metadata) ##TODO: try to pick closest control
 		return float(fq_measurement.metadata['fq'])
-	def set_qubit_fq(self, fq, qubit_id, transition_name='01'):
-		self.exdir_db.save(measurement_type='qubit_fq', metadata={'qubit_id':qubit_id,
-																  'transition_name':transition_name,
-																  'fq':str(fq)})
+
+	def set_qubit_fq(self, fq, qubit_id, transition_name='01', control_values={}):
+		metadata={'qubit_id':qubit_id, 'transition_name':transition_name, 'fq':str(fq)}
+
+		self.exdir_db.save(measurement_type='qubit_fq',
+				metadata=metadata,
+				references={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id, control_values=control_values)})
 
 	# def get_Rabi_fr(self, qubit_id, channel_amplitudes, transition_name='01'):
 		# try:

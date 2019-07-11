@@ -117,6 +117,7 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_ov
 		fits = device.exdir_db.db.db.select(Rabi_measurements_query(qubit_id=qubit_id,
 			frequency=device.get_qubit_fq(qubit_id),
 			frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'),
+			frequency_controls = device.get_frequency_control_measurement_id(qubit_id=qubit_id),
 			channel_amplitudes_override=channel_amplitudes_override.id if hasattr (channel_amplitudes_override, 'id') else channel_amplitudes_override))
 		print ('good Rabi fits:', fits)
 		for Rabi_fit_id in fits:
@@ -171,7 +172,7 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_ov
 	raise ValueError('Making excitation pulses from Rabi failed =(')
 '''
 
-def Rabi_measurements_query (qubit_id, frequency, frequency_tolerance, channel_amplitudes_override=None):
+def Rabi_measurements_query (qubit_id, frequency, frequency_tolerance, frequency_controls, channel_amplitudes_override=None):
 	'''
 	Perfectly ugly query for retrieving Rabi oscillation measurements corresponding to a qubit, and, possibly, a 'channel'
 	'''
@@ -227,6 +228,11 @@ def Rabi_measurements_query (qubit_id, frequency, frequency_tolerance, channel_a
 	INNER JOIN data channel_amplitudes ON
 		channel_amplitudes.id = channel_amplitudes_reference.that
 
+	INNER JOIN reference frequency_controls ON
+		frequency_controls.this = measurement.id AND
+		frequency_controls.ref_type = 'frequency_controls' AND
+		frequency_controls.that = {frequency_controls}
+
 	INNER JOIN metadata channel ON
 		channel.data_id = channel_amplitudes.id
 
@@ -279,4 +285,5 @@ def Rabi_measurements_query (qubit_id, frequency, frequency_tolerance, channel_a
 	return query.format(qubit_id=qubit_id,
 		frequency=frequency,
 		frequency_tolerance = frequency_tolerance,
-		channel_amplitudes_clause = channel_amplitudes_clause)
+		channel_amplitudes_clause = channel_amplitudes_clause,
+		frequency_controls = frequency_controls)

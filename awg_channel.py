@@ -2,10 +2,10 @@ from matplotlib import pyplot as plt
 class awg_channel:
 	'''
 	Class for a single awg channel. Typically, awg are multi-channel, and set_waveform
-	operates with the require channel kwarg. The synchronized multi-awg class 
-	(pulses from pulses.py) assumes that each 'channel' has 
-		- set_waveform(waveform ndarray), 
-		- freeze() 
+	operates with the require channel kwarg. The synchronized multi-awg class
+	(pulses from pulses.py) assumes that each 'channel' has
+		- set_waveform(waveform ndarray),
+		- freeze()
 		- unfreeze()
 	functions.
 	This class takes a parent awg (for example Tektronix AWG5014C) class and a channel number,
@@ -17,7 +17,15 @@ class awg_channel:
 		self.awg = awg
 		self.channel = channel
 		self.status = 1
-		
+
+	def set_offset(self, offset):
+		return self.awg.set_offset(offset, channel=self.channel)
+	def get_offset(self):
+		return self.awg.get_offset(channel=self.channel)
+	def set_amplitude(self, amplitude):
+		return self.awg.set_amplitude(amplitude, channel=self.channel)
+	def get_amplitude(self):
+		return self.awg.get_amplitude(amplitude)
 	def get_nop(self):
 		return self.awg.get_nop()
 	def get_clock(self):

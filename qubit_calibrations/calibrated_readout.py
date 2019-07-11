@@ -12,11 +12,11 @@ def get_calibrated_measurer(device, qubit_ids):
 	features = []
 	thresholds = []
 
-	references = {'readout_pulse': qubit_readout_pulse.id}
+	references = {'readout_pulse': qubit_readout_pulse.id,
+				  'delay_calibration':device.modem.delay_measurement.id}
 	for qubit_id in qubit_ids:
 	    metadata = {'qubit_id':qubit_id}
 	    try:
-	        kk
 	        measurement = device.exdir_db.select_measurement(measurement_type='readout_calibration', metadata=metadata, references_that=references)
 	    except Exception as e:
 	        print (traceback.print_exc())
@@ -123,7 +123,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
 	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
 
 	other_qubit_pulse_sequence = []
-	references = {}
+	references = {'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
 	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
 		references['channel_calibration'] = device.awg_channels[readout_channel].get_calibration_measurement()
 

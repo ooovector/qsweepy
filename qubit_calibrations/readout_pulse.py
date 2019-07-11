@@ -83,7 +83,7 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
 	if length:
 		metadata['length'] = str(length)
 
-	references = {}
+	references = {'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
 	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
 		references['channel_calibration'] = device.awg_channels[readout_channel].get_calibration_measurement()
 	## strategy: if we have a ready readout pulse, use it.
@@ -151,7 +151,9 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 	# refers to awg_iq_multi calibrations
 	metadata = {'qubit_id':qubit_id, 'averages': nums}
-	references = {'readout_pulse': qubit_readout_pulse.id, 'modem_calibration': device.modem.calibration_measurements[readout_channel].id}
+	references = {'readout_pulse': qubit_readout_pulse.id,
+				  'modem_calibration': device.modem.calibration_measurements[readout_channel].id,
+				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
 	if excitation_pulse is not None:
 		references['excitation_pulse'] = excitation_pulse.id
 	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
