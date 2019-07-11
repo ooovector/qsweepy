@@ -150,6 +150,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
 									ro_seq = device.trigger_readout_seq,
 									pulse_generator = device.pg,
 									ro_delay_seq = None,
+									_readout_classifier = readout_classifier.binary_linear_classifier(),
 									adc_measurement_name = 'Voltage')
 
 	classifier.readout_classifier.cov_mode = 'equal'

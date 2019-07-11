@@ -148,6 +148,9 @@ def calibrate_all_T2(device):
 		if True: ### TODO check if Ramsey measurement is already there
 			Ramsey_adaptive(device, qubit_id, set_frequency=True)
 
+#def Ramsey_crosstalk(device, control_qubit_id, target_qubit_id):
+#	pass
+
 def calibrate_all_cross_Ramsey(device):
 	cross_Ramsey_fits = {}
 
