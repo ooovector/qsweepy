@@ -1,4 +1,5 @@
 from .calibrated_readout import *
+from ..ponyfiles.data_structures import *
 
 import traceback
 class qubit_readout_pulse(measurement_state):
