@@ -118,29 +118,31 @@ class TSW14J56_evm_reducer():
 	def set_feature_iq(self, feature_id, feature):
 		#self.avg_cov_mode = 'norm_cmplx'
 		feature = feature[:self.adc.ram_size]/np.max(np.abs(feature[:self.adc.ram_size]))
-		feature = np.asarray(2**15*feature, dtype=complex)
+		feature = np.asarray(2**13*feature, dtype=complex)
 		feature_real_int = np.asarray(np.real(feature), dtype=np.int16)
 		feature_imag_int = np.asarray(np.imag(feature), dtype=np.int16)
 
 		self.adc.set_ram_data([feature_real_int.tolist(),     (feature_imag_int).tolist()],  feature_id*2)
 		self.adc.set_ram_data([(feature_imag_int).tolist(),  (-feature_real_int).tolist()], feature_id*2+1)
 
-		self.cov_norms[feature_id*2] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
-		self.cov_norms[feature_id*2+1] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
+		self.cov_norms[feature_id*2] = np.sqrt(np.mean(np.abs(feature)**2))*2**13
+		self.cov_norms[feature_id*2+1] = np.sqrt(np.mean(np.abs(feature)**2))*2**13
 
 	def set_feature_real(self, feature_id, feature, threshold=None):
 		#self.avg_cov_mode = 'norm_cmplx'
 		if threshold is not None:
-			threshold = threshold/np.max(np.abs(feature[:self.adc.ram_size]))*(2**15)
+			threshold = threshold/np.max(np.abs(feature[:self.adc.ram_size]))*(2**13)
 			self.adc.set_threshold(thresh=threshold, ncov=feature_id)
 
 		feature = feature[:self.adc.ram_size]/np.max(np.abs(feature[:self.adc.ram_size]))
-		feature = np.asarray(2**15*feature, dtype=complex)
+		feature_padded = np.zeros(self.adc.ram_size, dtype=np.complex)
+		feature_padded[:len(feature)] = feature
+		feature = np.asarray(2**13*feature_padded, dtype=complex)
 		feature_real_int = np.asarray(np.real(feature), dtype=np.int16)
 		feature_imag_int = np.asarray(np.imag(feature), dtype=np.int16)
 
 		self.adc.set_ram_data([feature_real_int.tolist(),    (feature_imag_int).tolist()],  feature_id)
-		self.cov_norms[feature_id] = np.sqrt(np.mean(np.abs(feature)**2))*2**15
+		self.cov_norms[feature_id] = np.sqrt(np.mean(np.abs(feature)**2))*2**13
 
 	def disable_feature(self, feature_id):
 		self.adc.set_ram_data([np.zeros(self.adc.ram_size, dtype=np.int16).tolist(), np.zeros(self.adc.ram_size, dtype=np.int16).tolist()], feature_id)

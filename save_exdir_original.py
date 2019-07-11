@@ -1,7 +1,7 @@
 import exdir
 from .ponyfiles.data_structures import *
 import os.path
-from .database import database
+from .ponyfiles.database import MyDatabase
 from pony.orm import get, select
 
 
@@ -75,7 +75,7 @@ def read_exdir_new(filename):
 		state.metadata = attrs
 		for dataset_name in data.keys():
 			state.datasets[dataset_name] = measurement_dataset(parameters = all_parameters, data = data[dataset_name])
-		db = database()
+		db = MyDatabase()
 		id = get(i.id for i in db.Data if (i.filename == filename))
 		state.id = id
 		state.start = db.Data[id].time_start

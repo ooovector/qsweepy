@@ -204,11 +204,11 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 		#self.sigma_1 = np.dot(np.conj(X[y==1,:]-self.avg_one).T, X[y==1,:]-self.avg_one)
 		#self.Sigma_inv = np.linalg.inv(self.sigma_0+self.sigma_1)
 		#self.feature = self.Sigma_inv
-		self.feature = self.diff
+		self.feature = self.avg_zero - np.mean(self.avg_zero)#self.diff-np.mean(self.diff)
 		self.naive_bayes(X,y)
 
 	def naive_bayes(self, X, y):
-		#from matplotlib.pyplot import plot
+		from matplotlib.pyplot import plot, axvline, figure
 		predictions = self.dimreduce(X)
 
 		hist_all, bins = np.histogram(predictions, bins=self.nbins)
@@ -223,11 +223,10 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 		naive_probabilities = np.asarray([proba_points<0, proba_points>0], dtype=float)
 		probabilities[np.isnan(probabilities)] = naive_probabilities[np.isnan(probabilities)]
 		cdf = np.cumsum(hists, axis=1)
-		self.threshold = proba_points[np.argmax(np.max(hists)-cdf[0,:]-cdf[1,:]<0)]
+		self.threshold = proba_points[np.argmax((np.max(cdf)-cdf[0,:]-cdf[1,:])<0)]
 		self.probabilities = probabilities
 		self.proba_points = proba_points
 		self.hists = hists
-		#plot(np.max(cdf)-cdf[0,:]-cdf[1,:])
 
 	def predict_proba(self, X):
 		return np.reshape(np.interp(self.dimreduce(X), self.proba_points, self.probabilities[1,:], left=0., right=1.), (-1, 1))

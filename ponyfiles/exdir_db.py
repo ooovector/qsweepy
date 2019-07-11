@@ -56,14 +56,14 @@ class exdir_db:
 		if not ignore_invalidation:
 			#q2 = q.where(lambda d: 'invalidation' not in d.metadata.name)
 			q2 = q.where(lambda d: (not d.invalid) and (not d.incomplete))
-
 		else:
 			q2 = q
-		for k,v in metadata.items():
+
+		for k, v in metadata.items():
 			q2 = q2.where(lambda d: count(True for m in d.metadata if m.name == k and m.value == str(v))>0)
-		for k,v in references_this.items():
+		for k, v in references_this.items():
 			q2 = q2.where(lambda d: count(True for r in d.reference_two if r.ref_type == k and r.this.id == v)>0)
-		for k,v in references_that.items():
+		for k, v in references_that.items():
 			if type(k) is str:
 				q2 = q2.where(lambda d: count(True for r in d.reference_one if r.ref_type == k and r.that.id == v)>0)
 			elif type(k) is tuple:
