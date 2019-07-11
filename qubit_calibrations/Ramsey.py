@@ -86,36 +86,6 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 	lengths = np.arange(0, min_step*scan_points, min_step)
 	qubit_frequency_guess = device.get_qubit_fq(qubit_id)
 	while not np.max(lengths)>max_scan_length:
-		#measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=delays)
-		Ramsey_measurements = device.exdir_db.db.Data.select_by_sql(
-		'''
-		SELECT
-			Ramsey_fit.*
-			FROM data Ramsey_fit
-			INNER JOIN Reference fit_measurement_reference ON
-				fit_measurement_reference.this = Ramsey_fit.id and fit_measurement_reference.ref_type='fit_source'
-			INNER JOIN Data measurement ON
-				measurement.id = fit_measurement_reference.that
-			INNER JOIN Metadata measurement_qubit_id ON
-				(measurement_qubit_id.data_id = measurement.id
-					AND measurement_qubit_id.name='qubit_id'
-					AND measurement_qubit_id.value='{qubit_id}')
-			INNER JOIN Metadata fit_decay_goodness_test ON
-				(fit_decay_goodness_test.data_id = Ramsey_fit.id
-					AND fit_decay_goodness_test.name='decay_goodness_test'
-					AND fit_decay_goodness_test.value='1'
-				)
-			INNER JOIN reference frequency_controls ON
-				(frequency_controls.this = measurement.id AND
-				 frequency_controls.that = {frequency_controls} AND
-				 frequency_controls.ref_type = 'frequency_controls')
-			WHERE (NOT measurement.invalid OR measurement.invalid IS NULL)
-				AND measurement.measurement_type='Ramsey'
-		;
-		'''.format(qubit_id=qubit_id, frequency_controls=device.get_frequency_control_measurement_id(qubit_id=qubit_id)))
-		if len(Ramsey_measurements):
-			break
-
 		# go bown the rabbit hole for
 		measurement = Ramsey(device, qubit_id, lengths=lengths, target_freq_offset=target_offset)
 		fit_results = measurement.fit.metadata
@@ -145,11 +115,184 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 
 def calibrate_all_T2(device):
 	for qubit_id in device.get_qubit_list():
-		if True: ### TODO check if Ramsey measurement is already there
-			Ramsey_adaptive(device, qubit_id, set_frequency=True)
+		get_Ramsey_coherence_measurement(device, qubit_id)
+		#if True: ### TODO check if Ramsey measurement is already there
+			#Ramsey_adaptive(device, qubit_id, set_frequency=True)
 
-#def Ramsey_crosstalk(device, control_qubit_id, target_qubit_id):
-#	pass
+def calibrate_all_crosstalks(device):
+	for control_qubit_id in device.get_qubit_list()):
+		for target_qubit_id in device.get_qubit_list():
+			if control_qubit_id != target_qubit_id:
+				Ramsey_crosstalk(device, target_qubit_id, control_qubit_id)
+
+def get_Ramsey_crosstalk_measurement(device,
+									 target_qubit_id,
+									 control_qubit_id,
+									 frequency_controls=None,
+									 recalibrate=True):
+	if frequency_controls is None:
+		frequency_controls = device.get_frequency_control_measurement_id(qubit_id)
+
+	Ramsey_crosstalk_measurements = device.exdir_db.db.Data.select_by_sql(
+	'''
+	SELECT
+		Ramsey_fit.*
+		FROM data Ramsey_fit
+		INNER JOIN Reference fit_measurement_reference ON
+			fit_measurement_reference.this = Ramsey_fit.id and fit_measurement_reference.ref_type='fit_source'
+		INNER JOIN Data measurement ON
+			measurement.id = fit_measurement_reference.that
+		INNER JOIN Metadata measurement_target_qubit_id ON
+			(measurement_qubit_id.data_id = measurement.id
+				AND measurement_qubit_id.name='target_qubit_id'
+				AND measurement_qubit_id.value='{target_qubit_id}')
+			INNER JOIN Metadata measurement_control_qubit_id ON
+				(measurement_qubit_id.data_id = measurement.id
+					AND measurement_qubit_id.name='control_qubit_id'
+					AND measurement_qubit_id.value='{control_qubit_id}')
+		INNER JOIN Metadata fit_decay_goodness_test ON
+			(fit_decay_goodness_test.data_id = Ramsey_fit.id
+				AND fit_decay_goodness_test.name='decay_goodness_test'
+				AND fit_decay_goodness_test.value='1'
+			)
+		INNER JOIN reference frequency_controls ON
+			(frequency_controls.this = measurement.id AND
+			 frequency_controls.that = {frequency_controls} AND
+			 frequency_controls.ref_type = 'frequency_controls')
+		WHERE (NOT measurement.invalid OR measurement.invalid IS NULL) AND
+			  (NOT measurement.incomplete OR measurement.incomplete IS NULL) AND
+			measurement.measurement_type='Ramsey_crosstalk'
+	;
+	'''.format(target_qubit_id=target_qubit_id,
+			   control_qubit_id=control_qubit_id,
+			   frequency_controls=device.get_frequency_control_measurement_id(qubit_id=qubit_id)))
+
+	for measurement in Ramsey_crosstalk_measurements:
+		try:
+			return device.exdir_db.select_measurement_by_id(measurement.id)
+		except:
+			print ('Failed loading Ramsey coherence measurement {}'.format(measurement.id))
+
+	if recalibrate:
+		return Ramsey_crosstalk(device, target_qubit_id, control_qubit_id)
+	else:
+		raise ValueError('No crosstalk measurement available for qubit {}, recalibrate is False, so fail'.format(qubit_id))
+
+def get_Ramsey_coherence_measurement(device,
+									 qubit_id,
+									 frequency_controls=None,
+									 recalibrate=True):
+	if frequency_controls is None:
+		frequency_controls = device.get_frequency_control_measurement_id(qubit_id)
+
+	Ramsey_coherence_measurements = device.exdir_db.db.Data.select_by_sql(
+	'''
+	SELECT
+		Ramsey_fit.*
+		FROM data Ramsey_fit
+		INNER JOIN Reference fit_measurement_reference ON
+			fit_measurement_reference.this = Ramsey_fit.id and fit_measurement_reference.ref_type='fit_source'
+		INNER JOIN Data measurement ON
+			measurement.id = fit_measurement_reference.that
+		INNER JOIN Metadata measurement_qubit_id ON
+			(measurement_qubit_id.data_id = measurement.id
+				AND measurement_qubit_id.name='qubit_id'
+				AND measurement_qubit_id.value='{qubit_id}')
+		INNER JOIN Metadata fit_decay_goodness_test ON
+			(fit_decay_goodness_test.data_id = Ramsey_fit.id
+				AND fit_decay_goodness_test.name='decay_goodness_test'
+				AND fit_decay_goodness_test.value='1'
+			)
+		INNER JOIN reference frequency_controls ON
+			(frequency_controls.this = measurement.id AND
+			 frequency_controls.that = {frequency_controls} AND
+			 frequency_controls.ref_type = 'frequency_controls')
+		WHERE (NOT measurement.invalid OR measurement.invalid IS NULL) AND
+			  (NOT measurement.incomplete OR measurement.incomplete IS NULL) AND
+			measurement.measurement_type='Ramsey'
+	;
+	'''.format(qubit_id=qubit_id, frequency_controls=device.get_frequency_control_measurement_id(qubit_id=qubit_id)))
+
+	for measurement in Ramsey_coherence_measurements:
+		try:
+			return device.exdir_db.select_measurement_by_id(measurement.id)
+		except:
+			print ('Failed loading Ramsey coherence measurement {}'.format(measurement.id))
+
+	if recalibrate:
+		return Ramsey_adaptive(device, qubit_id)
+	else:
+		raise ValueError('No coherence measurement available for qubit {}, recalibrate is False, so fail'.format(qubit_id))
+
+def Ramsey_crosstalk(device,
+					target_qubit_id,
+					control_qubit_id,
+					*extra_sweep_args,
+					channel_amplitudes_control=None,
+					channel_amplitudes1=None,
+					channel_amplitudes2=None,
+					lengths=None,
+					target_freq_offset=None,
+					readout_delay=0):
+
+	#if type(lengths) is type(None):
+	#	lengths = np.arange(0,
+	#						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
+	#						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
+
+	# if we don't have a ramsey coherence scan, get one
+	if lengths is None:
+		ramsey_coherence_scan = get_Ramsey_coherence_measurement(device, target_qubit_id)
+		lengths = ramsey_coherence_measurement.datasets['iq'+target_qubit_id].parameters[-1].values
+	if target_freq_offset is None: ###TODO: make sure we don't skip oscillations due to decoherence
+		##(improbable but possible if the qubits are very coherent even at high crosstalks AHAHAHA)
+		ramsey_coherence_scan = get_Ramsey_coherence_measurement(device, target_qubit_id)
+		target_freq_offset = float(ramsey_coherence_measurement.metadata['target_freq_offset'])
+
+	readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
+	measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
+	ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_control)
+	ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
+	ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+
+	def set_delay(length):
+		#ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
+		delay_seq = [device.pg.pmulti(length)]
+		readout_delay_seq = [device.pg.pmulti(readout_delay)]
+		readout_trigger_seq = device.trigger_readout_seq
+		readout_pulse_seq = readout_pulse.pulse_sequence
+
+		device.pg.set_seq(ex_control_pulse.get_pulse_sequence(0)+\
+						  ex_pulse1.get_pulse_sequence(0)+\
+						  delay_seq+\
+						  ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+\
+						  readout_delay_seq+\
+						  readout_trigger_seq+\
+						  readout_pulse_seq)
+
+	references = {'ex_control_pulse':ex_control_pulse.id,
+				  'ex_pulse1':ex_pulse1.id,
+				  'ex_pulse2':ex_pulse2.id,
+				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
+	references.update(measurer.references)
+
+	fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+
+	metadata = {'target_qubit_id': target_qubit_id,
+				'control_qubit_id': control_qubit_id,
+			  'extra_sweep_args':str(len(extra_sweep_args)),
+			  'target_offset_freq': str(target_freq_offset),
+			  'readout_delay':str(readout_delay)}
+
+	measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
+											  *extra_sweep_args,
+											  (lengths, set_delay, 'Delay','s'),
+											  fitter_arguments = fitter_arguments,
+											  measurement_type='Ramsey_crosstalk',
+											  metadata=metadata,
+											  references=references)
+
+	return measurement
 
 def calibrate_all_cross_Ramsey(device):
 	cross_Ramsey_fits = {}
