@@ -135,6 +135,7 @@ class hardware_setup():
 		self.awg2.set_clock_output(True)
 		self.awg1.set_nop(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate']) # репрейт нужно задавать по=хорошему только на управляющей,
 		self.awg2.set_nop(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate']) # репрейт нужно задавать по=хорошему только на управляющей,
+		# setting repetition period for slave devices # to verify that M3202A and other slaves 	won't miss next trigger
 		global_num_points = int(np.round(self.pulsed_settings['ex_clock']/self.pulsed_settings['rep_rate'] - self.pulsed_settings['global_num_points_delta']))
 
 		self.awg1.repetition_period = global_num_points

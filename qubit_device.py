@@ -254,6 +254,8 @@ class qubit_device:
 			adc_reducer.set_feature_real(feature_id=feature_id, feature=feature, threshold=threshold)
 			feature_id += 1
 
+		adc_reducer.resultnumbers_dimension = 2**feature_id
+
 		if disable_rest:
 			while (feature_id < self.modem.adc_device.num_covariances):
 				adc_reducer.disable_feature(feature_id=feature_id)

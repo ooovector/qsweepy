@@ -31,6 +31,7 @@ class TSW14J56_evm_reducer():
 		self.avg_cov_mode = 'real' ## raw results from device
 		self.cov_norms = {channel_id:1 for channel_id in range(4)}
 		self.cov_signals = {channel_id:None for channel_id in range(4)}
+		self.resultnumbers_dimension = 16
 		#self.avg_cov_mode = 'norm_cmplx' ## normalized results in complex Volts, IQ
 
 	def get_clock(self):
@@ -58,7 +59,7 @@ class TSW14J56_evm_reducer():
 			elif self.avg_cov_mode == 'iq':
 				points.update({'avg_cov'+str(i):[] for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
-			points.update({'resultnumbers':[('State', arange(2**self.adc.num_covariances), '')]})
+			points.update({'resultnumbers':[('State', arange(self.resultnumbers_dimension), '')]})
 		return (points)
 
 	def get_dtype(self):
@@ -110,7 +111,7 @@ class TSW14J56_evm_reducer():
 				result.update({'avg_cov0': (result_raw['avg_cov0']+1j*result_raw['avg_cov1']),
 							   'avg_cov1': (result_raw['avg_cov2']+1j*result_raw['avg_cov3'])})
 		if self.resultnumber:
-			result.update({'resultnumbers': [a-b for a,b in zip(self.adc.get_resultnumbers(), resultnumbers_before)]})
+			result.update({'resultnumbers': [a-b for a,b in zip(self.adc.get_resultnumbers(), resultnumbers_before)][:self.resultnumbers_dimension]})
 
 		return (result)
 

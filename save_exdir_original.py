@@ -1,32 +1,13 @@
-import numpy as np
-import time
-from time import sleep
-from time import gmtime, strftime
-import sys
-from matplotlib import pyplot as plt
-import numbers
-import itertools
-import cmath
-from . import save_pkl
-import logging
-from . import plotting
-import pickle as pic
-import shutil as sh
-import threading
-import pathlib
-import random
-import gc
 import exdir
-from .data_structures import *
+from .ponyfiles.data_structures import *
 import os.path
-import numpy
 from .database import database
 from pony.orm import get, select
 
 
 def save_exdir(state):
 	parameters = []
-	f = exdir.File(state.filename, 'w', allow_remove=True) 
+	f = exdir.File(state.filename, 'w', allow_remove=True)
 	#print(state.filename)
 	try:
 		for dataset in state.datasets.keys():
@@ -46,7 +27,7 @@ def save_exdir(state):
 		raise
 	finally:
 		f.close()
-	
+
 def read_exdir(filename):
 	result = {}
 	f = exdir.File(filename, 'r')
@@ -68,8 +49,8 @@ def read_exdir(filename):
 	finally:
 		f.close()
 	return result, attributes
-	
-	
+
+
 def read_exdir_new(filename):
 	data = {}
 	#print(filename)
@@ -78,7 +59,7 @@ def read_exdir_new(filename):
 	attrs = []
 	parameter_values = []
 	all_parameters = []
-	try:	
+	try:
 		for k in f.attrs.items():
 			#print(k)
 			if k[0] != 'parameter_values': attrs.append(k)
@@ -110,8 +91,8 @@ def read_exdir_new(filename):
 	finally:
 		f.close()
 	return state
-		
-		
+
+
 def save_exdir_on_fly(state, measurement, indeces):
 	parameters = []
 	f = exdir.File(state.filename, 'w', allow_remove=True)

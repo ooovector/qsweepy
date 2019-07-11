@@ -5,13 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/awg_channel.py" beforeDir="false" afterPath="$PROJECT_DIR$/awg_channel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instruments.py" beforeDir="false" afterPath="$PROJECT_DIR$/instruments.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ponyfiles/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data_structures.py" beforeDir="false" afterPath="$PROJECT_DIR$/ponyfiles/data_structures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exdir_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/ponyfiles/exdir_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fitters/fit_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/fitters/fit_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fitting.py" beforeDir="false" afterPath="$PROJECT_DIR$/fitting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/instrument_drivers/TSW14J56driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/instrument_drivers/TSW14J56driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/plotly_plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/plotly_plot.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_calibrations/calibrated_readout.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/calibrated_readout.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/channel_amplitudes.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/channel_amplitudes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/readout_passthrough.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/readout_passthrough.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/readout_pulse.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/readout_pulse.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_device.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_device.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/save_exdir.py" beforeDir="false" afterPath="$PROJECT_DIR$/ponyfiles/save_exdir.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/save_exdir_original.py" beforeDir="false" afterPath="$PROJECT_DIR$/save_exdir_original.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sweep.py" beforeDir="false" afterPath="$PROJECT_DIR$/sweep.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sweep_extras.py" beforeDir="false" afterPath="$PROJECT_DIR$/sweep_extras.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transmon.py" beforeDir="false" afterPath="$PROJECT_DIR$/transmon.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tunable_coupling_transmons/tunable_coupling_transmons.py" beforeDir="false" afterPath="$PROJECT_DIR$/tunable_coupling_transmons/tunable_coupling_transmons.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/two_level.py" beforeDir="false" afterPath="$PROJECT_DIR$/two_level.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -20,29 +37,23 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/instruments.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="484">
+            <state relative-caret-position="440">
               <caret line="22" column="52" selection-start-line="22" selection-start-column="52" selection-end-line="22" selection-end-column="52" />
-              <folding>
-                <element signature="e#13#27#0" expanded="true" />
-              </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="281">
-              <caret line="242" column="48" selection-start-line="242" selection-start-column="43" selection-end-line="242" selection-end-column="48" />
+            <state relative-caret-position="258">
+              <caret line="253" column="4" selection-start-line="253" selection-start-column="4" selection-end-line="253" selection-end-column="4" />
               <folding>
                 <element signature="e#0#33#0" expanded="true" />
-                <element signature="e#75#652#0" />
-                <element signature="e#664#1708#0" />
-                <element signature="e#1816#2237#0" />
               </folding>
             </state>
           </provider>
@@ -52,7 +63,7 @@
         <entry file="file://$PROJECT_DIR$/__init__.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="22">
-              <caret line="1" column="76" lean-forward="true" selection-start-line="1" selection-start-column="76" selection-end-line="1" selection-end-column="76" />
+              <caret line="1" column="76" selection-start-line="1" selection-start-column="76" selection-end-line="1" selection-end-column="76" />
             </state>
           </provider>
         </entry>
@@ -68,20 +79,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/transmon.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="299">
-              <caret line="32" column="13" selection-start-line="32" selection-start-column="13" selection-end-line="32" selection-end-column="13" />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/qubit_device.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="291">
-              <caret line="99" column="143" selection-start-line="99" selection-start-column="143" selection-end-line="99" selection-end-column="143" />
+            <state relative-caret-position="555">
+              <caret line="105" lean-forward="true" selection-start-line="105" selection-end-line="105" />
               <folding>
                 <element signature="e#0#49#0" expanded="true" />
               </folding>
@@ -92,13 +94,20 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/instrument_drivers/Agilent_N5242A.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="167">
+            <state relative-caret-position="462">
               <caret line="27" column="6" selection-start-line="27" selection-start-column="6" selection-end-line="27" selection-end-column="6" />
             </state>
           </provider>
         </entry>
       </file>
     </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
@@ -115,6 +124,8 @@
       <find>exdir_db</find>
       <find>exdir</find>
       <find>exdir_db =</find>
+      <find>clockResetPhase</find>
+      <find>self.sa =</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -125,18 +136,10 @@
       <list>
         <option value="$PROJECT_DIR$/instruments.py" />
         <option value="$PROJECT_DIR$/qubit_device.py" />
-        <option value="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py" />
         <option value="$PROJECT_DIR$/__init__.py" />
-      </list>
-    </option>
-  </component>
-  <component name="ProjectConfigurationFiles">
-    <option name="files">
-      <list>
-        <option value="$PROJECT_DIR$/.idea/qsweepy.iml" />
-        <option value="$PROJECT_DIR$/.idea/misc.xml" />
-        <option value="$PROJECT_DIR$/.idea/modules.xml" />
-        <option value="$PROJECT_DIR$/.idea/vcs.xml" />
+        <option value="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py" />
+        <option value="$PROJECT_DIR$/ponyfiles/save_exdir.py" />
+        <option value="$PROJECT_DIR$/ponyfiles/exdir_db.py" />
       </list>
     </option>
   </component>
@@ -152,7 +155,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -160,15 +162,56 @@
               <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
               <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="ponyfiles" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+              <item name="&lt; Python 3.6 &gt;" type="70bed36:NamedLibraryElementNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+              <item name="&lt; Python 3.6 &gt;" type="70bed36:NamedLibraryElementNode" />
+              <item name="qtlab_replacement" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+              <item name="&lt; Python 3.6 &gt;" type="70bed36:NamedLibraryElementNode" />
+              <item name="qtlab_replacement" type="462c0819:PsiDirectoryNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
+              <item name="&lt; Python 3.6 &gt;" type="70bed36:NamedLibraryElementNode" />
+              <item name="qtlab_replacement" type="462c0819:PsiDirectoryNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="ponyfiles" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="settings.editor.selected.configurable" value="reference.idesettings.emmet" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\qtlab_replacement\qsweepy\ponyfiles" />
+    </key>
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -197,14 +240,11 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info id="Favorites" side_tool="true" />
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.18440464" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info anchor="bottom" id="Version Control" />
-      <window_info anchor="bottom" id="Python Console" />
-      <window_info anchor="bottom" id="Terminal" />
-      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32936078" />
       <window_info anchor="bottom" id="Run" order="2" />
@@ -212,6 +252,10 @@
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Version Control" order="7" />
+      <window_info anchor="bottom" id="Terminal" order="8" />
+      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -221,16 +265,6 @@
     <entry file="file://$PROJECT_DIR$/instrument_drivers/__init__.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/instruments.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="484">
-          <caret line="22" column="52" selection-start-line="22" selection-start-column="52" selection-end-line="22" selection-end-column="52" />
-          <folding>
-            <element signature="e#13#27#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/instrument_drivers/Agilent_E8257D.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2855">
@@ -238,40 +272,41 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/instrument_drivers/Agilent_N5242A.py">
+    <entry file="file://$PROJECT_DIR$/instruments.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="167">
-          <caret line="27" column="6" selection-start-line="27" selection-start-column="6" selection-end-line="27" selection-end-column="6" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="281">
-          <caret line="242" column="48" selection-start-line="242" selection-start-column="43" selection-end-line="242" selection-end-column="48" />
-          <folding>
-            <element signature="e#0#33#0" expanded="true" />
-            <element signature="e#75#652#0" />
-            <element signature="e#664#1708#0" />
-            <element signature="e#1816#2237#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/qubit_device.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="291">
-          <caret line="99" column="143" selection-start-line="99" selection-start-column="143" selection-end-line="99" selection-end-column="143" />
-          <folding>
-            <element signature="e#0#49#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="440">
+          <caret line="22" column="52" selection-start-line="22" selection-start-column="52" selection-end-line="22" selection-end-column="52" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="22">
-          <caret line="1" column="76" lean-forward="true" selection-start-line="1" selection-start-column="76" selection-end-line="1" selection-end-column="76" />
+          <caret line="1" column="76" selection-start-line="1" selection-start-column="76" selection-end-line="1" selection-end-column="76" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/instrument_drivers/Agilent_N5242A.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="462">
+          <caret line="27" column="6" selection-start-line="27" selection-start-column="6" selection-end-line="27" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/transmon.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="462">
+          <caret line="32" column="13" selection-start-line="32" selection-start-column="13" selection-end-line="32" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/qubit_device.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="555">
+          <caret line="105" lean-forward="true" selection-start-line="105" selection-end-line="105" />
+          <folding>
+            <element signature="e#0#49#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -284,10 +319,54 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/transmon.py">
+    <entry file="file://$PROJECT_DIR$/instrument_drivers/_Keysight_M3202A/simple_sync.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="299">
-          <caret line="32" column="13" selection-start-line="32" selection-start-column="13" selection-end-line="32" selection-end-column="13" />
+        <state>
+          <folding>
+            <element signature="e#0#57#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/instrument_drivers/_Keysight_M3202A/hvi_sync.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <folding>
+            <element signature="e#0#57#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/save_exdir_original.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ponyfiles/exdir_db.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="22">
+          <caret line="1" selection-start-line="1" selection-end-line="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ponyfiles/save_exdir.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="88">
+          <caret line="4" column="30" selection-start-line="4" selection-start-column="30" selection-end-line="4" selection-end-column="30" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_June_2019_setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="258">
+          <caret line="253" column="4" selection-start-line="253" selection-start-column="4" selection-end-line="253" selection-end-column="4" />
+          <folding>
+            <element signature="e#0#33#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

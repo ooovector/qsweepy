@@ -1,5 +1,5 @@
-from . import save_exdir
-from . import data_structures
+from . import save_exdir, data_structures
+
 from pony.orm import desc, count
 import datetime
 

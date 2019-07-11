@@ -1,16 +1,12 @@
-import numpy as np
-from time import gmtime, strftime
-from . import save_pkl
-#from . import plotting
-import shutil as sh
 import pathlib
 import exdir
 import datetime
+
 from .data_structures import *
+
 import os.path
-from .database import database
 from pony.orm import get, select
-from .config import get_config
+from ..config import get_config
 from collections import OrderedDict
 
 #time_folder_name = now.strftime('%H-%M-%S')
@@ -34,17 +30,17 @@ def default_measurement_save_path(state):
 	parent = os.path.join(data_root, day_folder_name)
 	#print (parent, identifiers)
 	fullpath = os.path.join(parent, '-'.join(identifiers.values()))
-	
+
 	return fullpath
 
-	
+
 def save_exdir(state, keep_open=False):
 	#parameters = []
 	if not state.filename:
 		state.filename = default_measurement_save_path(state)
-		
-	pathlib.Path(os.path.abspath(os.path.join(state.filename, os.pardir))).mkdir(parents=True, exist_ok=True) 
-	f = exdir.File(state.filename, 'w', allow_remove=True) 
+
+	pathlib.Path(os.path.abspath(os.path.join(state.filename, os.pardir))).mkdir(parents=True, exist_ok=True)
+	f = exdir.File(state.filename, 'w', allow_remove=True)
 	f.attrs = {k:v for k,v in state.metadata.items()}
 	if keep_open:
 		if hasattr(state, 'exdir'):
@@ -70,7 +66,7 @@ def save_exdir(state, keep_open=False):
 	finally:
 		if not keep_open:
 			f.close()
-	
+
 def update_exdir(state, indeces):
 	for dataset in state.datasets.keys():
 		state.exdir.attrs.update(state.metadata)
@@ -78,7 +74,7 @@ def update_exdir(state, indeces):
 			state.datasets[dataset].data_exdir[tuple(indeces)] = state.datasets[dataset].data[tuple(indeces)]
 		except Exception as e:
 			state.datasets[dataset].data_exdir[...] = state.datasets[dataset].data[...]
-	
+
 def close_exdir(state):
 	if hasattr(state, 'exdir'):
 		for dataset in state.datasets.keys():
@@ -101,8 +97,8 @@ class lazy_measurement_parameter_from_exdir:
 	'''
 	def __init__(self, exdir_parameter):
 		self.exdir_parameter = exdir_parameter
-	
-	@property 
+
+	@property
 	def name(self):
 		return self.exdir_parameter.attrs['name']
 	@property
@@ -114,24 +110,24 @@ class lazy_measurement_parameter_from_exdir:
 	@property
 	def values(self):
 		return self.exdir_parameter.data
-		
+
 	def __str__(self):
 		return '{name} lazy-loaded ({units}),:[{min}, {max}] ({num_points} points) {setter_str}'.format(#'{name} ({units}): [{min}, {max}] ({num_points} points) {setter_str}'.format(
-			name=self.name, 
-			units=self.unit, 
-			min = np.min(self.values), 
-			max = np.max(self.values), 
+			name=self.name,
+			units=self.unit,
+			min = np.min(self.values),
+			max = np.max(self.values),
 			num_points = len(self.values),
 			setter_str = 'with setter' if self.setter else 'without setter')
 	def __repr__(self):
 		return str(self)
-		
+
 def load_exdir(filename, db=None, lazy=False):
 	from time  import time
 	from sys import stdout
 	data = {}
 	parameter_values = []
-	
+
 	load_start = time()
 	f = exdir.File(filename, 'r')
 	file_open_time = time()
@@ -142,7 +138,7 @@ def load_exdir(filename, db=None, lazy=False):
 		state = measurement_state()
 		if not lazy:
 			state.metadata.update(f.attrs)
-		else: 
+		else:
 			state.metadata = f.attrs
 		metadata_time = time()
 		#print ('load_exdir: metadata_time', metadata_time-file_open_time)
@@ -166,7 +162,7 @@ def load_exdir(filename, db=None, lazy=False):
 			if not lazy:
 				try:
 					data = f[dataset_name]['data'].data[:].copy()
-				except: 
+				except:
 					data = f[dataset_name]['data'].data
 			else:
 				data = f[dataset_name]['data'].data
@@ -197,4 +193,3 @@ def load_exdir(filename, db=None, lazy=False):
 		else:
 			state.exdir = f
 	return state
-		

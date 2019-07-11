@@ -1,18 +1,6 @@
-import numpy as np
-import time
-from time import sleep
-import sys
-from matplotlib import pyplot as plt
 import itertools
-from . import save_pkl
-import logging
-from . import plotting
-import shutil as sh
-import threading
-import pathlib
 import random
-import gc
-from .data_structures import *
+from .ponyfiles.data_structures import *
 import traceback
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
@@ -36,12 +24,12 @@ def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
 	solution = fmin(tfunc, np.ones(len(x0)), maxfun=maxfun, initial_simplex=initial_simplex)*x0
 	score = tfunc(solution/x0)
 	return solution, score
-	
+
 '''
 sweep_state_server: generates plots, outputs remaining time, acts as server bot.
 sweep_state_server is a http server thread
 sweep_state is a data structure
-sweep_state contains: 
+sweep_state contains:
 1. current measurement structure,
 2. current parameter_values,
 3. measurement_start time,
@@ -54,14 +42,14 @@ Interactive stuff:
 - time_left UI
 
 the 'server' thread functions through event hooks (callbacks):
-hook types: 
+hook types:
 - new data appeared
 - measurement finished
 - ?
 
 the 'measurement' thread activates hooks and handles non-interactive stuff.
-Does it make sense to delegate stuff from the 'measurement' thread to the 'server' thread? 
-Since this is python which has GIL, probably no. 
+Does it make sense to delegate stuff from the 'measurement' thread to the 'server' thread?
+Since this is python which has GIL, probably no.
 Tasks for the 'measurement' thread:
 - set parameter values (maybe multithreaded)
 - measure stuff
@@ -69,8 +57,8 @@ Tasks for the 'measurement' thread:
 - call event hooks (should be passed through to event listeners)
 - save data?? -- we have save_pkl, save_hdf, ...
 
-if there's an exception in measurement thread, stop on next iteration (and emit 'measurement finished' event) 
-what about exceptions in 'server' thread? 
+if there's an exception in measurement thread, stop on next iteration (and emit 'measurement finished' event)
+what about exceptions in 'server' thread?
 
 1. if the exception is thrown in a event handler, drop that event handler until the sweep is finished.
 2. if the exception is thrown in the core server code, raise an exception in the 'measurement' thread too.
@@ -90,13 +78,13 @@ How about integrating sweeps and tomography? Issues are:
 
 Tomography should be an example of a 'long' measurement and enjoy the same online 'new data appeared' features as sweeps.
 - different datasets from a single measurement should be updated separately.
-- 
+-
 
 What about multithreaded data acquisition and parameter setting?
 - we are working in python, so all this is bound to suck.
 - multiple data points can be in the pipeline
-- all multiple data points in the pipeline are visible only to the 'measurement' 
-  thread and not to the 'server' thread. Possible exception: 
+- all multiple data points in the pipeline are visible only to the 'measurement'
+  thread and not to the 'server' thread. Possible exception:
 4. writes to files??
 '''
 
@@ -106,17 +94,17 @@ What about multithreaded data acquisition and parameter setting?
 '''
 Creates dict of measurement_parameter data structures for each dataset of measurer device.
 example: point_parameter(vna) should return
-{'S-parameter':measurement_parameter(vna.get_freqpoints(), None, 'Frequency', 'Hz')}	
-'''	
+{'S-parameter':measurement_parameter(vna.get_freqpoints(), None, 'Frequency', 'Hz')}
+'''
 
 
-		
-def sweep(measurer, 
-			  *parameters, 
-			  shuffle=False, 
-			  on_start =[], 
-			  on_update=[], 
-			  on_finish=[], 
+
+def sweep(measurer,
+			  *parameters,
+			  shuffle=False,
+			  on_start =[],
+			  on_update=[],
+			  on_finish=[],
 			  use_deferred=False,
 			  **kwargs
 			  ):
@@ -124,19 +112,19 @@ def sweep(measurer,
 	Performs a n-d parametric sweep.
 	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... )
 	measurer: an object that supports get_points(), measure(), get_dtype() and get_opts() methods.
-	
+
 	Returns: measurement_state struct after measurement dict of ndarrays each corresponding to a measurment in the sweep
 	'''
-	
+
 	sweep_parameters = [measurement_parameter(*parameter) for parameter in parameters]
 	point_parameters = measurer_point_parameters(measurer)
-	
+
 	sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
 	state = measurement_state(**kwargs)
 	state.parameter_values = [None for d in sweep_dimensions]
 	state.total_sweeps = np.prod([d for d in sweep_dimensions])
 	#all_parameters = {dataset: sweep_parameters+_point_parameters for dataset, _point_parameters in point_parameters.items()}
-	
+
 	### initialize data
 	for dataset_name, point_parameters in point_parameters.items():
 		all_parameters = sweep_parameters + point_parameters
@@ -145,14 +133,14 @@ def sweep(measurer,
 		if np.iscomplexobj(data): data.fill(np.nan+1j*np.nan)
 		else:                     data.fill(np.nan)
 		state.datasets[dataset_name] = measurement_dataset(parameters = all_parameters, data = data)
-	
+
 	all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dimensions))
 	if shuffle:
 		all_indeces = [i for i in all_indeces]
 		random.shuffle(all_indeces)
 	if len(sweep_dimensions)==0: # 0-d sweep case: single measurement
-		all_indeces = [[]]	
-	
+		all_indeces = [[]]
+
 	def set_single_measurement_result(single_measurement_result, indeces):
 		nonlocal state
 		indeces = list(indeces)
@@ -160,7 +148,7 @@ def sweep(measurer,
 			state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
 			state.datasets[dataset].indeces_updates = tuple(indeces+[...])
 		state.done_sweeps += 1
-		
+
 		for event_handler, arguments in on_update:
 			try:
 				event_handler(state, indeces, *arguments)
@@ -172,11 +160,11 @@ def sweep(measurer,
 			event_handler(state, *arguments)
 		except Exception as e:
 			traceback.print_exc()
-		
+
 		################
 	if hasattr(measurer, 'pre_sweep'):
 		measurer.pre_sweep()
-				
+
 	for indeces in all_indeces:
 		if state.request_stop_acq:
 			break
@@ -198,9 +186,9 @@ def sweep(measurer,
 			mpoint = measurer.measure()
 			#saving data to containers
 			set_single_measurement_result(mpoint, indeces)
-			
+
 		state.measurement_time += time.time() - measurement_start
-		
+
 	if hasattr(measurer, 'join_deferred'):
 		print ('Waiting to join deferred threads:')
 		measurer.join_deferred()
@@ -210,5 +198,5 @@ def sweep(measurer,
 			event_handler(state, *arguments)
 		except Exception as e:
 			print (e)
-	
+
 	return state

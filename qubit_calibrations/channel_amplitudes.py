@@ -1,5 +1,5 @@
-from ..data_structures import *
-import numpy as np
+from ..ponyfiles.data_structures import *
+
 
 class channel_amplitudes(measurement_state):
 	def __init__(self, *args, **kwargs):
@@ -10,7 +10,7 @@ class channel_amplitudes(measurement_state):
 			metadata = {channel:str(amplitude) for channel, amplitude in kwargs.items()}
 			references = {('channel_calibration', channel):device.awg_channels[channel].get_calibration_measurement()
 							for channel in kwargs.keys() if hasattr(device.awg_channels[channel], 'get_calibration_measurement')}
-			
+
 			# check if such measurement exists
 			try:
 				measurement = device.exdir_db.select_measurement(measurement_type='channel_amplitudes', metadata=metadata, references_that=references)
@@ -23,4 +23,3 @@ class channel_amplitudes(measurement_state):
 	def items(self): # just use metadata for now
 		for channel, amplitude in self.metadata.items():
 			yield channel, complex(amplitude)
-		

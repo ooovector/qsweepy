@@ -240,14 +240,16 @@ def Ramsey_crosstalk(device,
 	#						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
 	# if we don't have a ramsey coherence scan, get one
+	try:
+		deexcited_measurement = device.exdir_db.select_measurement_by_id(get_Ramsey_coherence_measurement(device, target_qubit_id).references['fit_source'])
+	except:
+		deexcited_measurement = None
+
 	if lengths is None:
-		ramsey_coherence_measurement = get_Ramsey_coherence_measurement(device, target_qubit_id)
-		lengths = ramsey_coherence_measurement.datasets['iq'+target_qubit_id].parameters[-1].values
+		lengths = deexcited_measurement.datasets['iq'+target_qubit_id].parameters[-1].values
 	if target_freq_offset is None: ###TODO: make sure we don't skip oscillations due to decoherence
 		##(improbable but possible if the qubits are very coherent even at high crosstalks AHAHAHA)
-		ramsey_coherence_measurement = device.exdir_db.select_measurement_by_id(get_Ramsey_coherence_measurement(device, target_qubit_id).references['fit_source'])
-		print (ramsey_coherence_measurement.metadata)
-		target_freq_offset = float(ramsey_coherence_measurement.metadata['target_offset_freq'])
+		target_freq_offset = float(deexcited_measurement.metadata['target_offset_freq'])
 
 	readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
 	measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
@@ -273,7 +275,11 @@ def Ramsey_crosstalk(device,
 	references = {'ex_control_pulse':ex_control_pulse.id,
 				  'ex_pulse1':ex_pulse1.id,
 				  'ex_pulse2':ex_pulse2.id,
-				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=target_qubit_id)}
+				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=target_qubit_id),
+				  }
+	if deexcited_measurement is not None:
+		references['deexcited_measurement'] = deexcited_measurement.id
+
 	references.update(measurer.references)
 
 	fitter_arguments = ('iq'+target_qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))

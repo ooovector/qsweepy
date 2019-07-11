@@ -1,10 +1,9 @@
-from ..data_structures import *
-from .. import data_reduce
+from ..ponyfiles.data_structures import *
 from . import channel_amplitudes
 #from
 import traceback
 from . import Rabi
-import pandas as pd
+
 
 def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase):
 	if tail_length > 0:	channel_pulses = [(c, device.pg.rect_cos, a*np.exp(1j*phase), tail_length) for c, a in channel_amplitudes.items()]

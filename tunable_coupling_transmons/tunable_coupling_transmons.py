@@ -1,4 +1,3 @@
-from .. import exdir_db
 from pony.orm import db_session, select, desc
 
 ### TODO: load from SQL datum with attributes

@@ -1,6 +1,5 @@
 from pony.orm import *
-from time import gmtime, strftime
-from .data_structures import *
+from .ponyfiles.data_structures import *
 from datetime import datetime
 from decimal import Decimal
 
