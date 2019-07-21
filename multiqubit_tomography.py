@@ -25,16 +25,37 @@ class multiqubit_tomography:
 		
 		## initialize the confusion matrix to identity so that it doesn't produce any problems
 		self.confusion_matrix = np.identity(len(readout_names))
-				
-		
+
+		self.output_array = []
+		self.output_mode = 'array'
+		self.reconstruction_output_mode = 'array'
+
 	def get_points(self):
-		points = { p:{} for p in self.proj_seq.keys() }
-		points.update({p:{} for p in self.reconstruction_basis.keys()})
+		if self.output_mode == 'single':
+			points = { p:{} for p in self.proj_seq.keys() }
+		elif self.output_mode == 'array':
+			points = {'measurement': [('ax{}'.format(ax_id), np.arange(self.output_array.shape[ax_id]), 'projection') \
+									   	for ax_id in range(len(self.output_array.shape))]}
+		else:
+			raise Exception('unknown output_mode')
+		if self.reconstruction_output_mode == 'single':
+			points.update({p: {} for p in self.reconstruction_basis.keys()})
+		elif self.reconstruction_output_mode == 'array':
+			points['reconstruction'] = [('ax{}'.format(ax_id), np.arange(self.reconstruction_output_array.shape[ax_id]), 'projection') \
+									   	for ax_id in range(len(self.reconstruction_output_array.shape))]
 		return points
 	
 	def get_dtype(self):
-		dtypes = { p:float for p in self.proj_seq.keys() }
-		dtypes.update({ p:float for p in self.reconstruction_basis.keys() })
+		if self.output_mode == 'single':
+			dtypes = { p:float for p in self.proj_seq.keys() }
+		elif self.output_mode == 'array':
+			dtypes = {'measurement':float}
+		else:
+			raise Exception('unknown output_mode')
+		if self.reconstruction_output_mode == 'single':
+			dtypes.update({p: complex for p in self.reconstruction_basis.keys()})
+		elif self.reconstruction_output_mode == 'array':
+			dtypes['reconstruction'] = complex
 		return dtypes
 	
 	def set_prepare_seq(self, seq):
@@ -64,7 +85,7 @@ class multiqubit_tomography:
 			measurement = self.measurer.measure()
 			#print (projection.keys())
 			measurement_ordered = [measurement[readout_name] for readout_name in self.readout_names]
-			print (rot)
+			#print (rot)
 			print ('uncorreted:', measurement)
 			measurement_corrected = np.linalg.lstsq(self.confusion_matrix.T, measurement_ordered)[0]
 			measurement = {readout_name:measurement for readout_name, measurement in zip(self.readout_names, measurement_corrected)}
@@ -82,16 +103,42 @@ class multiqubit_tomography:
 		self.reconstruction_matrix = reconstruction_matrix
 		self.reconstruction_matrix_pinv = reconstruction_matrix_pinv
 
-		print ('reconstruction_matrix: ', np.real(reconstruction_matrix).astype(int))
+		print ('reconstruction_matrix (real): ', np.real(reconstruction_matrix).astype(int))
+		print('reconstruction_matrix (imag): ', np.imag(reconstruction_matrix).astype(int))
 		print ('measured projections: ', measurement_results)
-		if len(reconstruction_operators) > 0:
-			projections = np.dot(reconstruction_matrix_pinv, measurement_results)
-			print ('reconstruction_results: ', np.real(projections))
-			meas.update({k:v for k,v in zip(basis_axes_names, projections)})
+
+		projections = np.dot(reconstruction_matrix_pinv, measurement_results)
+		print('reconstruction_results (real): ', np.real(projections))
+		print('reconstruction_results (imag): ', np.imag(projections))
+
+		if self.output_mode == 'array':
+			it = np.nditer([self.output_array, None], flags=['refs_ok'], op_dtypes=(object, float))
+			with it:
+				for x, z in it:
+					print(x)
+					z[...] = meas[str(x)]
+				meas = {'measurement': it.operands[1]}   # same as z
+
+		reconstruction = {str(k):v for k,v in zip(basis_axes_names, projections)}
+		print ('reconstruction', reconstruction)
+		if self.reconstruction_output_mode == 'single':
+			if len(reconstruction_operators) > 0:
+				meas.update(reconstruction)
+
+		elif self.reconstruction_output_mode == 'array':
+			it = np.nditer([self.reconstruction_output_array, None], flags=['refs_ok'], op_dtypes=(object, complex))
+			with it:
+				for x, z in it:
+					z[...] = reconstruction[str(x)]
+				meas['reconstruction'] = it.operands[1]
+
 		return meas
 		
 	def get_opts(self):
-		opts = { p:{} for p in self.proj_seq.keys()}
-		opts.update ({ p:{} for p in self.reconstruction_basis.keys()})
+		if self.output_mode == 'single':
+			opts = { p:{} for p in self.proj_seq.keys()}
+		elif self.output_mode == 'array':
+			opts = {'measurement':{}}
+		opts.update({p: {} for p in self.reconstruction_basis.keys()})
 		return opts
 		

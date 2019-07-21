@@ -204,7 +204,7 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
 		#self.sigma_1 = np.dot(np.conj(X[y==1,:]-self.avg_one).T, X[y==1,:]-self.avg_one)
 		#self.Sigma_inv = np.linalg.inv(self.sigma_0+self.sigma_1)
 		#self.feature = self.Sigma_inv
-		self.feature = self.avg_zero - np.mean(self.avg_zero)#self.diff-np.mean(self.diff)
+		self.feature = self.diff - np.mean(self.diff)#self.diff-np.mean(self.diff)
 		self.naive_bayes(X,y)
 
 	def naive_bayes(self, X, y):

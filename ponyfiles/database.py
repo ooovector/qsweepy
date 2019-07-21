@@ -1,5 +1,6 @@
 from pony.orm import *
 from .data_structures import *
+from.data_structures import  MeasurementState
 from datetime import datetime
 from decimal import Decimal
 
@@ -22,10 +23,12 @@ class MyDatabase:
             incomplete = Optional(bool)
             invalid = Optional(bool)
             owner = Optional(str)
+
+            # one-to-many references to the other tables (entities)
             metadata = Set('Metadata')
             reference_one = Set('Reference', reverse='this')
             reference_two = Set('Reference', reverse='that')
-            linear_sweep = Set('Linear_sweep')
+            linear_sweep = Set('Linear_sweep')  # 1d sweep parameter uniform grid description
         self.Data = Data
 
         class Metadata(db.Entity):
@@ -62,11 +65,24 @@ class MyDatabase:
             # id = PrimaryKey(int, auto=True)
         self.Invalidations = Invalidations
 
-        db.bind(provider, user=user, password=password, host=host, database=database, port = port)
+        db.bind(provider, user=user, password=password, host=host, database=database, port=port)
         db.generate_mapping(create_tables=True)
         self.db = db
 
     def create_in_database(self, state):
+        """
+        Creates entity instance in program memory space
+        and commits it into the database.
+
+        Parameters
+        ----------
+        state : MeasurementState
+
+        Returns
+        -------
+        id : int
+            state database id
+        """
         d = self.Data(comment=state.comment,
                       measurement_type=state.measurement_type,
                       sample_name=state.sample_name,
@@ -92,13 +108,13 @@ class MyDatabase:
 
         for name, value in state.metadata.items():
             # print(name, value)
-            self.Metadata(data_id = d, name = name, value = value)
+            self.Metadata(data_id=d, name=name, value=value)
         # print('Inserting references:', state.references)
         for ref_description, ref_that in state.references.items():
             if type(ref_description) is tuple:
-                self.Reference(this = d, that = ref_that, ref_type = ref_description[0], ref_comment = ref_description[1])
+                self.Reference(this=d, that=ref_that, ref_type=ref_description[0], ref_comment=ref_description[1])
             else:
-                self.Reference(this = d, that = ref_that, ref_type = ref_description, ref_comment='-')
+                self.Reference(this=d, that=ref_that, ref_type=ref_description, ref_comment='-')
 
         commit()
         state.id = d.id
@@ -133,23 +149,3 @@ class MyDatabase:
         # d = self.Data[id]
         # state = read_exdir_new(d.filename)
         return id  # tate
-
-
-# def put_to_database(self, sample_name, start, stop, incomplete, invalid, filename,
-# names, values, parameter_names, parameter_units, measurement_type, owner = '', type_revision = '', min_values = '', max_values = '',
-# num_points = '', type_ref = '', ref_id = 0, comment = ''):
-# d = self.Data(comment = comment, sample_name = sample_name, time_start = start, time_stop = stop,
-# filename = filename, type_revision = type_revision, incomplete = incomplete, invalid = invalid, owner = owner, measurement_type = measurement_type)
-
-# for minv, maxv, number, name, unit in zip(min_values, max_values, num_points, parameter_names, parameter_units):
-# self.Linear_sweep(data_id = d, min_value = minv, max_value = maxv, num_points = number, parameter_name = name, parameter_units = unit)
-
-# for name, value in zip(names, values):
-# self.Metadata(data_id = d, name = name, value = value)
-
-# if type_ref != '':
-# id_ref = self.Data[ref_id]
-# self.Reference(this = d, that = id_ref, ref_type = type_ref)
-
-# commit()
-# return d.id

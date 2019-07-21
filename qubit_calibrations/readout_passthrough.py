@@ -12,15 +12,15 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	def set_amplitude(amplitude):
 		device.pg.set_seq(device.trigger_readout_seq+[device.pg.p(readout_channel, length, device.pg.rect, amplitude)])
 
-	# refers to awg_iq_multi calibrations
+	# refers to Awg_iq_multi calibrations
 	metadata = {'channel': readout_channel, 'qubit_id':qubit_id, 'averages': device.modem.adc.get_nums(), 'length': length}
 	references = {'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
 	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
 		references['channel_calibration'] = device.awg_channels[readout_channel].get_calibration_measurement()
 
 	def create_compression_dataset(measurement):
-		parameters = [measurement_parameter(values=amplitudes[2:], name='amplitude', setter=False)]
-		measurement.datasets['compression'] = measurement_dataset(parameters, np.zeros(len(amplitudes)-2)*np.nan)
+		parameters = [MeasurementParameter(values=amplitudes[2:], name='amplitude', setter=False)]
+		measurement.datasets['compression'] = MeasurementDataset(parameters, np.zeros(len(amplitudes) - 2) * np.nan)
 
 	measurement = device.sweeper.sweep(mean_sample,
 							(amplitudes, set_amplitude, 'amplitude'),

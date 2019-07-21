@@ -1,8 +1,9 @@
 from .calibrated_readout import *
 from ..ponyfiles.data_structures import *
+from .. import data_reduce
 
 import traceback
-class qubit_readout_pulse(measurement_state):
+class qubit_readout_pulse(MeasurementState):
 	def __init__(self, *args, **kwargs):
 		if len(args) and not len(kwargs): # copy constructor
 			super().__init__(*args, **kwargs)
@@ -146,7 +147,7 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 	device.pg.set_seq(excitation_pulse_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
 
-	# refers to awg_iq_multi calibrations
+	# refers to Awg_iq_multi calibrations
 	metadata = {'qubit_id':qubit_id, 'averages': nums}
 	references = {'readout_pulse': qubit_readout_pulse.id,
 				  'modem_calibration': device.modem.calibration_measurements[readout_channel].id,
@@ -169,10 +170,21 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 	return measurement
 
-def get_uncalibrated_measurer(device, qubit_id, qubit_readout_pulse):
-	background_calibration = get_readout_calibration(device, qubit_readout_pulse)
+def get_uncalibrated_measurer(device, qubit_id):
+	try:
+		qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)
+		reducer = data_reduce.data_reduce(measurer)
+		reducer.filters['iq'+qubit_id] = data_reduce.cross_section_reducer(measurer, 'resultnumbers', 0, 1)
+		return qubit_readout_pulse_, reducer
+	except:
+		traceback.print_exc()
+		pass
+
+	qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
+	background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
 	adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=False)
 	measurer = data_reduce.data_reduce(adc_reducer)
-	measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id], background_calibration.datasets['S21'].data, adc_reducer.get_nums())
-	measurer.references = {'readout_background_calibration': background_calibration.id}
-	return measurer
+	measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],
+														background_calibration.datasets['S21'].data, adc_reducer.get_nums())
+	# measurer.references = {'readout_background_calibration': background_calibration.id}
+	return qubit_readout_pulse_, measurer

@@ -3,6 +3,7 @@ from . import channel_amplitudes
 #from
 import traceback
 from . import Rabi
+from . import gauss_hd
 
 
 def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase):
@@ -11,10 +12,10 @@ def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length,
 
 	return [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
 
-class rect_cos_excitation_pulse(measurement_state):
+class rect_cos_excitation_pulse(MeasurementState):
 	def __init__(self, *args, **kwargs):
 		self.device = args[0]
-		if len(args) == 2 and isinstance(args[1], measurement_state) and not len(kwargs): # copy constructor
+		if len(args) == 2 and isinstance(args[1], MeasurementState) and not len(kwargs): # copy constructor
 			super().__init__(args[1])
 		else: # otherwise initialize from dict and device
 			metadata = {'rotation_angle': str(kwargs['rotation_angle']),
@@ -109,7 +110,15 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_ov
 			traceback.print_exc()
 			pass
 	'''
-#	print ('ex_channels_found: ', ex_channels_found)
+	if channel_amplitudes_override is None:
+		try:
+			return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, recalibrate=False)
+		except:
+			pass
+
+	return get_rect_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_override, recalibrate)
+
+def get_rect_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_override=None, recalibrate=True):
 	for attempt_id in range(2):
 		#fit = Rabi_measurements(device,
 		#	qubit_id=qubit_id, frequency=device.get_qubit_fq(qubit_id), frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
@@ -133,6 +142,7 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_ov
 		if attempt_id:	# if we have already tried to recalibrate and failed, die
 			raise ValueError('Making excitation pulses from Rabi failed =(')
 
+
 		if recalibrate:
 			if channel_amplitudes_override is None:
 				Rabi.calibrate_all_single_channel_Rabi(device, _qubit_id=qubit_id)
@@ -140,36 +150,6 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, channel_amplitudes_ov
 				Rabi.Rabi_rect_adaptive(device, qubit_id=qubit_id, channel_amplitudes=channel_amplitudes_override)
 		else:
 			raise ValueError('No excitation pulses found, recalibrate is set to False, so fail')
-'''
-
-	if not channel_amplitudes_override: ## if this function is called to find Rabi oscillations excited from a specific channel (or channel combination), skip checking everythin
-		for channel in device.get_qubit_excitation_channel_list(qubit_id):
-			if set([channel]) not in ex_channels_found:
-				print ('Rabi oscillations through channel '+channel+' not found in database, measuring default Rabi_rect')
-				Rabi_fit = Rabi.Rabi_rect_adaptive(device, qubit_id, channel_amplitudes.channel_amplitudes(device, **{channel:1.0})).fit
-				Rabi_goodness.append({'fit_id': Rabi_fit.id,
-									  'score': min([float(Rabi_fit.metadata['num_periods_scan']),
-											float(Rabi_fit.metadata['num_periods_decay'])])*\
-											float(Rabi_fit.metadata['frequency_goodness_test'])})
-	else:
-		if not len(ex_channels_found):
-			Rabi_fit = Rabi.Rabi_rect_adaptive(device, qubit_id, channel_amplitudes_override).fit
-			Rabi_goodness.append({'fit_id': Rabi_fit.id,
-									  'score': min([float(Rabi_fit.metadata['num_periods_scan']),
-											float(Rabi_fit.metadata['num_periods_decay'])])*\
-											float(Rabi_fit.metadata['frequency_goodness_test'])})
-
-	for Rabi_fit_id in pd.DataFrame(Rabi_goodness).sort_values(by='score', ascending=False)['fit_id']:
-		try:
-			Rabi_fit = device.exdir_db.select_measurement_by_id(Rabi_fit_id)
-			return get_excitation_pulse_from_Rabi_rect_fit(device, rotation_angle, Rabi_fit)
-		except:
-			traceback.print_exc()
-			print ('Making excitation pulse from Rabi fit {} failed'.format(Rabi_fit_id))
-			pass
-
-	raise ValueError('Making excitation pulses from Rabi failed =(')
-'''
 
 def Rabi_measurements_query (qubit_id, frequency, frequency_tolerance, frequency_controls, channel_amplitudes_override=None):
 	'''

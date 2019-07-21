@@ -8,7 +8,7 @@ class single_shot_readout:
 
 	Args:
 		adc (Instrument): a device that measures a complex vector for each readout trigger (an ADC)
-		prepare_seqs (dict of pulses.sequence): a dict of sequences of control pulses. The keys are use for state identification.
+		prepare_seqs (list of pulses.sequence): a dict of sequences of control pulses. The keys are use for state identification.
 		ro_seq (pulses.sequence): a sequence of control pulses that is used to generate the reaout pulse of the DAC.
 		pulse_generator (pulses.pulse_generator): pulse generator used to concatenate and set waveform sequences on the DAC.
 		ro_delay_seq (pulses.sequence): Sequence used to align the DAC and ADC (readout delay compensation)

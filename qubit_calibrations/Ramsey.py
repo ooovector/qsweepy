@@ -10,8 +10,8 @@ def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channe
 							float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
 							float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
-	readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-	measurer = get_uncalibrated_measurer(device, qubit_id, readout_pulse)
+	#readout_pulse = get_qubit_readout_pulse(device, qubit_id)
+	readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
 	ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
 	ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
 
@@ -22,17 +22,18 @@ def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channe
 		readout_trigger_seq = device.trigger_readout_seq
 		readout_pulse_seq = readout_pulse.pulse_sequence
 
-		device.pg.set_seq(ex_pulse1.get_pulse_sequence(0)+\
-						  delay_seq+\
-						  ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+\
-						  readout_delay_seq+\
-						  readout_trigger_seq+\
+		device.pg.set_seq(ex_pulse1.get_pulse_sequence(0)+
+						  delay_seq+
+						  ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+
+						  readout_delay_seq+
+						  readout_trigger_seq+
 						  readout_pulse_seq)
 
 	references = {'ex_pulse1':ex_pulse1.id,
 				  'ex_pulse2':ex_pulse2.id,
 				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
-	references.update(measurer.references)
+	if hasattr(measurer, 'references'):
+		references.update(measurer.references)
 
 	fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 
@@ -105,17 +106,17 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 			device.update_pulsed_frequencies()
 
 		if int(fit_results['decay_goodness_test']):
-			return measurement
+			return device.exdir_db.select_measurement(measurement_type='fit_dataset_1d',
+													  references_that={'fit_source':measurement})
 
 		lengths *= _range
 		target_offset /= _range
 
-
 	#raise ValueError('Failed measuring Rabi frequency for qubit {} on channel_amplitudes {}'.format(qubit_id, channel_amplitudes.metadata))
 
-def calibrate_all_T2(device):
+def calibrate_all_T2(device, force_recalibration=False):
 	for qubit_id in device.get_qubit_list():
-		get_Ramsey_coherence_measurement(device, qubit_id)
+		get_Ramsey_coherence_measurement(device, qubit_id, force_recalibration=force_recalibration)
 		#if True: ### TODO check if Ramsey measurement is already there
 			#Ramsey_adaptive(device, qubit_id, set_frequency=True)
 
@@ -129,7 +130,8 @@ def get_Ramsey_crosstalk_measurement(device,
 									 target_qubit_id,
 									 control_qubit_id,
 									 frequency_controls=None,
-									 recalibrate=True):
+									 recalibrate=True,
+									 force_recalibration=False):
 	if frequency_controls is None:
 		frequency_controls = device.get_frequency_control_measurement_id(qubit_id)
 
@@ -168,6 +170,7 @@ def get_Ramsey_crosstalk_measurement(device,
 
 	for measurement in Ramsey_crosstalk_measurements:
 		try:
+			assert not force_recalibration
 			return device.exdir_db.select_measurement_by_id(measurement.id)
 		except:
 			print ('Failed loading Ramsey coherence measurement {}'.format(measurement.id))
@@ -180,7 +183,8 @@ def get_Ramsey_crosstalk_measurement(device,
 def get_Ramsey_coherence_measurement(device,
 									 qubit_id,
 									 frequency_controls=None,
-									 recalibrate=True):
+									 recalibrate=True,
+									 force_recalibration=False):
 	if frequency_controls is None:
 		frequency_controls = device.get_frequency_control_measurement_id(qubit_id)
 
@@ -210,10 +214,11 @@ def get_Ramsey_coherence_measurement(device,
 			  (NOT measurement.incomplete OR measurement.incomplete IS NULL) AND
 			measurement.measurement_type='Ramsey'
 	;
-	'''.format(qubit_id=qubit_id, frequency_controls=device.get_frequency_control_measurement_id(qubit_id=qubit_id)))
+	'''.format(qubit_id=qubit_id, frequency_controls=frequency_controls))
 
 	for measurement in Ramsey_coherence_measurements:
 		try:
+			assert not force_recalibration
 			return device.exdir_db.select_measurement_by_id(measurement.id)
 		except:
 			print ('Failed loading Ramsey coherence measurement {}'.format(measurement.id))
@@ -251,8 +256,8 @@ def Ramsey_crosstalk(device,
 		##(improbable but possible if the qubits are very coherent even at high crosstalks AHAHAHA)
 		target_freq_offset = float(deexcited_measurement.metadata['target_offset_freq'])
 
-	readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
-	measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
+	#readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
+	readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
 	ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_control)
 	ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
 	ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
@@ -280,7 +285,8 @@ def Ramsey_crosstalk(device,
 	if deexcited_measurement is not None:
 		references['deexcited_measurement'] = deexcited_measurement.id
 
-	references.update(measurer.references)
+	if hasattr(measurer, 'references'):
+		references.update(measurer.references)
 
 	fitter_arguments = ('iq'+target_qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 

@@ -10,8 +10,8 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
 							float(device.get_qubit_constant(qubit_id=qubit_id, name='Rabi_rect_length')),
 							float(device.get_qubit_constant(qubit_id=qubit_id, name='Rabi_rect_step')))
 
-	readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-	measurer = get_uncalibrated_measurer(device, qubit_id, readout_pulse)
+	#readout_pulse = get_qubit_readout_pulse(device, qubit_id)
+	readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
 
 	def set_ex_length(length):
 		ex_pulse_seq = excitation_pulse.get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase=0.)
@@ -27,7 +27,9 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
 
 	references = {'channel_amplitudes':channel_amplitudes.id,
 				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
-	references.update(measurer.references)
+
+	if hasattr(measurer, 'references'):
+		references.update(measurer.references)
 
 	fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 

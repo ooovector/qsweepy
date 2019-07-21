@@ -209,7 +209,7 @@ class modem_readout(data_reduce.data_reduce):
 
 	# lo1.set_frequency(lo_freq)
 	# ex_if = lo_freq-qubit_params[qubit_id]['F00-1-01']
-	# iq_ex = awg_iq_multi.awg_iq_multi(awg_tek, awg_tek, 0, 1, lo_ex)
+	# iq_ex = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 0, 1, lo_ex)
 	# # iq_ex = awg_iq.awg_iq(awg_tek, awg_tek, 2, 1, lo_ex) calibrated
 	# iq_ro = awg_iq.awg_iq(awg_tek, awg_tek, 2, 3, lo_ro)
 	# iq_ex.carriers['00-1-01'] = awg_iq_multi.carrier(iq_ex)

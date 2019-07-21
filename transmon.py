@@ -26,7 +26,7 @@ class transmon:
 		self.ro_sequence = ro_sequence
 		self.shuffle = shuffle
 		self.exdir_db = exdir_db
-		self.sweeper=sweep_extras.sweeper(self.exdir_db.db)#sweeper
+		self.sweeper=sweep_extras.Sweeper(self.exdir_db.db)#sweeper
 
 		self.qubit_id = qubit_id
 		self.sample_name = sample_name
@@ -90,7 +90,7 @@ class transmon:
 		fitted_data, fitted_parameters = fitting.exp_sin_fit(np.asarray(np.memmap.tolist(state.datasets['avg_cov1'].parameters[0].values)),
 															[np.asarray(np.memmap.tolist(state.datasets['avg_cov1'].data))])
 		print('fitted params: ', fitted_parameters)
-		state.datasets['avg_cov1_fit'] = measurement_dataset(parameters = [measurement_parameter(fitted_data[0], '', 'Rabi pulse length','s')], data = fitted_data[1][0])
+		state.datasets['avg_cov1_fit'] = MeasurementDataset(parameters = [MeasurementParameter(fitted_data[0], '', 'Rabi pulse length', 's')], data = fitted_data[1][0])
 		state.metadata.update({'Frequency': str(fitted_parameters['freq']), 'Decay': str(fitted_parameters['decay']), 'Phase': str(fitted_parameters['phase']),
 										'Amplitude': str(fitted_parameters['amplitudes']), 'Excitation channels': str(self.ex_channels), 'Readout channel': str(self.ro_channel)})
 		#state_fitted.datasets['avg_cov1'].parameters[0].values = fitted_data[0]
@@ -160,7 +160,7 @@ class transmon:
 		fitted_data, fitted_parameters = fitting.exp_sin_fit(np.asarray(np.memmap.tolist(state.datasets['avg_cov1'].parameters[0].values)),
 															[np.asarray(np.memmap.tolist(state.datasets['avg_cov1'].data))])
 		print('fitted params: ', fitted_parameters)
-		state.datasets['avg_cov1_fit'] = measurement_dataset(parameters = [measurement_parameter(fitted_data[0], '', 'Rabi pulse length','s')], data = fitted_data[1][0])
+		state.datasets['avg_cov1_fit'] = MeasurementDataset(parameters = [MeasurementParameter(fitted_data[0], '', 'Rabi pulse length', 's')], data = fitted_data[1][0])
 		state.metadata.update({'Frequency': str(fitted_parameters['freq']), 'Decay': str(fitted_parameters['decay']), 'Phase': str(fitted_parameters['phase']), 'Amplitude': str(fitted_parameters['amplitudes']),
 										'Target offset': str(target_freq_offset), 'Excitation channel': str(self.ex_channels), 'Readout channel': str(self.ro_channel)})
 		save_exdir(state)
@@ -211,7 +211,7 @@ class transmon:
 		fitted_data, fitted_parameters = fitting.exp_fit(np.asarray(np.memmap.tolist(state.datasets['avg_cov3'].parameters[0].values)),
 															[np.asarray(np.memmap.tolist(state.datasets['avg_cov3'].data))])
 		print('fitted params: ', fitted_parameters)
-		state.datasets['avg_cov3_fit'] = measurement_dataset(parameters = [measurement_parameter(fitted_data[0], '', 'Rabi pulse length','s')], data = fitted_data[1][0])
+		state.datasets['avg_cov3_fit'] = MeasurementDataset(parameters = [MeasurementParameter(fitted_data[0], '', 'Rabi pulse length', 's')], data = fitted_data[1][0])
 		state.metadata.update({'Decay': str(fitted_parameters['decay']), 'Amplitude': str(fitted_parameters['amplitudes']),
 								'Excitation channel': str(self.ex_channels), 'Readout channel': str(self.ro_channel)})
 		save_exdir(state)

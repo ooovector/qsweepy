@@ -67,7 +67,7 @@ class TSW14J56_evm_reducer():
 		if self.output_raw:
 			dtypes.update({'Voltage':complex})
 		if self.last_cov:
-			dtypes.update({'last_cov'+str(i):int for i in range(self.adc.num_covariances)})
+			dtypes.update({'last_cov'+str(i):float for i in range(self.adc.num_covariances)})
 		if self.avg_cov:
 			if self.avg_cov_mode == 'real':
 				dtypes.update({'avg_cov'+str(i):float for i in range(self.adc.num_covariances)})
@@ -331,7 +331,7 @@ class TSW14J56_evm():
 		data = frombuffer(self.dev.read(endpoints.IN, data_len*4), dtype = dtype(int16))
 
 		data = reshape(data, (data_len, 2))
-		return reshape(data.T[0,:],(self.nsegm, self.nsamp))+1j*reshape(data.T[1,:], (self.nsegm, self.nsamp))
+		return reshape(data.T[1,:],(self.nsegm, self.nsamp))+1j*reshape(data.T[0,:], (self.nsegm, self.nsamp))
 
 		#dataiq = reshape(data, (2, self.nsamp*self.nsegm))[0]+ 1j*reshape(data, (2, self.nsamp*self.nsegm))[1]
 		#return (reshape(dataiq, (self.nsegm, self.nsamp)))

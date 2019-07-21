@@ -98,7 +98,21 @@ def thru(source, src_meas, diff=0, scale=1):
 			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
-		
+
+def cross_section_reducer(source, src_meas, axis, index):
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		del new_axes[axis]
+		return new_axes
+
+	cross_section_index = [slice(None) if i != axis else index for i in range(len(source.get_points()[src_meas]))]
+
+	filter = {'filter': lambda x: np.asarray(x[src_meas])[cross_section_index],
+			  'get_points': get_points,
+			  'get_dtype': (lambda: complex if source.get_dtype()[src_meas] is complex else float),
+			  'get_opts': (lambda: source.get_opts()[src_meas])}
+	return filter
+
 def mean_reducer(source, src_meas, axis):
 	def get_points():
 		new_axes = source.get_points()[src_meas].copy()

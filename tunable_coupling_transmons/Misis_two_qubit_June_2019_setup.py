@@ -1,5 +1,8 @@
 from qsweepy.instruments import *
 from qsweepy import *
+
+from qsweepy import awg_iq_multi
+
 import numpy as np
 
 
@@ -51,7 +54,7 @@ pulsed_settings = {'lo1_power': 18,
 				   'trigger_readout_length': 20e-9,
 				   'modem_dc_calibration_amplitude': 1.0,
 				   'adc_nop': 1024,
-				   'adc_nums': 10000, ## Do we need control over this? Probably, but not now...
+				   'adc_nums': 20000, ## Do we need control over this? Probably, but not now...
 				  }
 
 class hardware_setup():
@@ -243,16 +246,16 @@ class hardware_setup():
 
 	def setup_iq_channel_connections(self, exdir_db):
 		# промежуточные частоты для гетеродинной схемы new:
-		self.iq_devices = {'iq_ex1': awg_iq_multi.awg_iq_multi(self.awg1, self.awg1, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
-							#'iq_ex2': hardware.iq_ex2 = awg_iq_multi.awg_iq_multi(awg2, awg2, 2, 3, lo_ex), #M3202A
-							'iq_ex3': awg_iq_multi.awg_iq_multi(self.awg2, self.awg2, 0, 1, self.lo1, exdir_db=exdir_db), #M3202A
-							'iq_ro':  awg_iq_multi.awg_iq_multi(self.awg1, self.awg1, 0, 1, self.pna, exdir_db=exdir_db)} #M3202A
-		#iq_pa = awg_iq_multi.awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
-		self.iq_devices['iq_ex1'].name='ex1'
+		self.iq_devices = {'iq_ex1': awg_iq_multi.Awg_iq_multi(self.awg1, self.awg1, 2, 3, self.lo1, exdir_db=exdir_db),  # M3202A
+							# 'iq_ex2': hardware.iq_ex2 = awg_iq_multi.Awg_iq_multi(awg2, awg2, 2, 3, lo_ex), #M3202A
+							'iq_ex3': awg_iq_multi.Awg_iq_multi(self.awg2, self.awg2, 0, 1, self.lo1, exdir_db=exdir_db),  # M3202A
+							'iq_ro':  awg_iq_multi.Awg_iq_multi(self.awg1, self.awg1, 0, 1, self.pna, exdir_db=exdir_db)}  # M3202A
+		#iq_pa = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
+		self.iq_devices['iq_ex1'].name = 'ex1'
 		#iq_ex2.name='ex2'
-		self.iq_devices['iq_ex3'].name='ex3'
+		self.iq_devices['iq_ex3'].name = 'ex3'
 		#iq_pa.name='pa'
-		self.iq_devices['iq_ro'].name='ro'
+		self.iq_devices['iq_ro'].name = 'ro'
 
 		self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.rf_switch.do_set_switch(1, channel=1) if not self.rf_switch.do_get_switch(channel=1)==1 else None
 		#iq_ex2.calibration_switch_setter = lambda: self.rf_switch.do_set_switch(2, channel=1) if not self.rf_switch.do_get_switch(channel=1)==2 else None

@@ -137,13 +137,13 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 	fit_unsorted, A_unsorted, fit_parameters_unsorted, metadata, references, x_fit = fit_data(source_measurement, None)
 
 	# create fit dataset
-	fit_dataset = data_structures.measurement_dataset(data=fit_unsorted, parameters=[
-        data_structures.measurement_parameter(**p.__dict__) for p in dataset.parameters])
+	fit_dataset = data_structures.MeasurementDataset(data=fit_unsorted, parameters=[
+        data_structures.MeasurementParameter(**p.__dict__) for p in dataset.parameters])
 	fit_dataset.parameters[time_parameter_id].values = x_fit
-	amplitudes_dataset = data_structures.measurement_dataset(data=A_unsorted, parameters=[dataset.parameters[i] for i in sorted(linear_parameter_ids + sweep_parameter_ids)])
-	fit_parameter_datasets = {k: data_structures.measurement_dataset(data=v, parameters=[dataset.parameters[i] for i in sorted(sweep_parameter_ids)]) for k, v in fit_parameters_unsorted.items()}
+	amplitudes_dataset = data_structures.MeasurementDataset(data=A_unsorted, parameters=[dataset.parameters[i] for i in sorted(linear_parameter_ids + sweep_parameter_ids)])
+	fit_parameter_datasets = {k: data_structures.MeasurementDataset(data=v, parameters=[dataset.parameters[i] for i in sorted(sweep_parameter_ids)]) for k, v in fit_parameters_unsorted.items()}
 
-	fit_measurement = data_structures.measurement_state(measurement_type='fit_dataset_1d', sample_name=source_measurement.sample_name, metadata = metadata, references=references)
+	fit_measurement = data_structures.MeasurementState(measurement_type='fit_dataset_1d', sample_name=source_measurement.sample_name, metadata = metadata, references=references)
 	fit_measurement.datasets = {dataset_name:fit_dataset, 'amplitudes': amplitudes_dataset}
 	fit_measurement.datasets.update(fit_parameter_datasets)
 

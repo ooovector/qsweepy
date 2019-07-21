@@ -225,11 +225,11 @@ def fit1d(measurement, fitter, dataset_name=None, db=None):
 		fitdata = [ dataset.data ]
 
 	fitted_curve, parameters = fitter(t, fitdata)
-	fitresult = measurement_state(sample_name=measurement.sample_name, measurement_type=measurement.measurement_type+'-fit', references={measurement.id:'fit_source'})
+	fitresult = MeasurementState(sample_name=measurement.sample_name, measurement_type=measurement.measurement_type + '-fit', references={measurement.id: 'fit_source'})
 
-	fitted_parameter = measurement_parameter(fitted_curve[0], False, dataset.parameters[0].name, dataset.parameters[0].unit, dataset.parameters[0].pre_setter)
+	fitted_parameter = MeasurementParameter(fitted_curve[0], False, dataset.parameters[0].name, dataset.parameters[0].unit, dataset.parameters[0].pre_setter)
 
-	fitresult.datasets = {dataset_name+'-fit':measurement_dataset(parameters=[fitted_parameter], data=fitted_curve[1])}
+	fitresult.datasets = {dataset_name+'-fit':MeasurementDataset(parameters=[fitted_parameter], data=fitted_curve[1])}
 	fitresult.metadata.update({k:str(v) for k,v in parameters.items()})
 
 	return fitresult

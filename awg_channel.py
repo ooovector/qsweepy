@@ -53,7 +53,7 @@ class awg_channel:
 		#self.parent.freeze()
 	def unfreeze(self):
 		''' not implemented yet. Does nothing -- which is OK, but slightly slow.
-		consider replaceing with the logic from awg_iq_multi for faster performance.
+		consider replaceing with the logic from Awg_iq_multi for faster performance.
 		freeze/unfreeze makes sense only together with each other'''
 		pass
 		#self.parent.unfreeze()

@@ -84,7 +84,7 @@ class instrument_setups:
 	def set_pulses_PXI(self):
 		self.lo_ex.set_frequency(self.lo_freq)
 		self.ex_if = self.lo_freq-self.qubits[self.params['qubit_id']]['q']['00-1-01']
-		self.iq_ex = awg_iq_multi.awg_iq_multi(self.awg, self.awg, 0, 1, self.lo_ex)
+		self.iq_ex = awg_iq_multi.Awg_iq_multi(self.awg, self.awg, 0, 1, self.lo_ex)
 		for tr,freq in self.qubits[self.params['qubit_id']]['q'].items():
 			self.iq_ex.carriers[tr] = awg_iq_multi.carrier(self.iq_ex)
 			self.iq_ex.carriers[tr].set_frequency(freq)

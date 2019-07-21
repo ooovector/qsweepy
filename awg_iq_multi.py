@@ -1,4 +1,4 @@
-## awg_iq class
+# awg_iq class
 # two channels of awgs and a local oscillator used to feed a single iq mixer
 
 # maximum settings of the current mixer that should not be exceeded
@@ -11,68 +11,102 @@ from matplotlib import pyplot as plt
 from . import qjson
 #import time
 
+
 def get_config_float_fmt():
 	return '6.4g'
 
+
 def build_param_names(params):
-	return '-'.join(['{0}-{1:6.4g}'.format(param_name, param_value) if type(param_value) is not str else param_name+'-'+param_value for param_name, param_value in sorted(params.items())])
-	
-class carrier:
-	def __init__(self, parent):#, mixer):
-		"""
-		"""
+	"""
+
+	Parameters
+	----------
+	params : dict
+		dictionary that 
+
+	Returns
+	-------
+
+	"""
+	list_of_strs = []
+	for param_name, param_value in sorted(params.items()):
+		if type(param_value) != str:  # if value is numeric (not str)
+			list_of_strs = '{0}-{1:6.4g}'.format(param_name, param_value)
+		else:
+			param_name + '-' + param_value
+	return '-'.join(list_of_strs)
+
+
+class Carrier:
+	def __init__(self, parent):  # , mixer):
 		self._if = 0
 		self.frequency = parent.lo.get_frequency()
 		self.parent = parent
 		self.status = 1
+		self.waveform = None
 
-		
 	def get_nop(self):
 		return self.parent.get_nop()
+
 	def get_clock(self):
 		return self.parent.get_clock()
+
 	def set_nop(self, nop):
 		self.parent.set_nop(nop)
+
 	def set_clock(self, clock):
 		self.parent.set_clock(clock)
+
 	def set_status(self, status):
 		self.status = status
 		self.parent.assemble_waveform()
+
 	def get_waveform(self):
 		if not hasattr(self, 'waveform'):
 			self.waveform = np.zeros(self.get_nop(), dtype=np.complex)
-		return self.waveform			
+		return self.waveform
+
 	def set_if(self, _if):
 		self._if = _if
+
 	def get_if(self):
 		return self._if
+
 	def set_frequency(self, frequency):
-		#self.lo.set_frequency(frequency-self.get_sideband_id()*self.get_if())
-		#self.frequency = self.lo.get_frequency()+self.get_sideband_id()*self.get_if()
 		self._if = frequency - self.parent.lo.get_frequency()
 		self.frequency = frequency
+
 	def set_uncal_frequency(self, frequency):
-		self.lo.set_frequency(frequency-self.get_if())	
+		self.lo.set_frequency(frequency-self.get_if())
+
 	def get_frequency(self):
 		return self.frequency
+
 	def set_waveform(self, waveform):
 		self.waveform = waveform
 		if not self.parent.frozen:
 			self.parent.assemble_waveform()
+
 	def freeze(self):
 		self.parent.freeze()
+
 	def unfreeze(self):
 		self.parent.unfreeze()
+
 	def get_physical_devices(self):
 		return self.parent.get_physical_devices()
+
 	def get_ignore_calibration_drift(self):
 		return self.parent.ignore_calibration_drift
+
 	def set_ignore_calibration_drift(self, v):
 		self.parent.ignore_calibration_drift = v
+
 	def get_calibration_measurement(self):
 		return self.parent.exdir_db.select_measurement(measurement_type='iq_rf_calibration', metadata=self.parent.rf_calibration_identifier(self)).id
 
-class awg_iq_multi:
+
+class Awg_iq_multi:
 	"""Interface for IQ modulation of RF signals wth two AWG channels.
 	
 	IQ modulation requires two low (intermediate) frequency arbitrary waveform generators for the I and Q 
@@ -88,10 +122,10 @@ class awg_iq_multi:
 		awg_ch_I (int): Channel id of the device awg_I that is connected to the I connector of the mixer.
 		awg_ch_Q (int): Channel id of the device awg_I that is connected to the Q connector of the mixer.
 		lo (:obj:`psg`): Instance of a sinusodial signal generator. Should implement the methods get_frequency and set_frequency.
-		
+
 	"""
 		
-	def __init__(self, awg_I, awg_Q, awg_ch_I, awg_ch_Q, lo, exdir_db):#, mixer):
+	def __init__(self, awg_I, awg_Q, awg_ch_I, awg_ch_Q, lo, exdir_db):  # , mixer):
 		"""
 		"""
 		self.awg_I = awg_I
@@ -100,20 +134,18 @@ class awg_iq_multi:
 		self.awg_ch_Q = awg_ch_Q
 		
 		self.carriers = {}
-		self.name='default'
+		self.name = 'default'
 		self.lo = lo
 		self.exdir_db = exdir_db
-		#self._if = 0
-		#self._if = 0
-		#self.frequency = lo.get_frequency()
+
 		self.dc_calibrations = {}
 		self.dc_calibrations_offset = {}
 		self.rf_calibrations = {}
 		self.sideband_id = 0
 		self.ignore_calibration_drift = False
-		#self.mixer = mixer
+
 		self.frozen = False
-		self.use_offset_I = hasattr(self.awg_I, 'set_offset') # set DC offsets by set_offset
+		self.use_offset_I = hasattr(self.awg_I, 'set_offset')  # set DC offsets by set_offset
 		self.use_offset_Q = hasattr(self.awg_Q, 'set_offset')
 		self.calibration_switch_setter = lambda: None
 		
@@ -122,8 +154,7 @@ class awg_iq_multi:
 			return [self.awg_I, self.awg_Q]
 		else:
 			return [self.awg_I]
-	
-	#@property 
+
 	def get_nop(self):
 		"""int: Number of samples in segment."""
 		I_nop = self.awg_I.get_nop()
@@ -162,7 +193,7 @@ class awg_iq_multi:
 		waveform on the Q channel.
 		
 		No intermediate frequency multiplication and mixer calibration corrections are performed.
-		This is a low-level function that is normally only called for debugging purposes. Pulse 
+		This is a low-level function that is normally only called for debugging purposes. Pulse
 		sequence generators do not normally call this function, but rather sate_waveform."""
 		waveform_I = np.real(waveform_cmplx)
 		waveform_Q = np.imag(waveform_cmplx)
@@ -192,7 +223,6 @@ class awg_iq_multi:
 	
 	def assemble_waveform(self):
 		"""Takes waveforms on all carriers and sums them up."""
-		#print ('called assemble_waveform on wage_iq_multi wth I '+str(self.awg_I)+', I channel'+str(self.awg_ch_I))
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		waveform_I = np.zeros(len(t), dtype=np.complex)
 		waveform_Q = np.zeros(len(t), dtype=np.complex)
@@ -271,11 +301,10 @@ class awg_iq_multi:
 		return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
 	def dc_cname(self):
-		#return ('fLO-'+get_config_float_fmt()).format(self.lo.get_frequency)
 		return build_param_names(self.dc_calibration_identifier())
 		
 	def dc_calibration_identifier(self):
-		return {'mixer':self.name,'lo_freq':self.lo.get_frequency()}
+		return {'mixer': self.name, 'lo_freq': self.lo.get_frequency()}
 		
 	def do_calibration(self, sa=None):
 		"""User-level function to sort out mixer calibration matters. Checks if there is a saved calibration for the given
@@ -288,7 +317,17 @@ class awg_iq_multi:
 			self.get_rf_calibration(carrier=carrier, sa=sa)
 		
 	def get_dc_calibration(self, sa=None):
-		#name = 'iq-dc-'+self.dc_cname()
+		"""
+
+
+		Parameters
+		----------
+		sa
+
+		Returns
+		-------
+
+		"""
 		try:
 			calibration = self.exdir_db.select_measurement(measurement_type='iq_dc_calibration', metadata=self.dc_calibration_identifier()).metadata
 			self.dc_calibrations[self.dc_cname()] = {}
@@ -310,13 +349,8 @@ class awg_iq_multi:
 		return self.dc_calibrations[self.dc_cname()]
 				
 	def save_dc_calibration(self):
-		#calibration_path = get_config()['datadir']+'/calibrations/'
-		#print (calibration_path)
-		#filename = 'iq-dc-'+self.dc_cname()
-		#save_pkl(None, self.dc_calibrations[self.dc_cname()], location=calibration_path, filename=filename, plot=False)
-		#qjson.dump(type='iq-dc',name=self.dc_cname(), params=self.dc_calibrations[self.dc_cname()])
 		calibration = self.dc_calibration_identifier()
-		calibration.update({k:str(v) for k,v in self.dc_calibrations[self.dc_cname()].items()})
+		calibration.update({k: str(v) for k,v in self.dc_calibrations[self.dc_cname()].items()})
 		self.exdir_db.save(measurement_type='iq_dc_calibration', metadata=calibration, type_revision='1')
 		
 	def rf_calibration_identifier(self, carrier):
@@ -465,7 +499,7 @@ class awg_iq_multi:
 	
 			#sa.set_centerfreq(self.lo.get_frequency())
 			#sa.set_nop(num_sidebands)
-			#sa.set_span((num_sidebands-1)*np.abs(carrier.get_if()))
+			#sa.set_span((num_sidebands-1)*np.abs(arrier.get_if()))
 			#sa.set_detector('POS')
 			#self.set_trigger_mode('CONT')
 			#res_bw = 1e5

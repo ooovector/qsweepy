@@ -64,17 +64,17 @@ def read_exdir_new(filename):
 			#print(k)
 			if k[0] != 'parameter_values': attrs.append(k)
 			else: parameter_values = k[1]
-		state = measurement_state(parameter_values)
+		state = MeasurementState(parameter_values)
 		for dataset_name in f.keys():
 			all_param_help_arr = []
 			for parameter in f[dataset_name].keys():
 				#print(parameter, [f[str(dataset_name) + '/' + parameter][:], 'setter', parameter])
-				if parameter != 'data': all_param_help_arr.append(measurement_parameter(f[str(dataset_name) + '/' + parameter][:].copy(), 'setter', parameter))
+				if parameter != 'data': all_param_help_arr.append(MeasurementParameter(f[str(dataset_name) + '/' + parameter][:].copy(), 'setter', parameter))
 			all_parameters = all_param_help_arr.copy()
 			data[dataset_name] = f[str(dataset_name) + '/data'][:].copy()
 		state.metadata = attrs
 		for dataset_name in data.keys():
-			state.datasets[dataset_name] = measurement_dataset(parameters = all_parameters, data = data[dataset_name])
+			state.datasets[dataset_name] = MeasurementDataset(parameters = all_parameters, data = data[dataset_name])
 		db = MyDatabase()
 		id = get(i.id for i in db.Data if (i.filename == filename))
 		state.id = id

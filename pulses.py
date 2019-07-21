@@ -17,12 +17,12 @@ class offset:
 		self.offset = offset
 
 class pulses:
-	def __init__(self, channels = {}):
+	def __init__(self, channels={}):
 		self.channels = channels
 		self.settings = {}
 
 	## generate waveform of a gaussian pulse with quadrature phase mixin
-	def gauss_hd (self, channel, length, amp_x, sigma, alpha=0.):
+	def gauss_hd(self, channel, length, amp_x, sigma, alpha=0.):
 		gauss = gaussian(int(round(length*self.channels[channel].get_clock())), sigma*self.channels[channel].get_clock())
 		gauss -= gauss[0]
 		gauss /= np.max(gauss)
@@ -45,7 +45,7 @@ class pulses:
 		#print(function(time_arr[0]))
 		return np.asarray(impulse*function(t))#(1/self.channels[channel].get_clock()*np.arange(len(impulse))))# for i in range(len(impulse))], dtype = complex)
 
-	def rect_cos (self, channel, length, amp, length_tail, function_for_envelope = lambda x: 1, alpha=0.):
+	def rect_cos(self, channel, length, amp, length_tail, function_for_envelope = lambda x: 1, alpha=0.):
 		length_of_plato = length - length_tail*2
 		length_of_one_tail = int(length_tail*self.channels[channel].get_clock())
 		hann_function = hann(2*length_of_one_tail)

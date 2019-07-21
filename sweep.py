@@ -2,28 +2,37 @@ import itertools
 import random
 from .ponyfiles.data_structures import *
 import traceback
+import time
 
 def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
-	from scipy.optimize import fmin
-	x0 = [p[1] for p in params]
-	print(x0)
-	def tfunc(x):
-		for xi, p in zip(x, params):
-			if len(p)>2 and p[2]:
-				if xi*p[1] < p[2]:
-					xi = p[2]/p[1]
-			if len(p)>3 and p[3]:
-				if xi*p[1] > p[3]:
-					xi = p[3]/p[1]
-			p[0](xi*p[1]) # set current parameter
-		f = target()
-		print (x*x0, f)
-		return f
-	if initial_simplex:
-		initial_simplex = np.asarray(initial_simplex)/x0
-	solution = fmin(tfunc, np.ones(len(x0)), maxfun=maxfun, initial_simplex=initial_simplex)*x0
-	score = tfunc(solution/x0)
-	return solution, score
+    """
+    function is used for paramp only | noted on 13.07.2019
+    :param target:
+    :param params:
+    :param initial_simplex:
+    :param maxfun:
+    :return:
+    """
+    from scipy.optimize import fmin
+    x0 = [p[1] for p in params]
+    print(x0)
+    def tfunc(x):
+        for xi, p in zip(x, params):
+            if len(p)>2 and p[2]:
+                if xi*p[1] < p[2]:
+                    xi = p[2]/p[1]
+            if len(p)>3 and p[3]:
+                if xi*p[1] > p[3]:
+                    xi = p[3]/p[1]
+            p[0](xi*p[1]) # set current parameter
+        f = target()
+        print (x*x0, f)
+        return f
+    if initial_simplex:
+        initial_simplex = np.asarray(initial_simplex)/x0
+    solution = fmin(tfunc, np.ones(len(x0)), maxfun=maxfun, initial_simplex=initial_simplex)*x0
+    score = tfunc(solution/x0)
+    return solution, score
 
 '''
 sweep_state_server: generates plots, outputs remaining time, acts as server bot.
@@ -98,105 +107,115 @@ example: point_parameter(vna) should return
 '''
 
 
+def sweep(measurer, *parameters, shuffle=False,
+          on_start=[], on_update=[], on_finish=[],
+          use_deferred=False, **kwargs):
+    """
+    Performs a n-d parametric sweep.
 
-def sweep(measurer,
-			  *parameters,
-			  shuffle=False,
-			  on_start =[],
-			  on_update=[],
-			  on_finish=[],
-			  use_deferred=False,
-			  **kwargs
-			  ):
-	'''
-	Performs a n-d parametric sweep.
-	Usage: sweep(measurer, (param1_values, param1_setter, [param1_name]), (param2_values, param2_setter), ... )
-	measurer: an object that supports get_points(), measure(), get_dtype() and get_opts() methods.
+    Parameters
+    ----------
+    measurer
+        an object that supports get_points(), measure(), get_dtype() and get_opts() methods.
+    parameters : list[tuple]
+        tuple associated with a parameter has the following meaning: (param_values, param_setter, param_name)
+    shuffle
+    on_start
+    on_update
+    on_finish
+    use_deferred
+    kwargs
 
-	Returns: measurement_state struct after measurement dict of ndarrays each corresponding to a measurment in the sweep
-	'''
+    Returns
+    -------
+    MeasurementState
+        Structure after measurement dict of ndarrays each corresponding to a measurement in the sweep
+    """
 
-	sweep_parameters = [measurement_parameter(*parameter) for parameter in parameters]
-	point_parameters = measurer_point_parameters(measurer)
+    sweep_parameters = [MeasurementParameter(*parameter) for parameter in parameters]
+    point_parameters = measurer_point_parameters(measurer)
 
-	sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
-	state = measurement_state(**kwargs)
-	state.parameter_values = [None for d in sweep_dimensions]
-	state.total_sweeps = np.prod([d for d in sweep_dimensions])
-	#all_parameters = {dataset: sweep_parameters+_point_parameters for dataset, _point_parameters in point_parameters.items()}
+    # ndarray.shape equivalent for sweep_parameters
+    sweep_dimensions = tuple([len(sweep_parameter.values) for sweep_parameter in sweep_parameters])
 
-	### initialize data
-	for dataset_name, point_parameters in point_parameters.items():
-		all_parameters = sweep_parameters + point_parameters
-		data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
-		data = np.empty(data_dimensions, dtype = measurer.get_dtype()[dataset_name])
-		if np.iscomplexobj(data): data.fill(np.nan+1j*np.nan)
-		else:                     data.fill(np.nan)
-		state.datasets[dataset_name] = measurement_dataset(parameters = all_parameters, data = data)
+    state = MeasurementState(**kwargs)
+    state.parameter_values = [None for d in sweep_dimensions]
+    state.total_sweeps = np.prod([d for d in sweep_dimensions])
 
-	all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dimensions))
-	if shuffle:
-		all_indeces = [i for i in all_indeces]
-		random.shuffle(all_indeces)
-	if len(sweep_dimensions)==0: # 0-d sweep case: single measurement
-		all_indeces = [[]]
+    # initialize data
+    for dataset_name, point_parameters in point_parameters.items():
+        all_parameters = sweep_parameters + point_parameters
+        data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
+        data = np.empty(data_dimensions, dtype=measurer.get_dtype()[dataset_name])
+        if np.iscomplexobj(data):
+            data.fill(np.nan+1j*np.nan)
+        else:
+            data.fill(np.nan)
+        state.datasets[dataset_name] = MeasurementDataset(parameters = all_parameters, data = data)
 
-	def set_single_measurement_result(single_measurement_result, indeces):
-		nonlocal state
-		indeces = list(indeces)
-		for dataset in single_measurement_result.keys():
-			state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
-			state.datasets[dataset].indeces_updates = tuple(indeces+[...])
-		state.done_sweeps += 1
+    all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dimensions))
+    if shuffle:
+        all_indeces = [i for i in all_indeces]
+        random.shuffle(all_indeces)
+    if len(sweep_dimensions)==0: # 0-d sweep case: single measurement
+        all_indeces = [[]]
 
-		for event_handler, arguments in on_update:
-			try:
-				event_handler(state, indeces, *arguments)
-			except Exception as e:
-				traceback.print_exc()
+    def set_single_measurement_result(single_measurement_result, indeces):
+        nonlocal state
+        indeces = list(indeces)
+        for dataset in single_measurement_result.keys():
+            state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
+            state.datasets[dataset].indeces_updates = tuple(indeces+[...])
+        state.done_sweeps += 1
 
-	for event_handler, arguments in on_start:
-		try:
-			event_handler(state, *arguments)
-		except Exception as e:
-			traceback.print_exc()
+        for event_handler, arguments in on_update:
+            try:
+                event_handler(state, indeces, *arguments)
+            except Exception as e:
+                traceback.print_exc()
 
-		################
-	if hasattr(measurer, 'pre_sweep'):
-		measurer.pre_sweep()
+    for event_handler, arguments in on_start:
+        try:
+            event_handler(state, *arguments)
+        except Exception as e:
+            traceback.print_exc()
 
-	for indeces in all_indeces:
-		if state.request_stop_acq:
-			break
-				# check which values have changed this sweep
-		old_parameter_values = state.parameter_values
-		state.parameter_values = [sweep_parameters[parameter_id].values[value_id] for parameter_id, value_id in enumerate(indeces)]
-		changed_values = np.logical_not(np.equal(old_parameter_values, state.parameter_values))#[old_parameter_values!=state.parameter_values for old_val, val in zip(old_vals, vals)]
-		# set to new param vals
-		for value, sweep_parameter, changed in zip(state.parameter_values, sweep_parameters, changed_values):
-			if changed:
-				setter_start = time.time()
-				sweep_parameter.setter(value)
-				sweep_parameter.setter_time += time.time() - setter_start
-		#measuring
-		measurement_start = time.time()
-		if hasattr(measurer, 'measure_deferred_result') and use_deferred:
-			measurer.measure_deferred_result(set_single_measurement_result, (indeces, ))
-		else:
-			mpoint = measurer.measure()
-			#saving data to containers
-			set_single_measurement_result(mpoint, indeces)
+    ################
+    if hasattr(measurer, 'pre_sweep'):
+        measurer.pre_sweep()
 
-		state.measurement_time += time.time() - measurement_start
+    for indeces in all_indeces:
+        if state.request_stop_acq:
+            break
+        # check which values have changed this sweep
+        old_parameter_values = state.parameter_values
+        state.parameter_values = [sweep_parameters[parameter_id].values[value_id] for parameter_id, value_id in enumerate(indeces)]
+        changed_values = np.logical_not(np.equal(old_parameter_values, state.parameter_values))#[old_parameter_values!=state.parameter_values for old_val, val in zip(old_vals, vals)]
+        # set to new param vals
+        for value, sweep_parameter, changed in zip(state.parameter_values, sweep_parameters, changed_values):
+            if changed:
+                setter_start = time.time()
+                sweep_parameter.setter(value)
+                sweep_parameter.setter_time += time.time() - setter_start
+        #measuring
+        measurement_start = time.time()
+        if hasattr(measurer, 'measure_deferred_result') and use_deferred:
+            measurer.measure_deferred_result(set_single_measurement_result, (indeces, ))
+        else:
+            mpoint = measurer.measure()
+            #saving data to containers
+            set_single_measurement_result(mpoint, indeces)
 
-	if hasattr(measurer, 'join_deferred'):
-		print ('Waiting to join deferred threads:')
-		measurer.join_deferred()
+        state.measurement_time += time.time() - measurement_start
 
-	for event_handler, arguments in on_finish:
-		try:
-			event_handler(state, *arguments)
-		except Exception as e:
-			print (e)
+    if hasattr(measurer, 'join_deferred'):
+        print ('Waiting to join deferred threads:')
+        measurer.join_deferred()
 
-	return state
+    for event_handler, arguments in on_finish:
+        try:
+            event_handler(state, *arguments)
+        except Exception as e:
+            print(e)
+
+    return state
