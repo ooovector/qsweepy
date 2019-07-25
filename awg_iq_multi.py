@@ -121,7 +121,7 @@ class Awg_iq_multi:
 			awg_I and awg_Q are normaly the same device (I and Q are connected to different channels of the same device).
 		awg_ch_I (int): Channel id of the device awg_I that is connected to the I connector of the mixer.
 		awg_ch_Q (int): Channel id of the device awg_I that is connected to the Q connector of the mixer.
-		lo (:obj:`psg`): Instance of a sinusodial signal generator. Should implement the methods get_frequency and set_frequency.
+		lo (:obj:`psg`): Instance of a sinusoidal signal generator. Should implement the methods get_frequency and set_frequency.
 
 	"""
 		
@@ -198,8 +198,8 @@ class Awg_iq_multi:
 		waveform_I = np.real(waveform_cmplx)
 		waveform_Q = np.imag(waveform_cmplx)
 		
-		self.awg_I.set_waveform(waveform_I, channel=self.awg_ch_I)
-		self.awg_Q.set_waveform(waveform_Q, channel=self.awg_ch_Q)
+		self.awg_I.set_waveform(waveform=waveform_I, channel=self.awg_ch_I)
+		self.awg_Q.set_waveform(waveform=waveform_Q, channel=self.awg_ch_Q)
 		
 		self.awg_I.run()
 		if self.awg_I != self.awg_Q:
@@ -282,7 +282,7 @@ class Awg_iq_multi:
 		t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
 		dc = self.clip_dc(dc)
 		
-		if half_length:
+		if False:
 			envelope = gaussian(self.get_nop(), self.get_nop()/8)
 		else:
 			envelope = np.ones(self.get_nop())

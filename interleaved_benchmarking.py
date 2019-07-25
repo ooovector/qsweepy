@@ -3,8 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class interleaved_benchmarking:
-	def __init__(self, tomo, random_sequence_num=8):
-		self.tomo = tomo
+	def __init__(self, measurer, set_seq, random_sequence_num=8):
+		self.measurer = measurer
+		self.set_seq = set_seq
 		self.interleavers = {}
 		self.initial_state_vector = np.asarray([1, 0]).T
 		self.random_sequence_num = random_sequence_num
@@ -121,11 +122,6 @@ class interleaved_benchmarking:
 				'Pulse sequence': sequence_pulses,
 				'Final state vector': psi,
 				'Final state matrix': rho}
-				
-#	def set_target_gate_pulse(self, pulse):
-#		self.target_gate = pulse
-
-#	def set_interleaving_sequences(self, sequences):
 
 	def reference_benchmark(self):
 		old_target_gate = self.target_gate
@@ -144,93 +140,30 @@ class interleaved_benchmarking:
 		return self.reference_benchmark_result
 
 	def get_dtype(self):
-		dtypes = self.tomo.get_dtype()
-		dtypes['distance'] = float
+		dtypes = self.measurer.get_dtype()
 		dtypes['Pulse sequence'] = object
-		dtypes.update({'{0} fit'.format(a):float for a in self.tomo.reconstruction_basis.keys()})
 		return dtypes
 		
 	def get_opts(self):
-		dtypes = self.tomo.get_opts()
-		dtypes['distance'] = {}
+		dtypes = self.measurer.get_opts()
 		dtypes['Pulse sequence'] = {}
-		#dtypes.update({'{0} fit'.format(a):{} for a in self.tomo.reconstruction_basis.keys()})
 		return dtypes
 		
 	def get_points(self):
 		points = tuple([])
-		_points = {a:points for a in self.tomo.get_points().keys()}
-		_points['distance'] = tuple([])
-		interleaved = [ self.interleave(i['Gate names'], self.target_gate, self.target_gate_unitary, self.target_gate_name) for i in self.interleaving_sequences]
-		_points['Pulse sequence'] = tuple([])#[0], (('Pulse id'), np.arange(len(interleaved[0]['Gate names'])), ''),)
-		#_points.update({'{0} fit'.format(a):points for a in self.tomo.reconstruction_basis.keys()})
+		_points = {a:points for a in self. measurer.get_points().keys()}
+		_points['Pulse sequence'] = tuple([])
 		return _points
 		
 	def set_interleaved_sequence(self, seq_id):
 		seq = self.interleave(self.interleaving_sequences[seq_id]['Gate names'], self.target_gate, self.target_gate_unitary, self.target_gate_name)
-		self.tomo.set_prepare_seq(seq['Pulse sequence'])
+		self.set_seq(seq['Pulse sequence'])
 		self.current_seq = seq
 		
 	def measure(self):
-		#if self.interleaving_sequences:
-		#il_seqs = self.interleaving_sequences
-		#else:
-		#	il_seqs = [self.generate_random_interleaver_sequence(self.sequence_length) for i in range(self.random_sequence_num)]
-		#interleaved = [ self.interleave(i['Gate names'], self.target_gate, self.target_gate_unitary, self.target_gate_name) for i in il_seqs]
+		measurement = self. measurer.measure()
 
-		measurement = self.tomo.measure()		
-		#def set_interleaved_sequence(seq_id):
-		#	self.tomo.set_prepare_seq(interleaved[seq_id]['Pulse sequence'])
-		
-		#results = sweep.sweep(self.tomo, (np.arange(len(interleaved)), set_interleaved_sequence, 'Interleaving sequence id'), 
-		#						output=False, 
-		#						plot=False, header='Interleaved benchmarking sequence sweep')
-		
-		#calculating euclidean distance metric
-		axes = [a for a in self.tomo.reconstruction_basis.keys()]
-		expected_projections = {a:np.trace(np.dot(self.tomo.reconstruction_basis[a]['operator'], self.current_seq['Final state matrix'])) for a in axes}
-									
-		#measurement.update({'{0} fit'.format(i):np.asarray([np.real(expected_projections[i])]) for i in axes})
-		measurement['distance'] = np.asarray([np.real(np.sqrt(np.sum([(np.real(expected_projections[a] - measurement[a]))**2 for a in axes], axis=0)))])
 		measurement['Pulse sequence'] = np.array([object()])
 		measurement['Pulse sequence'][0] = self.current_seq['Gate names']
 		
 		return measurement
-		#print (expected_projections, results)
-		#print (results[axes[0]])
-		#print (results[axes[0]][0])
-		#print (results[axes[0]][1])
-		#print (np.real(np.sqrt(np.sum([(expected_projections[a] - results[a][2])**2 for a in axes], axis=0))))
-		#print (results[axes[0]][3])
-		#results['Euclidean distance'] = (results[axes[0]][0],  
-		#								results[axes[0]][1],
-		#						np.real(np.sqrt(np.sum([(expected_projections[a] - results[a][2])**2 for a in axes], axis=0))),
-		#								results[axes[0]][3])
-		
-		#results['Mean Euclidean distance'] = ([],  
-		#								[],
-		#						np.mean(np.real(np.sqrt(np.sum([(expected_projections[a] - results[a][2])**2 for a in axes], axis=0)))),
-		#								[])
-		
-		#results['Pulse sequences']=((results[axes[0]][0], 'Gate names'), 
-		#							(results[axes[0]][1], np.arange(len(interleaved[0]['Gate names']))),
-		#							np.asarray([i['Gate names'] for i in interleaved]),
-		#							results[axes[0]][3])
-		#results['Pulse sequences']=((results[axes[0]][0]), 
-		#							(results[axes[0]][1]),
-		#							np.array([i['Gate names'] for i in interleaved]),
-		#							results[axes[0]][3])
-		
-		#results.update({'{0} fit'.format(i):(results[i][0], results[i][1], np.real(expected_projections[i]), results[i][3]) for i in axes})
-		
-		# calculating fidelities of measured projections
-		#psi = seq['Final state vector']
-		#results['Fidelity'] = np.sqrt(np.sum([np.einsum('i,ij,jk,kl,j->', np.conj(psi), np.conj(Ut['unitary']), rho, Ut['unitary'], psi) \
-		#							for rho, Ut in zip(, self.tomo.proj_seq)]))
-		
-		#for a in axes:
-		#	plt.close(a)
-		#for p in self.tomo.proj_seq.keys():
-		#	plt.close(a)
-		
-		#return {k:v[2] for k,v in results.items()}

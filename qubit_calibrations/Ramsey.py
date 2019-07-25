@@ -107,7 +107,7 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 
 		if int(fit_results['decay_goodness_test']):
 			return device.exdir_db.select_measurement(measurement_type='fit_dataset_1d',
-													  references_that={'fit_source':measurement})
+													  references_that={'fit_source':measurement.id})
 
 		lengths *= _range
 		target_offset /= _range

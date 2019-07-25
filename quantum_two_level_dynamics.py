@@ -5,7 +5,7 @@ from . import qjson
 import numpy as np
 import warnings
 from . import pulses
-# Maybe we should call this "two-level dynamics"?
+# Maybe we should call this "two-level dynamics"? WUT THE FFFFFUUUUUUCK
 class quantum_two_level_dynamics:
 	def __init__(self, pulse_sequencer, readout_device, ex_channel, ro_channel, ro_sequence, ex_amplitude, readout_measurement_name, qubit_id=None, shuffle=False, plot_separate_thread=True, plot=True, **kwargs):
 		self.pulse_sequencer = pulse_sequencer

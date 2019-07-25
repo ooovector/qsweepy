@@ -21,10 +21,10 @@ def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
 	additional_noise_appears = float(passthrough_measurement.metadata['additional_noise_appears'])
 	if np.isfinite(compression_1db):
 		calibration_type = 'compression_1db'
-		amplitude = compression_1db
+		amplitude = compression_1db*0.75
 	elif np.isfinite(additional_noise_appears):
 		calibration_type = 'additional_noise_appears'
-		amplitude = additional_noise_appears
+		amplitude = additional_noise_appears*0.75
 	else:
 		raise Exception('Compession_1db and additional_noise_appears not found on passthourgh scan!')
 	readout_channel = passthrough_measurement.metadata['channel']
