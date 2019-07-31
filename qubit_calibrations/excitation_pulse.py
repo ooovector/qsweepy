@@ -4,11 +4,41 @@ from . import channel_amplitudes
 import traceback
 from . import Rabi
 from . import gauss_hd
+from .. import pulses
+
+
+def get_hadamard(device, qubit_id):
+	pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2.)
+	channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+		device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
+
+	s_pulse = [(c, pulses.vz, np.pi / 2.) for c, a in channel_amplitudes_.items()]
+	sequence_z = [device.pg.pmulti(0, *tuple(s_pulse))]
+
+	return sequence_z + pi2.get_pulse_sequence(np.pi) + sequence_z
+
+
+def get_s(device, qubit_id):
+	pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2.)
+	channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+		device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
+
+	s_pulse = [(c, pulses.vz, np.pi / 2.) for c, a in channel_amplitudes_.items()]
+	sequence_z = [device.pg.pmulti(0, *tuple(s_pulse))]
+
+	return sequence_z
+
+
+def get_not(device, qubit_id):
+	pi = get_excitation_pulse(device, qubit_id, np.pi)
+	return pi.get_pulse_sequence(0.0)
 
 
 def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase):
-	if tail_length > 0:	channel_pulses = [(c, device.pg.rect_cos, a*np.exp(1j*phase), tail_length) for c, a in channel_amplitudes.items()]
-	else:				channel_pulses = [(c, device.pg.rect,	  a*np.exp(1j*phase)			 ) for c, a in channel_amplitudes.items()]
+	if tail_length > 0:
+		channel_pulses = [(c, device.pg.rect_cos, a*np.exp(1j*phase), tail_length) for c, a in channel_amplitudes.items()]
+	else:
+		channel_pulses = [(c, device.pg.rect,     a*np.exp(1j*phase)) for c, a in channel_amplitudes.items()]
 
 	return [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
 

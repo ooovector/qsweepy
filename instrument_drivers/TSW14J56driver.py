@@ -74,7 +74,7 @@ class TSW14J56_evm_reducer():
 			elif self.avg_cov_mode == 'iq':
 				dtypes.update({'avg_cov'+str(i):complex for i in range(self.adc.num_covariances//2)})
 		if self.resultnumber:
-			dtypes.update({'resultnumbers': int})
+			dtypes.update({'resultnumbers': float})
 		return (dtypes)
 
 	def get_opts(self):

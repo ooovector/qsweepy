@@ -49,10 +49,10 @@ pulsed_settings = {'lo1_power': 18,
                    'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
-                   'trigger_readout_length': 20e-9,
+                   'trigger_readout_length': 200e-9,
                    'modem_dc_calibration_amplitude': 1.0,
                    'adc_nop': 1024,
-                   'adc_nums': 20000,  ## Do we need control over this? Probably, but not now...
+                   'adc_nums': 50000,  ## Do we need control over this? Probably, but not now... WUT THE FUCK MAN
                    }
 
 
@@ -152,7 +152,7 @@ class hardware_setup():
         self.hdawg.set_trig_level(0.6)
 
         for sequencer in range(4):
-            self.hdawg.set_awg_program(sequencer=sequencer, text_program=self.hdawg.current_program)
+            self.hdawg.send_cur_prog(sequencer=sequencer)
             self.hdawg.set_marker_out(channel=np.int(2 * sequencer), source=4)  # set marker 1 to awg mark out 1 for sequencer
             self.hdawg.set_marker_out(channel=np.int(2 * sequencer + 1),
                                source=7)  # set marker 2 to awg mark out 2 for sequencer
@@ -181,7 +181,7 @@ class hardware_setup():
             self.awg_tek.set_offset(self.pulsed_settings['awg_tek_ch{}_offset'.format(channel)], channel=channel)
             self.awg_tek.set_output(1, channel=channel)
             self.awg_tek.set_waveform([0] * global_num_points, channel=channel)
-        # awg_tek.set_amplitude(1.0, channel=4)
+        # awg_tek.set_amplitude(1.0,f channel=4)
         # awg_tek.set_amplitude(2.0, channel=3)
         self.awg_tek.run()
 

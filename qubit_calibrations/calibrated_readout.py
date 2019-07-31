@@ -76,6 +76,8 @@ def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalib
         thresholds.append(measurement.datasets['threshold'].data.ravel()[0])
 
     readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True)
+    nums = int(device.get_sample_global(name='calibrated_readout_nums'))
+    readout_device.set_nums(nums)
     return qubit_readout_pulse, readout_device  # , features, thresholds
 
 

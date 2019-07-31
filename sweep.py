@@ -164,6 +164,7 @@ def sweep(measurer, *parameters, shuffle=False,
         nonlocal state
         indeces = list(indeces)
         for dataset in single_measurement_result.keys():
+            print (dataset)
             state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
             state.datasets[dataset].indeces_updates = tuple(indeces+[...])
         state.done_sweeps += 1
@@ -188,6 +189,7 @@ def sweep(measurer, *parameters, shuffle=False,
         if state.request_stop_acq:
             break
         # check which values have changed this sweep
+        measurement_start = time.time()
         old_parameter_values = state.parameter_values
         state.parameter_values = [sweep_parameters[parameter_id].values[value_id] for parameter_id, value_id in enumerate(indeces)]
         changed_values = np.logical_not(np.equal(old_parameter_values, state.parameter_values))#[old_parameter_values!=state.parameter_values for old_val, val in zip(old_vals, vals)]
@@ -198,7 +200,7 @@ def sweep(measurer, *parameters, shuffle=False,
                 sweep_parameter.setter(value)
                 sweep_parameter.setter_time += time.time() - setter_start
         #measuring
-        measurement_start = time.time()
+
         if hasattr(measurer, 'measure_deferred_result') and use_deferred:
             measurer.measure_deferred_result(set_single_measurement_result, (indeces, ))
         else:

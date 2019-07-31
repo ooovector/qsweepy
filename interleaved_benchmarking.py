@@ -3,16 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class interleaved_benchmarking:
-	def __init__(self, measurer, set_seq, random_sequence_num=8):
+	def __init__(self, measurer, set_seq, interleavers = None, random_sequence_num=8):
 		self.measurer = measurer
 		self.set_seq = set_seq
 		self.interleavers = {}
-		self.initial_state_vector = np.asarray([1, 0]).T
+
+		if interleavers is not None:
+			for name, gate in interleavers.items():
+				self.add_interleaver(name, gate['pulses'], gate['unitary'])
+
+		#self.initial_state_vector = np.asarray([1, 0]).T
+
 		self.random_sequence_num = random_sequence_num
 		self.sequence_length = 20
 		
 		self.target_gate = []
-		self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=np.complex)
+		#self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=np.complex)
 		self.target_gate_name = 'Identity (benchmarking)'
 		
 		self.reference_benchmark_result = None
@@ -37,6 +43,7 @@ class interleaved_benchmarking:
 		# return the name of the best interleaver
 		# the whole 'pulse name' logic is stupid
 		# if gates are better parameterized by numbers rather than names (which is true for non-Cliffords)
+
 		name = min(good_interleavers_length, key=good_interleavers_length.get)
 		return name, self.interleavers[name]
 	
@@ -48,12 +55,17 @@ class interleaved_benchmarking:
 		self.prepare_random_interleaving_sequences()
 	
 	def set_target_pulse(self, x):
-		self.target_gate = x
+		self.target_gate = x['pulses']
+		self.target_gate_unitary = x['unitary']
 	
 	def prepare_random_interleaving_sequences(self):
 		self.interleaving_sequences = [self.generate_random_interleaver_sequence(self.sequence_length) for i in range(self.random_sequence_num)]
 	
-	def add_intervealer(self, name, pulse_seq, unitary):
+	def add_interleaver(self, name, pulse_seq, unitary):
+		self.d = unitary.shape[0]
+		self.initial_state_vector = np.zeros(self.d)
+		self.initial_state_vector[0] = 1.
+		self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
 		self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 		
 	def generate_interleaver_sequence_from_names(self, names):
@@ -94,6 +106,8 @@ class interleaved_benchmarking:
 		
 	# TODO: density matrix evolution operator for non-hamiltonian mechnics
 	def interleave(self, sequence_gate_names, pulse, unitary, gate_name):
+
+
 		sequence_unitaries = [self.interleavers[i]['unitary'] for i in sequence_gate_names]
 		
 		sequence_pulses = []
@@ -141,18 +155,18 @@ class interleaved_benchmarking:
 
 	def get_dtype(self):
 		dtypes = self.measurer.get_dtype()
-		dtypes['Pulse sequence'] = object
+		#dtypes['Sequence'] = object
 		return dtypes
 		
 	def get_opts(self):
-		dtypes = self.measurer.get_opts()
-		dtypes['Pulse sequence'] = {}
-		return dtypes
+		opts = self.measurer.get_opts()
+		#opts['Sequence'] = {}
+		return opts
 		
 	def get_points(self):
-		points = tuple([])
-		_points = {a:points for a in self. measurer.get_points().keys()}
-		_points['Pulse sequence'] = tuple([])
+		#points = tuple([])
+		_points = {keys:values for keys, values in self. measurer.get_points().items()}
+		#_points['Sequence'] = points
 		return _points
 		
 	def set_interleaved_sequence(self, seq_id):
@@ -163,7 +177,7 @@ class interleaved_benchmarking:
 	def measure(self):
 		measurement = self. measurer.measure()
 
-		measurement['Pulse sequence'] = np.array([object()])
-		measurement['Pulse sequence'][0] = self.current_seq['Gate names']
+		#measurement['Pulse sequence'] = np.array([object()])
+		#measurement['Sequence'] = self.current_seq['Gate names']
 		
 		return measurement

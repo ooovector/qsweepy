@@ -60,23 +60,54 @@ class multiqubit_tomography:
 	
 	def set_prepare_seq(self, seq):
 		self.prepare_seq = seq
-	
-	def measure(self):
-		meas = {}
-		basis_axes_names = self.reconstruction_basis.keys()
-		basis_vector_norms = np.asarray([np.linalg.norm(self.reconstruction_basis[r]['operator']) for r in basis_axes_names])
-		
-		reconstruction_matrix = []
-		measurement_results = []
-		
+
+	def reconstruct(self, measurement_results):
 		reconstruction_operator_names = []
 		reconstruction_operators = []
-		
+		basis_axes_names = self.reconstruction_basis.keys()
+		basis_vector_norms = np.asarray(
+			[np.linalg.norm(self.reconstruction_basis[r]['operator']) for r in basis_axes_names])
+
 		for reconstruction_operator_name, reconstruction_operator in self.reconstruction_basis.items():
 			reconstruction_operator_names.append(reconstruction_operator_name)
 			reconstruction_operators.append(reconstruction_operator['operator'])
-			#measurement_results.append(reconstruction_operator)
+
+		reconstruction_matrix = []
+		for rot, projection in self.proj_seq.items():
+			for measurement_name, projection_operator in projection['operators'].items():
+				reconstruction_matrix.append([np.sum(projection_operator * np.conj(reconstruction_operator)) / np.sum(
+					np.abs(reconstruction_operator) ** 2) for reconstruction_operator in reconstruction_operators])
+
+		# measurement_results.append(reconstruction_operator)
+
+		reconstruction_matrix_pinv = np.linalg.pinv(reconstruction_matrix)
+		self.reconstruction_matrix = reconstruction_matrix
+		self.reconstruction_matrix_pinv = reconstruction_matrix_pinv
+
+		#print ('reconstruction_matrix (real): ', np.real(reconstruction_matrix).astype(int))
+		#print('reconstruction_matrix (imag): ', np.imag(reconstruction_matrix).astype(int))
+		#print ('measured projections: ', measurement_results)
+
+		projections = np.dot(reconstruction_matrix_pinv, measurement_results)
+		#print('reconstruction_results (real): ', np.real(projections))
+		#print('reconstruction_results (imag): ', np.imag(projections))
+
+		reconstruction = {str(k):v for k,v in zip(basis_axes_names, projections)}
+
+		if self.reconstruction_output_mode == 'array':
+			it = np.nditer([self.reconstruction_output_array, None], flags=['refs_ok'], op_dtypes=(object, complex))
+			with it:
+				for x, z in it:
+					z[...] = reconstruction[str(x)]
+				reconstruction = it.operands[1]
+
+		return reconstruction
+
+	def measure(self):
+		meas = {}
+		measurement_results = []
 		
+
 		for rot, projection in self.proj_seq.items():
 			if 'pre_pulses' in self.proj_seq[rot]:
 				self.pulse_generator.set_seq(self.proj_seq[rot]['pre_pulses']+self.prepare_seq+self.proj_seq[rot]['pulses'])
@@ -86,10 +117,10 @@ class multiqubit_tomography:
 			#print (projection.keys())
 			measurement_ordered = [measurement[readout_name] for readout_name in self.readout_names]
 			#print (rot)
-			print ('uncorreted:', measurement)
-			measurement_corrected = np.linalg.lstsq(self.confusion_matrix.T, measurement_ordered)[0]
-			measurement = {readout_name:measurement for readout_name, measurement in zip(self.readout_names, measurement_corrected)}
-			print ('corrected:', measurement)
+			#print ('uncorreted:', measurement)
+			#measurement_corrected = np.linalg.lstsq(self.confusion_matrix.T, measurement_ordered)[0]
+			#measurement = {readout_name:measurement for readout_name, measurement in zip(self.readout_names, measurement_corrected)}
+			#print ('corrected:', measurement)
 			
 			for measurement_name, projection_operator in projection['operators'].items():
 				measurement_basis_coefficients = []
@@ -97,19 +128,21 @@ class multiqubit_tomography:
 				
 				meas[projection_operator_name] = measurement[measurement_name]
 				measurement_results.append(measurement[measurement_name])
-				reconstruction_matrix.append([np.sum(projection_operator*np.conj(reconstruction_operator))/np.sum(np.abs(reconstruction_operator)**2) \
-													for reconstruction_operator in reconstruction_operators])
-		reconstruction_matrix_pinv = np.linalg.pinv(reconstruction_matrix)
-		self.reconstruction_matrix = reconstruction_matrix
-		self.reconstruction_matrix_pinv = reconstruction_matrix_pinv
 
-		print ('reconstruction_matrix (real): ', np.real(reconstruction_matrix).astype(int))
-		print('reconstruction_matrix (imag): ', np.imag(reconstruction_matrix).astype(int))
-		print ('measured projections: ', measurement_results)
+		self.measurement_results = measurement_results
+		reconstruction = self.reconstruct(measurement_results)
 
-		projections = np.dot(reconstruction_matrix_pinv, measurement_results)
-		print('reconstruction_results (real): ', np.real(projections))
-		print('reconstruction_results (imag): ', np.imag(projections))
+		#reconstruction_matrix_pinv = np.linalg.pinv(reconstruction_matrix)
+		#self.reconstruction_matrix = reconstruction_matrix
+		#self.reconstruction_matrix_pinv = reconstruction_matrix_pinv
+
+		#print ('reconstruction_matrix (real): ', np.real(reconstruction_matrix).astype(int))
+		#print('reconstruction_matrix (imag): ', np.imag(reconstruction_matrix).astype(int))
+		#print ('measured projections: ', measurement_results)
+
+		#projections = np.dot(reconstruction_matrix_pinv, measurement_results)
+		#print('reconstruction_results (real): ', np.real(projections))
+		#print('reconstruction_results (imag): ', np.imag(projections))
 
 		if self.output_mode == 'array':
 			it = np.nditer([self.output_array, None], flags=['refs_ok'], op_dtypes=(object, float))
@@ -119,18 +152,10 @@ class multiqubit_tomography:
 					z[...] = meas[str(x)]
 				meas = {'measurement': it.operands[1]}   # same as z
 
-		reconstruction = {str(k):v for k,v in zip(basis_axes_names, projections)}
-		print ('reconstruction', reconstruction)
-		if self.reconstruction_output_mode == 'single':
-			if len(reconstruction_operators) > 0:
-				meas.update(reconstruction)
-
-		elif self.reconstruction_output_mode == 'array':
-			it = np.nditer([self.reconstruction_output_array, None], flags=['refs_ok'], op_dtypes=(object, complex))
-			with it:
-				for x, z in it:
-					z[...] = reconstruction[str(x)]
-				meas['reconstruction'] = it.operands[1]
+		if self.reconstruction_output_mode == 'array':
+			meas['reconstruction'] = reconstruction
+		else:
+			meas.update(reconstruction)
 
 		return meas
 		
