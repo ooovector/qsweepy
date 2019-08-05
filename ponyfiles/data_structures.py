@@ -95,7 +95,7 @@ class MeasurementState:
         self.metadata = {k:str(v) for k,v in self.metadata.items()}
 
     def __str__(self):
-        format_str =  '''start: {start}, started/done/total sweeps: {started}/{done}/{total}, 
+        format_str = '''start: {start}, started/done/total sweeps: {started}/{done}/{total}, 
 Measured data: \n{datasets}'''
         datasets_str = '\n'.join(['\'{}\': {}'.format(dataset_name, dataset.__str__()) for dataset_name, dataset in self.datasets.items()])
         return format_str.format(start=self.start, started=self.started_sweeps, done=self.done_sweeps, total=self.total_sweeps, datasets=datasets_str)
@@ -114,7 +114,7 @@ class MeasurementDataset:
         try:
             self.data_squeezed = np.squeeze(self.data)
         except RuntimeError:
-            self.data_squeezed = self.data.ravel()
+                self.data_squeezed = self.data.ravel()
 
     def __getattr__(self, attr_name):
         if attr_name != 'data':

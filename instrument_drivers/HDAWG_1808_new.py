@@ -10,12 +10,18 @@ import numpy as np
 
 
 class Zurich_HDAWG1808():
-
     def __init__(self, device_id, config=0, clock=1e9, nop=1000):
-        '''
-        Initializes
+        """
+        Parameters
+        ----------
+        device_id
+        config
+        clock
+        nop
 
-        '''
+        Initializes
+        """
+
         # Settings
         apilevel_example = 6  # The API level supported by this example.
         (self.daq, self.device, _) = zhinst.utils.create_api_session(device_id, apilevel_example,
@@ -47,6 +53,8 @@ class Zurich_HDAWG1808():
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
+        self.wave_lengths_default = [200, 600, 2000, 6000, 20000]
+        self.wave_lengths = tuple(self.wave_lengths_default)
         # self.repetition_period=
 
         self.amplitudes = np.ones((8))
@@ -113,59 +121,31 @@ class Zurich_HDAWG1808():
         self.set_dig_trig2_source(sources=self.source_dig_trig_2)
         self.set_dig_trig1_slope(slope=self.slope_dig_trig_1)
         self.set_dig_trig2_slope(slope=self.slope_dig_trig_2)
-        self.wavelengths = [10000]*4
         self.known_programs = {}  # dictionary of AWG pograms for each sequencer
-        self.initial_program = None  # name of current program
 
-        self.initial_param_values_list = [{'predelay': self.predelay,
+        self.initial_param_values = {'predelay': self.predelay,
                                      'postdelay': self.postdelay,
                                      'nop': self._nop,
-                                     'wavelength':wavelength,
+                                     'nsupersamp': self._nop//8,
+                                     'wave_lengths':self.wave_lengths,
                                      'marker_delay_I': 0,
                                      'marker_length_I': 1000,
                                      'marker_delay_Q': 0,
                                      'marker_length_Q': 1000,
                                      'rep_rate': int(self.rep_rate),
-                                     'userReg': 0,
-                                     } for wavelength in self.wavelengths]
-        self.clear_program = textwrap.dedent('''\ 
-		''')
-        self.current_programs = [textwrap.dedent('''\
-		const n_nop={nop};
-		const wavelength={wavelength};
-		const wait_time1={predelay};
-		const wait_time2={postdelay}; 		
-		const marker_start_I = {marker_delay_I};
-		const marker_length_I = {marker_length_I};
-		const marker_start_Q = {marker_delay_Q};
-		const marker_length_Q = {marker_length_Q};
-		wave w_rect_I = zeros(wavelength);
-		wave w_rect_Q = zeros(wavelength);
-		wave w_left_I = marker(marker_start_I, 0);
-		wave w_center_I = marker(marker_length_I, 1);
-		wave w_right_I = marker(wavelength-marker_start_I-marker_length_I, 0);
-		wave w_marker_I = join(w_left_I,w_center_I, w_right_I);
-		wave w_rect_marker_I = w_rect_I + w_marker_I;
-		wave w_left_Q = marker(marker_start_Q, 0);
-		wave w_center_Q = marker(marker_length_Q, 2);
-		wave w_right_Q = marker(wavelength-marker_start_Q-marker_length_Q, 0);
-		wave w_marker_Q = join(w_left_Q,w_center_Q, w_right_Q);
-		wave w_rect_marker_Q = w_rect_Q + w_marker_Q;
-		
-		repeat({rep_rate}) {{
-		waitDigTrigger(1);
-		wait(getUserReg({userReg}));
-		playWave(w_rect_marker_I,w_rect_marker_Q);
-		waitWave();
-		wait(0);
-		waitWave();
-		}}
-		
-		'''.format(**initial_param_values)) for initial_param_values in self.initial_param_values_list]
+                                     'pre_delay_reg': 0,
+                                     'wave_length_reg': 1,
+                                     }
 
         self.awgModule = self.daq.awgModule()
         self.awgModule.set('awgModule/device', self.device)
         self.awgModule.execute()
+
+        self.current_programs = ['' for i in range(4)]
+        for sequencer_idx in range(4):
+            self.set_cur_prog(self.initial_param_values, sequencer_idx)
+            self.send_cur_prog(sequencer_idx)
+
 
     def clear(self):
         for sequencer_id in range(0, 4):
@@ -177,42 +157,48 @@ class Zurich_HDAWG1808():
         self.stop()
 
     def set_cur_prog(self, parameters, sequencer_idx):
+        definition_fragments = []
+        play_fragments = []
 
-        self.current_programs[sequencer_idx] = textwrap.dedent('''\
-		const n_nop={nop};
-		const wavelength={wavelength};
-		const wait_time1={predelay};
-		const wait_time2={postdelay}; 		
-		const marker_start_I = {marker_delay_I};
-		const marker_length_I = {marker_length_I};
-		const marker_start_Q = {marker_delay_Q};
-		const marker_length_Q = {marker_length_Q};
-		wave w_rect_I = zeros(wavelength);
-		wave w_rect_Q = zeros(wavelength);
-		wave w_left_I = marker(marker_start_I, 0);
-		wave w_center_I = marker(marker_length_I, 1);
-		wave w_right_I = marker(wavelength-marker_start_I-marker_length_I, 0);
-		wave w_marker_I = join(w_left_I,w_center_I, w_right_I);
-		wave w_rect_marker_I = w_rect_I + w_marker_I;
-		wave w_left_Q = marker(marker_start_Q, 0);
-		wave w_center_Q = marker(marker_length_Q, 2);
-		wave w_right_Q = marker(wavelength-marker_start_Q-marker_length_Q, 0);
-		wave w_marker_Q = join(w_left_Q,w_center_Q, w_right_Q);
-		wave w_rect_marker_Q = w_rect_Q + w_marker_Q;
-		
-		repeat({rep_rate}) {{
-		waitDigTrigger(1);
-		wait(getUserReg({userReg}));
-		playWave(w_rect_marker_I,w_rect_marker_Q);
-		waitWave();
-		wait(0);
-		waitWave();
-		}}
-		
-		'''.format(**parameters))
+        for wave_length_id, wave_length in enumerate(self.wave_lengths):
+            definition_fragments.append(textwrap.dedent('''
+            wave w_marker_I_{wave_length} = join(marker(1, 1), marker({wave_length} - 1, 0));
+            wave w_marker_Q_{wave_length} = join(marker(1, 2), marker({wave_length} - 1, 0));
+            wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
+            wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
+            '''.format(wave_length = wave_length)))
+            play_fragments.append(textwrap.dedent('''
+            if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+                repeat({rep_rate}) {{
+                    waitDigTrigger(1);
+                    wait(getUserReg({pre_delay_reg}));
+                    playWave(w_I_{wave_length},w_Q_{wave_length});
+                    waitWave();
+                    wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+                    waitWave();
+                }}
+            }}
+            ''').format(wave_length = wave_length, wave_length_supersamp = wave_length//8, **parameters))
+        zero_length_program = textwrap.dedent('''
+        if (getUserReg({wave_length_reg}) == 0) {{
+            repeat({rep_rate}) {{
+                waitDigTrigger(1);
+                wait({nsupersamp});
+                waitWave();
+            }}
+        }}
+        ''').format(**parameters)
+        self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)+zero_length_program
 
     def send_cur_prog(self, sequencer):
         awg_program = self.current_programs[sequencer]
+
+        self._waveforms[sequencer * 2 + 0] = np.zeros(self.get_nop())
+        self._waveforms[sequencer * 2 + 1] = np.zeros(self.get_nop())
+        self._markers[sequencer * 2 + 0] = np.zeros(self.get_nop())
+        self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
+        self._markers[sequencer * 2 + 0][0] = 1
+        self._markers[sequencer * 2 + 1][0] = 1
 
         if (sequencer > (self.num_seq - 1)):
             print('awg_config={}. Max sequencer number ={}'.format(self.awg_config, (self.num_seq - 1)))
@@ -276,9 +262,12 @@ class Zurich_HDAWG1808():
         if self._nop != numpts:
             self._nop = numpts
             self._waveforms = [None] * 8
+        self.initial_param_values['nop'] = numpts
+        self.initial_param_values['nsupersamp'] = numpts//8
+        self.wave_lengths = tuple(self.wave_lengths_default+[numpts])
         for sequencer in range(0, 4):
-            self.initial_param_values_list[sequencer].update([['nop', numpts]])
-            self.set_cur_prog(self.initial_param_values_list[sequencer], sequencer)
+            self.set_cur_prog(self.initial_param_values, sequencer)
+            self.send_cur_prog(sequencer)
 
     def get_nop(self):
         return self._nop
@@ -592,213 +581,117 @@ class Zurich_HDAWG1808():
         else:
             self._marker[channel] = marker
 
-    def set_waveform(self, channel, waveform, index=0, optimized = False):
-        # self.stop()
+    def set_waveform(self, channel, waveform):
         sequencer = channel // 2
-        filename = 'test_sequencer{0}.wfm'.format(sequencer)
 
-        wave_index = channel % 2
+        waveform_nop = np.zeros(self.get_nop(), dtype=float)
+        waveform = waveform[:self.get_nop()]
+        waveform_nop[:len(waveform)] = waveform
+
+        if self._waveforms[channel] is not None:
+            if len(waveform) == len(self._waveforms[channel]):
+                if np.sum(np.abs(waveform-self._waveforms[channel]))<1e-5:
+                    return
+
+        self._waveforms[channel] = waveform
+        self.set_sequencer(sequencer)
+
+    def set_digital(self, marker, channel):
+        sequencer = channel // 2
+
+        marker_nop = np.zeros(self.get_nop(), dtype=int)
+        marker = marker[:self.get_nop()]
+        marker_nop[:len(marker)] = marker
+
+        if self._markers[channel] is not None:
+            if len(marker) == len(self._markers[channel]):
+                if np.sum(np.abs(marker-self._markers[channel])) < 1e-5:
+                    return
+
+        self._markers[channel] = marker
+        self.set_sequencer(sequencer)
+
+    def set_sequencer(self, sequencer):
         self.stop_seq(sequencer=sequencer)
-        num_points = self.get_nop()
+        waveformI = self._waveforms[sequencer * 2 + 0]
+        waveformQ = self._waveforms[sequencer * 2 + 1]
+        markerI = self._markers[sequencer * 2 + 0]
+        markerQ = self._markers[sequencer * 2 + 1]
 
-        nonzero = np.nonzero(waveform)[0]
-        print(nonzero.shape)
+        nonzero_sig = np.abs(waveformI)+np.abs(waveformQ)+np.abs(markerI)+np.abs(markerQ) > 1e-5
+        nonzero = np.nonzero(nonzero_sig)[0]
 
-        if len(waveform) == len(self._waveforms[channel]):
-            if np.sum(np.abs(waveform-self._waveforms[channel]))<1e-5:
-                return
-
-        if len(nonzero) > 10000 or optimized is False:  # KOSTYL MAZAFAKA SUKA TODO BLYAT OPTIMIZATION
-            self.Predelay[sequencer] = 0
-            old_wavelength = self.wavelengths[sequencer]
-            self.wavelengths[sequencer] = num_points
-            if old_wavelength != self.wavelengths[sequencer]:
-                # self.clear()
-                self.initial_param_values_list[sequencer].update({"wavelength": self.wavelengths[sequencer]})
-                self.set_cur_prog(self.initial_param_values_list[sequencer], sequencer)
-                self.send_cur_prog(sequencer)
+        if len(nonzero) == 0:
+            wave_length = 0
         else:
-            try:
-                self.Predelay[sequencer] = nonzero[0]
-            except IndexError:
+            first_point = int(np.floor(nonzero[0]/8)*8)
+            last_point = int(np.ceil((nonzero[-1]+1)/8)*8)
+
+            post_delay = self.get_nop() - last_point
+
+            wave_length_nonzero = last_point - first_point
+            wave_length_found = False
+            for wave_length_available in self.wave_lengths:
+                if wave_length_available >= wave_length_nonzero:
+                    wave_length = wave_length_available
+                    wave_length_found = True
+                    break
+            if not wave_length_found:
+                raise ValueError('Waveform too long on sequencer {}'.format(sequencer))
+
+            self.Predelay[sequencer] = self.get_nop()-post_delay-wave_length
+            if self.Predelay[sequencer] < 0:
+                post_delay += -self.Predelay[sequencer]
                 self.Predelay[sequencer] = 0
-            residual_points = num_points - self.Predelay[sequencer]
 
-            old_wavelength = self.wavelengths[sequencer]
-            self.wavelengths[sequencer] = res
+            waveformI_truncated = waveformI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
+            waveformQ_truncated = waveformQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
+            markerI_truncated = markerI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
+            markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
 
+            #self.Postdelay[sequencer] = post_delay
 
-            if old_wavelength != self.wavelengths[sequencer]:
-                self.send_waveform(sequencer, index, filename,
-                                   np.zeros(old_wavelength),
-                                   np.zeros(old_wavelength),
-                                   np.zeros(old_wavelength, dtype=np.int),
-                                   np.zeros(old_wavelength, dtype=np.int))
+            ch1 = np.asarray(waveformI_truncated * (2 ** 13 - 1), dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
+            ch2 = np.asarray(waveformQ_truncated * (2 ** 13 - 1), dtype=np.int16)
+            m1 = np.asarray(markerI_truncated, dtype=np.uint16)
+            m2 = 2 * np.asarray(markerQ_truncated, dtype=np.uint16)
+            vector = np.asarray(np.transpose([ch1, ch2]).ravel())
+            markers = np.asarray(np.transpose([m1, m2]).ravel())
+            vector = (vector << 2 | markers).astype('int16')
 
-                self.initial_param_values_list[sequencer].update({"wavelength": self.wavelengths[sequencer]})
-                self.set_cur_prog(self.initial_param_values_list[sequencer], sequencer)
-                self.send_cur_prog(sequencer)
+            self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
+            # self.daq.sync()
+            self.daq.vectorWrite('/' + self.device + '/awgs/%d/waveform/data' % sequencer, vector)
+            # self.daq.sync()
 
-        #self.Postdelay[channel] =len(waveform)-1-np.nonzero(waveform)[0][len(np.nonzero(waveform)[0]) - 1]
-        self.Postdelay[sequencer] = num_points-self.Predelay[sequencer]-self.wavelengths[sequencer]
-        # index=0 #for standart sequence programm
-        index1 = self.Predelay[sequencer]
-        wave = waveform[index1:index1+self.wavelengths[sequencer]]
-        # print(self.Predelay, self.Postdelay, self.wavelengths[sequencer])
+            self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)
+            # self.daq.setInt('/' + self.device + '/awgs/%d/enable'%sequencer, 1)
+            self.daq.sync()
 
-        wave1 = np.zeros((self.wavelengths[sequencer],), dtype=np.float)
-        wave2 = np.zeros((self.wavelengths[sequencer],), dtype=np.float)
-        marker1 = np.zeros((self.wavelengths[sequencer],), dtype=np.int)
-        marker2 = np.zeros((self.wavelengths[sequencer],), dtype=np.int)
+            print ('first_point: ', first_point,
+               'last_point: ', last_point,
+               'waveformI length', waveformI.shape,
+               'waveformQ length', waveformQ.shape,
+               'markerI length', len(markerI),
+               'markerQ length', len(markerQ),
+               'wave_length', wave_length,
+               'nop', self.get_nop(),
+               'post_delay', post_delay,
+               'pre_delay', self.Predelay[sequencer],
+               'pre_delay_reg', int(self.Predelay[sequencer]//8),
+            )
 
-        # add waveforms for real channels (we need 2 waveforms for 2 awg channels for one sequencer)
-        if (wave_index == 0):
-            channel1 = channel  # zero sequencers output
-            channel2 = channel + 1  # first sequencers output
-            # First waveform. Initialy I channel
-            if len(wave) < len(wave1):
-                wave1[:len(wave)] = wave
-            else:
-                wave1[:] = wave[:len(wave1)]
-            # check second waveform. Initialy Q channel. If self.waveforms[channel2] is none -> wave2 stays zeros, else wave2 is changed by self.waveforms[channel2]
-            if not (self._waveforms[channel2] is None):
-                if len(self._waveforms[channel2]) < len(wave2):
-                    wave2[:len(self._waveforms[channel2])] = self._waveforms[channel2]
-                else:
-                    wave2[:] = self._waveforms[channel2][:len(wave2)]
-            # Write waveform to self.waveforms[channel] to remember
-            self._waveforms[channel] = wave1
-        else:
-            channel1 = channel - 1  # zero sequencers output
-            channel2 = channel  # first sequencers output
-            # Check first waveform. Initialy I channel. If self.waveforms[channel1] is none -> wave1 stays zeros, else wave1 is changed by self.waveforms[channel1]
-            if not (self._waveforms[channel1] is None):
-                if len(self._waveforms[channel1]) < len(wave1):
-                    wave1[:len(self._waveforms[channel1])] = self._waveforms[channel1]
-                else:
-                    wave1[:] = self._waveforms[channel1][:len(wave1)]
-            # Second waveform. Initialy Q channel.
-            if len(wave) < len(wave2):
-                wave2[:len(wave)] = wave
-            else:
-                wave2[:] = wave[:len(wave2)]
-            # Write waveform to self.waveforms[channel] to remember
-            self._waveforms[channel] = wave2
-
-        # add markers
-        # If self._markers[channel1] is none -> marker1 stays zeros, else marker1 is changed by self._marker[channel1]
-        if not (self._markers[channel1] is None):
-            if len(self._markers[channel1]) < len(marker1):
-                marker1[:len(self._markers[channel1])] = self._markers[channel1]
-            else:
-                marker1[:] = self._markers[channel1][:len(marker1)]
-
-        # If self._markers[channel2] is none -> marker2 stays zeros, else marker2 is changed by self._marker[channel1]
-        if not (self._markers[channel2] is None):
-            if len(self._markers[channel2]) < len(marker2):
-                marker2[:len(self._markers[channel2])] = self._markers[channel2]
-            else:
-                marker2[:] = self._markers[channel2][:len(marker2)]
-
-
-        # Send wave1 for sequencer output 0, wave2 for sequencer output 1, marker1 for sequencer marker 0, marker2 for sequencer marker 1
-
-        self.send_waveform(sequencer, index, filename, wave1, wave2, marker1, marker2)
-
-    # self.set_output(channel=channel1, output=1)
-    # self.set_output(channel=channel2, output=1)
-
-    # exp_setting = [['/%s/sigouts/%d/on'%(self.device, channel), 1]]
-    # self.daq.set(exp_setting)
-    # self.daq.sync()
+        self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
+                sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
+                        int(self.Predelay[sequencer]//8))
+        self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
+                sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
+                        wave_length//8)
 
     def get_waveform(self, channel):
         return self._waveforms[channel]
 
-    def set_digital(self, marker, channel, index=0):
-        # self.stop()
-        sequencer = channel // 2
-        wave_index = channel % 2
-        self.stop_seq(sequencer=sequencer)
-        num_points = self.get_nop()
-        # index=0 #for standart sequence programm
-        nonzero = np.nonzero(marker)[0]
-        print("Digital nozero", nonzero.shape)
-        if len(nonzero) == 0:
-            self.Predelay[sequencer] = num_points - self.wavelengths[sequencer]
-        elif len(nonzero) > 10000:  # KOSTYL MAZAFAKA SUKA TODO BLYAT OPTIMIZATION
-            self.Predelay[sequencer] = 0
-            self.wavelengths[sequencer] = num_points
-        else:
-            self.wavelengths[sequencer] = 10000
-            self.Predelay[sequencer] = nonzero[0]
 
-        # self.Postdelay[sequencer] =len(marker)-1-np.nonzero(marker)[0][len(np.nonzero(marker)[0]) - 1]
-        self.Postdelay[sequencer] = num_points - self.Predelay[sequencer] - self.wavelengths[sequencer]
-        # index=0 #for standart sequence programm
-        index1 = self.Predelay[sequencer]
-        mark = marker[index1:index1+self.wavelengths[sequencer]]
-
-        wave1 = np.zeros((self.wavelengths[sequencer],), dtype=np.float)
-        wave2 = np.zeros((self.wavelengths[sequencer],), dtype=np.float)
-        marker1 = np.zeros((self.wavelengths[sequencer],), dtype=np.int)
-        marker2 = np.zeros((self.wavelengths[sequencer],), dtype=np.int)
-
-
-        # add Markers
-        if (wave_index == 0):
-            channel1 = channel  # zero sequencers output
-            channel2 = channel + 1  # first sequencers output
-            # First marker.
-            if len(mark) < len(marker1):
-                marker1[:len(mark)] = mark
-            else:
-                marker1[:] = mark[:len(marker1)]
-            # Second marker. If self._marker[channel2] is none -> marker2 stays zeros, else marker2 is changed by self.waveforms[channel2]
-            if not (self._markers[channel2] is None):
-                if len(self._markers[channel2]) < len(marker2):
-                    marker2[:len(self._markers[channel2])] = self._markers[channel2]
-                else:
-                    marker2[:] = self._markers[channel2][:len(marker2)]
-            # Write marker to self._markers[channel] to remember
-            self._markers[channel] = marker1
-        else:
-            channel1 = channel - 1  # zero sequencers output
-            channel2 = channel  # first sequencers output
-            # Check first waveform. If self._markers[channel1] is none -> marker1 stays zeros, else marker1 is changed by self._markers[channel1]
-            if not (self._markers[channel1] is None):
-                if len(self._markers[channel1]) < len(marker1):
-                    marker1[:len(self._markers[channel1])] = self._markers[channel1]
-                else:
-                    marker1[:] = self._markers[channel1][:len(marker1)]
-            # Second marker.
-            if len(mark) < len(marker2):
-                marker2[:len(mark)] = mark
-            else:
-                marker2[:] = mark[:len(marker2)]
-            # Write marker to self._markers[channel] to remember
-            self._markers[channel] = marker2
-
-        # add waveforms. for real channels (we need 2 waveforms for 2 awg channels for one sequencer)
-        # If self._waveforms[channel1] is none -> marker1 stays zeros, else marker1 is changed by self._waveforms[channel1]
-        if not (self._waveforms[channel1] is None):
-            if len(self._waveforms[channel1]) < len(wave1):
-                wave1[:len(self._waveforms[channel1])] = self._waveforms[channel1]
-            else:
-                wave1[:] = self._waveforms[channel1][:len(wave1)]
-
-        # If self._waveforms[channel2] is none -> waveform2 stays zeros, else waveforms2 is changed by self._waveforms[channel1]
-        if not (self._waveforms[channel2] is None):
-            if len(self._waveforms[channel2]) < len(wave2):
-                wave2[:len(self._waveforms[channel2])] = self._waveforms[channel2]
-            else:
-                wave2[:] = self._waveforms[channel2][:len(wave2)]
-
-        filename = 'test_sequencer{0}.wfm'.format(sequencer)
-
-        # Send wave1 for sequencer output 0, wave2 for sequencer output 1, marker1 for sequencer marker 0, marker2 for sequencer marker 1
-
-        self.send_waveform(sequencer, index, filename, wave1, wave2, marker1, marker2)
 
     # self.set_output(channel=channel1, output=1)
     # self.set_output(channel=channel2, output=1)
@@ -810,69 +703,6 @@ class Zurich_HDAWG1808():
         return self._markers[channel]
 
     # Send waveform to the device
-
-    def send_waveform(self, sequencer, index, filename, wave1, wave2, marker1, marker2):
-
-        # Sends a complete waveform for sequencer.
-        # Input:
-        # w1 (float[nop]) : waveform1
-        # w1 (float[nop]) : waveform1
-        # m1 (int[nop])  : marker1
-        # m2 (int[nop])  : marker2
-        # index (int)	: number of waveform in sequencer (in standart program only one waveform which include wave1, wave2, marker1, marker2)
-
-        if (not ((len(wave1) == len(marker1)) and (len(marker1) == len(marker2)) and (len(wave1) == len(wave2)))):
-            return 'error'
-        # Check text program on the device HDAWG8
-        # some program is already in the device
-        # (loaded during the initialization)
-
-        # Check markers channels
-        # first marker -> first sequencer channel
-        # if (self.marker_out[np.int(2*sequencer)]!=4):
-        # self.set_marker_out(channel=np.int(2*sequencer),source=4)
-        # second marker -> second sequencer channel
-        # if (self.marker_out[np.int(2*sequencer+1)]!=7):
-        # self.set_marker_out(channel=np.int(2*sequencer+1),source=7)
-##
-        # S######ave data for file because I saw this in Tektronix program. I don't know if we realy need it. FUCK!!!
-    ####    self._values['files'][filename] = {}
-      #  self._values['files'][filename]['wave1'] = wave1   THIS
-   ###     self._values['files'][filename]['wave2'] = wave2
-       # self.#_values['files'][filename]['marker1'] = marker1     IS
-     ####   self._values['files'][filename]['marker2'] = marker2  $$$$ ###    BULLshit
-        ###############self._values['files'][filename]['clock'] = self.get#####_clock()
-   #     self._values['files'][filename]['nop'] = len(wave1)         CHRIST PEOPLE THIS IS JUST SHIT
-       ###### self._values['files'][filename]['program'] = self.known_programs.get('awg%d' % sequencer)
-#
-        ch1 = np.asarray(wave1 * (2 ** 13-1), dtype=np.int16)
-        ch2 = np.asarray(wave2 * (2 ** 13-1), dtype=np.int16)
-        m1 = np.asarray(marker1, dtype=np.uint16)
-        m2 = 2 * np.asarray(marker2, dtype=np.uint16)
-        vector = np.asarray(np.transpose([ch1, ch2]).ravel())
-        markers = np.asarray(np.transpose([m1, m2]).ravel())
-        vector = (vector << 2 | markers).astype('int16')
-        #
-        # send 2 waveforms and 2 markers
-        # Write the waveform to the memory. For the transferred array, floating-point (-1.0...+1.0)
-        # as well as integer (-32768...+32768) data types are accepted.
-        # For dual-channel waves, interleaving is required.
-        self.daq.setInt('/' + self.device + '/awgs/%d/userregs/%d' % (sequencer,
-                                                                      self.initial_param_values_list[sequencer]["userReg"]),
-                                                                      int(self.Predelay[sequencer]/8));
-        self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, index)
-        # self.daq.sync()
-        self.daq.vectorWrite('/' + self.device + '/awgs/%d/waveform/data' % sequencer, vector)
-        # self.daq.sync()
-
-        self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)
-        # self.daq.setInt('/' + self.device + '/awgs/%d/enable'%sequencer, 1)
-        self.daq.sync()
-
-        # exp_setting = [['/%s/sigouts/%d/on'%(self.device, channel), 1]]
-        # self.daq.set(exp_setting)
-        # self.daq.sync()
-        return True
 
     # Osccillator settings
     # Oscillator frequency

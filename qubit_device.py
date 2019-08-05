@@ -1,4 +1,4 @@
-from . import pulses, awg_iq_multi, modem_readout
+from . import pulses, awg_iq_multi, modem_readout, awg_channel
 from .instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
 
 import copy
@@ -257,24 +257,52 @@ class qubit_device:
 
         return readout_map
 
-    def create_pulsed_interfaces(self, iq_devices, extra_channels={}):
+    def get_two_qubit_gates(self):
+        gates = {}
+        gate_list = [gate for gate in self.exdir_db.select_measurement(measurement_type='two_qubit_gate_list').metadata.values()]
+        for gate_id in gate_list:
+            gates[gate_id] = self.exdir_db.select_measurement(measurement_type='two_qubit_gate', metadata={'gate_id': gate_id})
+        return gates
+
+    def set_two_qubit_gates_from_dict(self, two_qubit_gates):
+        self.exdir_db.save(measurement_type='two_qubit_gate_list', metadata={key: key for key in two_qubit_gates})
+        for gate_id, gate in two_qubit_gates.items():
+            gate_entry = {k: v for k, v in gate.items()}
+            gate_entry['gate_id'] = gate_id
+            self.exdir_db.save(measurement_type='two_qubit_gate', metadata=gate_entry)
+
+    def create_pulsed_interfaces(self, iq_devices, fast_controls, extra_channels={}):
         self.awg_channels = {}
         self.readout_channels = {}
         for _qubit_id in self.get_qubit_list():
-            fr = self.get_qubit_fr(_qubit_id)
-            fq = self.get_qubit_fq(_qubit_id)
             for channel_name, device_name in self.get_qubit_excitation_channel_list(_qubit_id).items():
                 device = iq_devices[device_name]
                 carrier = awg_iq_multi.Carrier(device)
+                assert (channel_name not in self.awg_channels)
                 device.carriers[channel_name] = carrier
                 self.awg_channels[channel_name] = carrier
 
             for channel_name, device_name in self.get_qubit_readout_channel_list(_qubit_id).items():
                 device = iq_devices[device_name]
                 carrier = awg_iq_multi.Carrier(device)
+                assert (channel_name not in self.awg_channels)
                 device.carriers[channel_name] = carrier
                 self.awg_channels[channel_name] = carrier
                 self.readout_channels[channel_name] = carrier
+
+        for fast_control_name, fast_control in fast_controls.items():
+            self.awg_channels[fast_control_name] = awg_channel.awg_channel_carrier(fast_control, frequency=0.0)
+
+        for gate_id, gate in self.get_two_qubit_gates().items():
+            if gate.metadata['pulse_type'] == 'parametric':
+                control_name = gate.metadata['control']
+
+                control = fast_controls[control_name]
+                carrier_name = gate.metadata['carrier_name']
+                assert (carrier_name not in self.awg_channels)
+                self.awg_channels[carrier_name] = awg_channel.awg_channel_carrier(control,frequency = None)
+            #pass
+
 
         self.awg_channels.update(extra_channels)
         self.pg = pulses.pulses(self.awg_channels)
@@ -291,37 +319,42 @@ class qubit_device:
             for channel_name, device_name in self.get_qubit_readout_channel_list(_qubit_id).items():
                 self.awg_channels[channel_name].set_frequency(fr)
                 iq_devices.append(self.awg_channels[channel_name].parent)
+        for gate_id, gate in self.get_two_qubit_gates().items():
+            if gate.metadata['pulse_type'] == 'parametric':
+                carrier_name = gate.metadata['carrier_name']
+                carrier = self.awg_channels[carrier_name]
+                f1 = self.get_qubit_fq(qubit_id=gate.metadata['q1'], transition_name=gate.metadata['transition_q1'])
+                f2 = self.get_qubit_fq(qubit_id=gate.metadata['q2'], transition_name=gate.metadata['transition_q2'])
+                frequency = (f1-f2)*float(gate.metadata['carrier_harmonic'])
+                carrier.set_frequency(frequency)
+
         for d in list(set(iq_devices)):
             d.do_calibration(d.sa)
 
     def setup_modem_readout(self, hardware):
-        old_settings = hardware.set_readout_delay_calibration_mode() ## set adc settings to modem delay calibration mode
+        hardware.adc.set_nums(int(self.get_sample_global('delay_calibration_nums')))
+        hardware.adc.set_nop(int(self.get_sample_global('delay_calibration_nop')))
+
+        self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
+
+        self.modem = modem_readout.modem_readout(self.pg, hardware.adc, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
+        self.modem.sequence_length = int(self.get_sample_global('delay_calibration_sequence_length'))
+        self.modem.readout_channels = self.readout_channels
+        self.modem.adc_device = hardware.adc_device
+
+        self.modem_delay_calibration_channel = [channel_name for channel_name in self.modem.readout_channels.keys()][0]
+        self.ro_trg = hardware.ro_trg
+
+        readout_trigger_delay = self.ro_trg.get_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
+        print ('Got delay calibration:', readout_trigger_delay)
         try:
-            self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
-
-            self.modem = modem_readout.modem_readout(self.pg, hardware.adc, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
-            self.modem.sequence_length = int(self.get_sample_global('delay_calibration_sequence_length'))
-            self.modem.readout_channels = self.readout_channels
-            self.modem.adc_device = hardware.adc_device
-
-            self.modem_delay_calibration_channel = [channel_name for channel_name in self.modem.readout_channels.keys()][0]
-            self.ro_trg = hardware.ro_trg
-
-            readout_trigger_delay = self.ro_trg.get_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
-            print ('Got delay calibration:', readout_trigger_delay)
-            try:
-                self.ro_trg.validate_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
-            except Exception as e:
-                print(type(e), str(e))
-                self.ro_trg.modem_delay_calibrate(self.modem, self.modem_delay_calibration_channel)
-                self.ro_trg.validate_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
-            self.modem.get_dc_bg_calibration()
-            self.modem.get_dc_calibrations(amplitude=hardware.get_modem_dc_calibration_amplitude())
-        except:
-            raise
-        finally:
-            hardware.revert_setup(old_settings) ## revert sdc settings from modem delay calibration mode
-
+            self.ro_trg.validate_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
+        except Exception as e:
+            print(type(e), str(e))
+            self.ro_trg.modem_delay_calibrate(self.modem, self.modem_delay_calibration_channel)
+            self.ro_trg.validate_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
+        self.modem.get_dc_bg_calibration()
+        self.modem.get_dc_calibrations(amplitude=hardware.get_modem_dc_calibration_amplitude())
         return self.modem
 
     def setup_adc_reducer_iq(self, qubits, raw=False): ### pimp this code to make it more universal. All the hardware belongs to the hardware

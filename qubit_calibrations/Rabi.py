@@ -1,45 +1,47 @@
 from .readout_pulse import get_qubit_readout_pulse, get_uncalibrated_measurer
+from .calibrated_readout import get_calibrated_measurer
 from ..fitters.exp_sin import exp_sin_fitter
 from .channel_amplitudes import channel_amplitudes
 import numpy as np
 from . import excitation_pulse
 import traceback
 
-def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0):
-    if type(lengths) is type(None):
-        lengths = np.arange(0,
-                            float(device.get_qubit_constant(qubit_id=qubit_id, name='Rabi_rect_length')),
-                            float(device.get_qubit_constant(qubit_id=qubit_id, name='Rabi_rect_step')))
 
-    #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0, pre_pulses=tuple(), measurement_type='Rabi_rect'):
+    if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+        measurement_name = 'iq'+qubit_id
+        qubit_id = [qubit_id]
+    else: # otherwise use calibrated measurer
+        readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
+        measurement_name = 'resultnumbers'
 
     def set_ex_length(length):
+        pre_pulse_sequences = [pulse.get_pulse_sequences(0) for pulse in pre_pulses]
         ex_pulse_seq = excitation_pulse.get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase=0.)
-        #if tail_length > 0:	channel_pulses = [(c, device.pg.rect_cos, a, tail_length) for c, a in channel_amplitudes.items()]
-        #else:				channel_pulses = [(c, device.pg.rect,     a             ) for c, a in channel_amplitudes.items()]
-
-        #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
         delay_seq = [device.pg.pmulti(readout_delay)]
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
 
-        device.pg.set_seq(ex_pulse_seq+delay_seq+readout_trigger_seq+readout_pulse_seq)
+        device.pg.set_seq(pre_pulse_sequences+delay_seq+ex_pulse_seq+delay_seq+readout_trigger_seq+readout_pulse_seq)
 
-    references = {'channel_amplitudes':channel_amplitudes.id,
-                  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
+    references = {('frequency_controls', qubit_id_): device.get_frequency_control_measurement_id(qubit_id=qubit_id_) for qubit_id_ in qubit_id}
+    references['channel_amplitudes'] = channel_amplitudes.id
 
     if hasattr(measurer, 'references'):
         references.update(measurer.references)
 
-    fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+    for pre_pulse_id, pre_pulse in enumerate(pre_pulses):
+        references.update({('pre_pulse', pre_pulse_id): pre_pulse.id})
+
+    fitter_arguments = (measurement_name, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                                             *extra_sweep_args,
-                                                            (lengths, set_ex_length, 'Excitation length','s'),
+                                                            (lengths, set_ex_length, 'Excitation length', 's'),
                                                             fitter_arguments = fitter_arguments,
-                                                            measurement_type='Rabi_rect',
-                                                            metadata={'qubit_id': qubit_id,
+                                                            measurement_type = measurement_type,
+                                                            metadata={'qubit_id': ','.join(qubit_id),
                                                                       'extra_sweep_args': str(len(extra_sweep_args)),
                                                                       'tail_length': str(tail_length),
                                                                       'readout_delay': str(readout_delay)},
@@ -47,7 +49,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
 
     return measurement
 
-def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes):
+def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='Rabi_rect'):
     # check if we have fitted Rabi measurements on this qubit-channel combo
     #Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
     #Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
@@ -62,7 +64,7 @@ def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes):
     lengths = np.arange(0, min_step*scan_points, min_step)
     print (0, min_step*scan_points, min_step)
     while not (good_fit or np.max(lengths)>max_scan_length):
-        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=lengths)
+        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=lengths, measurement_type=measurement_type)
         fit_results = measurement.fit.metadata
         if int(fit_results['frequency_goodness_test']):
             return measurement

@@ -62,9 +62,10 @@ class Carrier:
         self.parent.assemble_waveform()
 
     def get_waveform(self):
-        if not hasattr(self, 'waveform'):
-            self.waveform = np.zeros(self.get_nop(), dtype=np.complex)
-        return self.waveform
+        if self.waveform is not None:
+            return self.waveform
+        else:
+            return np.zeros(self.get_nop(), dtype=np.complex)
 
     def set_if(self, _if):
         self._if = _if

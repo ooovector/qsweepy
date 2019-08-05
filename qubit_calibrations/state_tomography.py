@@ -54,7 +54,6 @@ class ProcessTomography(multiqubit_tomography):
                 unitary = np.kron(unitary, cube_faces_unitaries[multi_observable[_qubit_id]])
             measurement_operators = {}
             for state in range(2**len(qubit_ids)):
-
                 O = np.diag(confusion_matrix.datasets['resultnumbers'].data[:, state])
                 measurement_operators[state] = (np.conj(unitary.T) @ O @ unitary).T
 
@@ -85,6 +84,7 @@ class ProcessTomography(multiqubit_tomography):
         self.output_array = output_array
         self.reconstruction_output_array = reconstruction_output_array
 
+        self.confusion_matrix_id = confusion_matrix.id
 
 class StateTomography(multiqubit_tomography):
     def __init__(self, device, qubit_ids, pause_length=0):
@@ -152,3 +152,5 @@ class StateTomography(multiqubit_tomography):
         super().__init__(reducer, device.pg, multi_qubit_observables, reconstruction_basis)
         self.output_array = output_array
         self.reconstruction_output_array = reconstruction_output_array
+
+        self.confusion_matrix_id = confusion_matrix.id

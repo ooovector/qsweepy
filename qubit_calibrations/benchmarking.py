@@ -10,6 +10,7 @@ from ..fitters import exp
 import numpy as np
 from ..pulses import *
 
+
 def create_flat_dataset(measurement, dataset_name):
     dataset = measurement.datasets[dataset_name]
     averaging_parameter_name = 'Random sequence id'
@@ -26,6 +27,7 @@ def create_flat_dataset(measurement, dataset_name):
     flat_dataset_parameters[time_parameter_id].values = np.repeat(
         flat_dataset_parameters[time_parameter_id].values, len(dataset.parameters[averaging_parameter_id].values))
     measurement.datasets[dataset_name+'_flat'] = MeasurementDataset(flat_dataset_parameters, flat_dataset)
+
 
 def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, pause_length=0, random_sequence_num=20, seq_lengths_num=20):
     max_pulses = []
@@ -128,12 +130,14 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     measurement_type='interleaved_bench',
                                     metadata={'qubit_ids': ','.join(qubit_id)},
                                     references=references)
-        for ds in interleaved_bench.datasets.keys():
+        old_datasets = [ds for ds in interleaved_bench.datasets.keys()]
+        for ds in old_datasets:
             create_flat_dataset(interleaved_bench, ds)
             fit = fit_dataset.fit_dataset_1d(interleaved_bench, ds, exp.exp_fitter(), time_parameter_id=0)
         return interleaved_bench
 
     return clifford_bench
+
 
 def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_num=20, seq_lengths_num=20):
     coherence_measurement = Ramsey.get_Ramsey_coherence_measurement(device, qubit_id)

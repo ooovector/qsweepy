@@ -27,15 +27,15 @@ pulsed_settings = {'lo1_power': 18,
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
-                   'global_num_points_delta': 500,
+                   'global_num_points_delta': 400,
                    'hdawg_ch0_amplitude': 0.3,
                    'hdawg_ch1_amplitude': 0.3,
-                   'hdawg_ch2_amplitude': 0.5,
-                   'hdawg_ch3_amplitude': 0.5,
-                   'hdawg_ch4_amplitude': 0.5,
-                   'hdawg_ch5_amplitude': 0.5,
-                   'hdawg_ch6_amplitude': 0.5,
-                   'hdawg_ch7_amplitude': 0.5,
+                   'hdawg_ch2_amplitude': 1.0,
+                   'hdawg_ch3_amplitude': 1.0,
+                   'hdawg_ch4_amplitude': 1.0,
+                   'hdawg_ch5_amplitude': 1.0,
+                   'hdawg_ch6_amplitude': 1.0,
+                   'hdawg_ch7_amplitude': 1.0,
                    'awg_tek_ch1_amplitude': 1.0,
                    'awg_tek_ch2_amplitude': 1.0,
                    'awg_tek_ch3_amplitude': 1.0,
@@ -46,7 +46,7 @@ pulsed_settings = {'lo1_power': 18,
                    'awg_tek_ch4_offset': 0.0,
                    'lo1_freq': 3.41e9,
                    'pna_freq': 6.07e9,
-                   'calibrate_delay_nop': 65536,
+                   #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
                    'trigger_readout_length': 200e-9,
@@ -159,7 +159,7 @@ class hardware_setup():
         for channel in range(8):
             self.hdawg.set_amplitude(channel=channel, amplitude=self.pulsed_settings['hdawg_ch%d_amplitude'%channel])
             self.hdawg.set_offset(channel=channel, offset=0 * 1.0)
-            self.hdawg.set_digital(channel=channel, marker=[1]*1000 + [0]*(global_num_points-1000))
+            self.hdawg.set_digital(channel=channel, marker=[0]*(global_num_points))
         self.hdawg.set_all_outs()
         self.hdawg.run()
 
@@ -200,7 +200,7 @@ class hardware_setup():
         # self.hardware_state = 'pulsed'
 
         self.ro_trg = awg_digital.awg_digital(self.awg_tek, 3, delay_tolerance=20e-9)  # triggers readout card
-        self.coil_multi = awg_channel.awg_channel(self.awg_tek, 4)  # coil control
+        self.coil = awg_channel.awg_channel(self.awg_tek, 4)  # coil control
         # ro_trg.mode = 'set_delay' #M3202A
         # ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
         self.ro_trg.mode = 'waveform'  # AWG5014C
@@ -239,31 +239,13 @@ class hardware_setup():
         self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'coil:': awg_channel.awg_channel(self.awg_tek, 4)}  # coil control
-
-    def set_readout_delay_calibration_mode(self):
-        old_settings = {'adc_nums': self.adc.get_nums(),
-                        'adc_nop': self.adc.get_nop()}
-        self.adc.set_nums(self.pulsed_settings['calibrate_delay_nums'])
-        self.adc.set_nop(self.pulsed_settings['calibrate_delay_nop'])
-        if hasattr(self.adc, 'set_posttrigger'):
-            old_settings['adc_posttrigger'] = self.adc.get_posttrigger()
-            self.adc.set_posttrigger(self.adc.get_nop() - 32)
-
-        return old_settings
+        self.fast_controls = {'coil': awg_channel.awg_channel(self.awg_tek, 4)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']
 
     def get_modem_dc_calibration_amplitude(self):
         return self.pulsed_settings['modem_dc_calibration_amplitude']
-
-    # adc_reducers = {_qubit_id:data_reduce.data_reduce(device.modem) for  _qubit_id in qubits.keys()}
-    # for _qubit_id in qubits.keys():
-    #	adc_reducers[_qubit_id].filters = {'S21_r{}'.format(_qubit_id):data_reduce.mean_reducer(
-    #		modem, 'iq_ro_q{}'.format(_qubit_id), axis=0)}
-    #	adc_reducers[_qubit_id].extra_opts['scatter'] = True
-    #	adc_reducers[_qubit_id].extra_opts['realimag'] = True
 
     def revert_setup(self, old_settings):
         if 'adc_nums' in old_settings:
