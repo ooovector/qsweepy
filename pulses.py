@@ -111,6 +111,42 @@ class pulses:
             pulses[channel] = pulse[1](channel, length, *pulse[2:])
         return pulses
 
+    def parallel(self, *pulse_sequences):
+        current_pulse = [0]*len(pulse_sequences)
+        sequence_lengths = [len(sequence) for sequence in pulse_sequences]
+
+        merged_sequence = []
+        depleted = [False] * len(pulse_sequences)
+        while not np.all(depleted):
+            physical_sequence = [False]*len(pulse_sequences)
+            max_physical_sequence_length = 0
+            for sequence_id, sequence in enumerate(pulse_sequences):
+                if len(sequence) <= current_pulse[sequence_id]:
+                    depleted[sequence_id] = True # skip this sequence of there are no pulses in it left
+                    continue
+                for channel_name, channel_pulse in sequence[current_pulse[sequence_id]].items():
+                    if hasattr(channel_pulse, 'shape'):
+                        if channel_pulse.shape[0] > 0:
+                            physical_sequence[sequence_id] = True
+                            if max_physical_sequence_length < channel_pulse.shape[0]/self.channels[channel_name].get_clock():
+                                max_physical_sequence_length = channel_pulse.shape[0]/self.channels[channel_name].get_clock()
+            # if there are virtual gates pending, do them
+            if not np.all(np.logical_or(physical_sequence,depleted)):
+                # take the first virtual pulse from the sequences
+                sequence_id = np.arange(len(pulse_sequences))[np.logical_not(np.logical_or(physical_sequence, depleted))][0]
+                merged_sequence.append(pulse_sequences[sequence_id][current_pulse[sequence_id]])
+                current_pulse[sequence_id] += 1
+            else:
+                pulse = self.pmulti(max_physical_sequence_length)
+                for sequence_id, sequence in enumerate(pulse_sequences):
+                    if depleted[sequence_id]:
+                        continue
+                    for channel_name, channel_pulse in sequence[current_pulse[sequence_id]].items():
+                        pulse[channel_name][-len(channel_pulse):] += channel_pulse
+                    current_pulse[sequence_id] += 1
+                merged_sequence.append(pulse)
+        return merged_sequence
+
     def awg(self, channel, length, waveform):
         return waveform
 

@@ -571,10 +571,18 @@ class Awg_iq_multi:
 
     def freeze(self):
         self.frozen = True
+        if hasattr(self.awg_I, 'freeze'):
+            self.awg_I.freeze()
+        if hasattr(self.awg_Q, 'freeze'):
+            self.awg_Q.freeze()
     def unfreeze(self):
         if self.frozen:
             self.frozen = False
             self.assemble_waveform()
+        if hasattr(self.awg_I, 'freeze'):
+            self.awg_I.unfreeze()
+        if hasattr(self.awg_Q, 'freeze'):
+            self.awg_Q.unfreeze()
 
     def calibrate_wideband(self,
                            sa_device,

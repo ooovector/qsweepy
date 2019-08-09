@@ -134,5 +134,5 @@ class awg_channel:
 		waveform = np.zeros(self.get_nop(), dtype=float)
 		for carrier in self.carriers:
 			if carrier.waveform is not None:
-				waveform += np.real(carrier.waveform*np.exp(1j*carrier.frequency*np.arange(0, self.get_nop()/self.get_clock(), 1/self.get_clock())))
+				waveform += np.real(carrier.waveform*np.exp(2*np.pi*1j*carrier.frequency*np.arange(0, self.get_nop()/self.get_clock(), 1/self.get_clock())))
 		self.awg.set_waveform(waveform, channel=self.channel)

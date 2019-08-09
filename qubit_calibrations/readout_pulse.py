@@ -181,7 +181,7 @@ def get_uncalibrated_measurer(device, qubit_id):
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
     adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=False)
-    adc_reducer.adc.set_nop(int(device.get_sample_global('readout_adc_points')))
+    adc_reducer.set_nop(int(device.get_sample_global('readout_adc_points')))
     measurer = data_reduce.data_reduce(adc_reducer)
     measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],
                                                         background_calibration.datasets['S21'].data, adc_reducer.get_nums())

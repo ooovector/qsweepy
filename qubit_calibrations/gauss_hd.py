@@ -9,6 +9,97 @@ from .channel_amplitudes import channel_amplitudes
 #
 #   return [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
 
+def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha, num_pulses):
+def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0, pre_pulses=tuple(), measurement_type='Rabi_rect'):
+def gauss_hd_ape_pi2(device, qubit_id, num_pulses_max, phase_sign='+', channel_amplitudes=None):
+    readout_pulse = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
+    pi2_pulse = get_excitation_pulse(device=device, qubit_id=qubit_id, rotation_angle=np.pi/2., channel_amplitudes_override=channel_amplitudes)
+    channel_amplitudes = pi2_pulse.references['channel_amplitudes']
+    metadata = {'qubit_id':qubit_id}
+    references = {'channel_amplitudes': channel_amplitudes,
+                  'pi_half_pulse': pi2_pulse}
+    amplitude = float(pi2_pulse.metadata['amplitude'])
+
+    def set_num_pulses(num_pulses):
+        channel_pulses_xp = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha)
+                                for c, a in channel_amplitudes.metadata.items()]
+        channel_pulses_xm = [(c, device.pg.gauss_hd, -float(a) * amplitude, sigma, alpha)
+                                for c, a in channel_amplitudes.metadata.items()]
+        channel_pulses_yp = [(c, device.pg.gauss_hd, float(a) * amplitude*1j, sigma, alpha)
+                                for c, a in channel_amplitudes.metadata.items()]
+        channel_pulses_ym = [(c, device.pg.gauss_hd, -float(a) * amplitude*1j, sigma, alpha)
+                                for c, a in channel_amplitudes.metadata.items()]
+        if (phase_sign=='+'):
+            pulse = [device.pg.pmulti(length, *tuple(channel_pulses_yp))] + \
+                    ([device.pg.pmulti(length, *tuple(channel_pulses_xp))] +
+                     [device.pg.pmulti(length, *tuple(channel_pulses_xm))])*num_pulses + \
+                    [device.pg.pmulti(length, *tuple(channel_pulses_ym))]
+        if (phase_sign=='-'):
+            pulse = [device.pg.pmulti(length, *tuple(channel_pulses_ym))] + \
+                    ([device.pg.pmulti(length, *tuple(channel_pulses_xp))] +
+                     [device.pg.pmulti(length, *tuple(channel_pulses_xm))]) * num_pulses + \
+                    [device.pg.pmulti(length, *tuple(channel_pulses_yp))]
+
+                    pulse = [device.pg.pmulti(length, *tuple(channel_pulses))]*num_pulses
+        device.pg.set_seq(pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
+
+    measurement = device.sweeper.sweep(measurer,
+                                        (amplitudes, set_amplitude, 'Amplitude'),
+                                        measurement_type='gauss_hd_Rabi_amplitude',
+                                        metadata=metadata,
+                                        references=references)
+
+
+
+    y_sign_mul = 1 if y_sign == '-' else -1
+    pg = self.tld.pulse_sequencer
+    sequence = []
+    ex_amp = self.get_amplitude(np.pi / 2.)
+    print('ex_amp is: ', ex_amp)
+    num_pulses_max = int(np.floor(self.guess_max_num_pulses() / 2)) - 1
+    if not num_pulses_array:
+        num_pulses_array = np.arange(num_pulses_max)
+
+    def set_seq():
+        pg.set_seq(sequence)
+
+    if hasattr(self.tld.readout_device, 'diff_setter'):  # if this is a sifferential measurer
+        self.tld.readout_device.diff_setter = set_seq  # set the measurer's diff setter
+        self.tld.readout_device.zero_setter = self.tld.set_zero_sequence  # for diff_readout
+
+    def set_ape_length(num_pulses):
+        nonlocal sequence
+        # pulse = [(c, pg.gauss_hd, a*ex_amp, self.sigma, self.alpha) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
+        # pulse_inv = [(c, pg.gauss_hd, -a*ex_amp, self.sigma, self.alpha) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
+        # pulse_y = [(c, pg.gauss_hd, 1j*y_sign_mul*a*ex_amp, self.sigma, self.alpha) for c,a in zip(self.tld.ex_channels, self.tld.ex_amplitudes)]
+        # sequence = [pg.pmulti(self.length, *tuple(pulse))]+\
+        #   [pg.pmulti(self.length, *tuple(pulse)), pg.pmulti(self.length, *tuple(pulse_inv))]*num_pulses+\
+        #   [pg.pmulti(self.length, *tuple(pulse_y))]+self.tld.ro_sequence
+        sequence = self.get_pulse_seq(np.pi / 2., 0) + \
+                   (self.get_pulse_seq(ape_phase, 0) + self.get_pulse_seq(ape_phase, np.pi)) * num_pulses + \
+                   self.get_pulse_seq(np.pi / 2., np.pi / 2. * y_sign_mul) + self.tld.ro_sequence
+        if not hasattr(self.tld.readout_device, 'diff_setter'):  # if this is a sifferential measurer
+            set_seq()
+
+    measurement_name = 'APE ch {} Y'.format(
+        ','.join(self.tld.ex_channels)) + y_sign  # +self.get_measurement_name_comment()
+    root_dir, day_folder_name, time_folder_name = save_pkl.get_location()
+    root_dir = '{}/{}/{}-{}'.format(root_dir, day_folder_name, time_folder_name, measurement_name)
+    measurement = sweep.sweep(self.tld.readout_device,
+                              (num_pulses_array, set_ape_length, 'APE identity pulse num'),
+                              *params,
+                              filename=measurement_name,
+                              shuffle=self.tld.shuffle,
+                              root_dir=root_dir,
+                              plot_separate_thread=self.tld.plot_separate_thread,
+                              plot=self.tld.plot)
+    measurement_fitted, fitted_parameters_rabi = self.tld.fitter(measurement, fitting.exp_sin_fit)
+    annotation = 'Phase: {0:4.4g} rad, Freq: {1:4.4g}'.format(fitted_parameters_rabi['phase'],
+                                                              fitted_parameters_rabi['freq'])
+    plotting.plot_measurement(measurement_fitted, measurement_name, save=root_dir, annotation=annotation, \
+                              subplots=True)
+    return measurement_fitted
+
 class GaussHDExcitationPulse(MeasurementState):
     def __init__(self, *args, **kwargs):
         self.device = args[0]
@@ -82,7 +173,7 @@ def get_preferred_length(device, qubit_id, channel):
     # loop over other qubits
     pulse_amplitude = amplitude_default
     print('getting other qubit excitition pulse with qubit_id {} and channel {}'.format(qubit_id, channel))
-    rect_pulse = get_excitation_pulse(device=device,
+    rect_pulse = get_rect_excitation_pulse(device=device,
                                       qubit_id=qubit_id,
                                       rotation_angle=2 * np.pi,
                                       channel_amplitudes_override=channel_amplitudes(device, **{channel:amplitude_default}),

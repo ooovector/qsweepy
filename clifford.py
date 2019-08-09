@@ -1,6 +1,6 @@
 import numpy as np
 
-def two_qubit_clifford(generators_q1, generators_q2, cphase=None, cphase_name='CZ', error=1e-3):
+def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, plus_op_sequential, cphase=None, cphase_name='CZ', error=1e-3):
 	c_q1 = generate_group(generators_q1)
 	c_q2 = generate_group(generators_q2)
 	s_q1 = {}
@@ -33,7 +33,7 @@ def two_qubit_clifford(generators_q1, generators_q2, cphase=None, cphase_name='C
 	for name1, clifford1 in c_q1.items():
 		for name2, clifford2 in c_q2.items():
 			group[name1+' '+name2] = {'unitary':clifford1['unitary']@clifford2['unitary'],
-									  'pulses':clifford1['pulses']+clifford2['pulses']}
+									  'pulses':plus_op_parallel(clifford1['pulses'],clifford2['pulses'])}
 
 	if cphase is None:
 		return group
@@ -45,7 +45,7 @@ def two_qubit_clifford(generators_q1, generators_q2, cphase=None, cphase_name='C
 				for name4, s2 in s_q2.items():
 					group[name1+' '+name2+' '+cphase_name+' '+name3+' '+name4] = {
 						'unitary': clifford1['unitary']@clifford2['unitary']@cphase['unitary']@s1['unitary']@s2['unitary'],
-						'pulses': s2['pulses']+s1['pulses']+cphase['pulses']+clifford2['pulses']+clifford1['pulses']}
+						'pulses': plus_op_sequential(plus_op_parallel(s2['pulses'],s1['pulses']),cphase['pu1ses'],plus_op_parallel(clifford2['pulses']+clifford1['pulses']))}
 
 	# iswap from cnot and iswap-like from cphase
 	for name1, clifford1 in pi2_q1.items():

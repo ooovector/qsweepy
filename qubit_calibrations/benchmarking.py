@@ -29,7 +29,7 @@ def create_flat_dataset(measurement, dataset_name):
     measurement.datasets[dataset_name+'_flat'] = MeasurementDataset(flat_dataset_parameters, flat_dataset)
 
 
-def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, pause_length=0, random_sequence_num=20, seq_lengths_num=20):
+def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, pause_length=0, random_sequence_num=1, seq_lengths_num=400):
     max_pulses = []
     channel_amplitudes_ = {}
     pi2_pulses = {}
@@ -67,7 +67,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         HZ = {'H_'+qubit_id: {
             'pulses': get_pulse_seq_z(np.pi / 2, qubit_id) + pi2_pulses[qubit_id].get_pulse_sequence(np.pi) + get_pulse_seq_z(np.pi / 2, qubit_id),
             'unitary': np.sqrt(0.5) * tensor_product([[1, 1], [1, -1]], qubit_id),
-            'price':1.0},
+            'price': 1.0},
             'Z_'+qubit_id: {'pulses': get_pulse_seq_z(np.pi, qubit_id), 'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price':0.1},
             'Z/2_'+qubit_id: {'pulses': get_pulse_seq_z(np.pi / 2, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price':0.1},
             '-Z/2_'+qubit_id: {'pulses': get_pulse_seq_z(-np.pi / 2., qubit_id), 'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price':0.1},
@@ -76,7 +76,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         generators[qubit_id] = HZ
 
     if len(qubit_ids) == 2:
-        HZ_group = clifford.two_qubit_clifford(*tuple([g for g in generators.values()]), two_qubit_gate)
+        HZ_group = clifford.two_qubit_clifford(*tuple([g for g in generators.values()]),  plus_op_parallel=device.pg.parallel, plus_op_sequential=lambda x: sum(x), cphase = two_qubit_gate)
     elif len(qubit_ids) == 1:
         HZ_group = clifford.generate_group(HZ)
     else:
@@ -105,16 +105,16 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     except IndexError:
         pass
     if (not found) or (interleaver is None):
-        clifford_bench = device.sweeper.sweep(pi2_bench,
+        measurement_name = [m for m in pi2_bench.get_points().keys()][0]
+        fitter_arguments = (measurement_name, exp.exp_fitter(), 0, np.arange(len(params)).tolist())
+
+        clifford_bench = device.sweeper.sweep_fit_dataset_1d_onfly(pi2_bench,
                                     (seq_lengths, pi2_bench.set_sequence_length_and_regenerate, 'Gate number', ''),
                                     *params,
-                                    (random_sequence_ids, pi2_bench.set_interleaved_sequence, 'Random sequence id', ''),
+                                    fitter_arguments=fitter_arguments,
                                     measurement_type='clifford_bench',
                                     metadata={'qubit_ids': ','.join(qubit_ids)},
                                     references=references)
-        for ds in clifford_bench.datasets.keys():
-            create_flat_dataset(clifford_bench, ds)
-            fit = fit_dataset.fit_dataset_1d(clifford_bench, ds, exp.exp_fitter(), time_parameter_id=0)
 
     ## interleaver measurement is found, bench "interleaver" gate
     references['Clifford-bench'] = clifford_bench.id
@@ -123,23 +123,24 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
             references.update(interleaver['references'])
 
         pi2_bench.set_target_pulse(interleaver)
-        interleaved_bench = device.sweeper.sweep(pi2_bench,
+
+        measurement_name = [m for m in pi2_bench.get_points().keys()][0]
+        fitter_arguments = (measurement_name, exp.exp_fitter(), 0, np.arange(len(params)).tolist())
+
+        interleaved_bench = device.sweeper.sweep_fit_dataset_1d_onfly(pi2_bench,
                                     (seq_lengths, pi2_bench.set_sequence_length_and_regenerate, 'Gate number', ''),
                                     *params,
-                                    (random_sequence_ids, pi2_bench.set_interleaved_sequence, 'Random sequence id', ''),
+                                    fitter_arguments=fitter_arguments,
                                     measurement_type='interleaved_bench',
-                                    metadata={'qubit_ids': ','.join(qubit_id)},
+                                    metadata={'qubit_ids': ','.join(qubit_ids)},
                                     references=references)
-        old_datasets = [ds for ds in interleaved_bench.datasets.keys()]
-        for ds in old_datasets:
-            create_flat_dataset(interleaved_bench, ds)
-            fit = fit_dataset.fit_dataset_1d(interleaved_bench, ds, exp.exp_fitter(), time_parameter_id=0)
+
         return interleaved_bench
 
     return clifford_bench
 
 
-def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_num=20, seq_lengths_num=20):
+def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_num=1, seq_lengths_num=400):
     coherence_measurement = Ramsey.get_Ramsey_coherence_measurement(device, qubit_id)
     T2 = float(coherence_measurement.metadata['T'])
     pi2_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.)

@@ -72,7 +72,7 @@ def exp_sin_fit(x, y, parameters_old=None):
 		parameters_new = {'phi':fitresults[0][0], 'f':fitresults[0][1], 'T': fitresults[0][2], 'inf': fitresults[0][3], 'A': fitresults[0][4:]}
 		
 		parameters_flat = lambda parameters: [parameters['phi'], parameters['f'], parameters['T'], parameters['inf']]+parameters['A'].tolist()
-		MSE_rel_calculator = lambda parameters: np.sum(cost(parameters_flat(parameters)))/np.sum(np.abs(y)**2)
+		MSE_rel_calculator = lambda parameters: np.sum(cost(parameters_flat(parameters)))/np.sum(np.abs(y-np.mean(y))**2)
 		
 		MSE_rel_new = MSE_rel_calculator(parameters_new)
 		if not parameters_old: 
@@ -114,7 +114,7 @@ def exp_sin_fit(x, y, parameters_old=None):
 		parameters['points_per_period'] = np.nan
 		parameters['decays_in_scan_length'] = np.nan
 	
-	frequency_goodness_test = MSE_rel<0.2 and parameters['num_periods_decay']>1.5 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.	
+	frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.5 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
 	decay_goodness_test = parameters['decays_in_scan_length']>0.75 and frequency_goodness_test and np.isfinite(parameters['T'])
 	parameters['frequency_goodness_test'] = 1 if frequency_goodness_test else 0
 	parameters['decay_goodness_test'] = 1 if decay_goodness_test else 0

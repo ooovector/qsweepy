@@ -109,7 +109,9 @@ example: point_parameter(vna) should return
 
 def sweep(measurer, *parameters, shuffle=False,
           on_start=[], on_update=[], on_finish=[],
-          use_deferred=False, **kwargs):
+          use_deferred=False,
+          ignore_callback_errors=True,
+          **kwargs):
     """
     Performs a n-d parametric sweep.
 
@@ -173,12 +175,16 @@ def sweep(measurer, *parameters, shuffle=False,
             try:
                 event_handler(state, indeces, *arguments)
             except Exception as e:
+                if not ignore_callback_errors:
+                    raise
                 traceback.print_exc()
 
     for event_handler, arguments in on_start:
         try:
             event_handler(state, *arguments)
         except Exception as e:
+            if not ignore_callback_errors:
+                raise
             traceback.print_exc()
 
     ################
@@ -218,6 +224,8 @@ def sweep(measurer, *parameters, shuffle=False,
         try:
             event_handler(state, *arguments)
         except Exception as e:
+            if not ignore_callback_errors:
+                raise
             print(e)
 
     return state

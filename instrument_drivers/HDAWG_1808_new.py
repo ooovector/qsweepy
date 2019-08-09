@@ -141,6 +141,9 @@ class Zurich_HDAWG1808():
         self.awgModule.set('awgModule/device', self.device)
         self.awgModule.execute()
 
+        self.sequencers_updated = [False]*4
+        self.frozen = False
+
         self.current_programs = ['' for i in range(4)]
         for sequencer_idx in range(4):
             self.set_cur_prog(self.initial_param_values, sequencer_idx)
@@ -612,6 +615,10 @@ class Zurich_HDAWG1808():
         self.set_sequencer(sequencer)
 
     def set_sequencer(self, sequencer):
+        if self.frozen:
+            self.sequencers_updated[sequencer] = True
+            return
+
         self.stop_seq(sequencer=sequencer)
         waveformI = self._waveforms[sequencer * 2 + 0]
         waveformQ = self._waveforms[sequencer * 2 + 1]
@@ -769,6 +776,17 @@ class Zurich_HDAWG1808():
     def get_sin_amplitudes(self, sin_num):
         return self.sin_enable[sin_num, :]
 
+    def freeze(self):
+        if not self.frozen:
+            self.sequencers_updated = [False]*4
+            self.frozen = True
+
+    def unfreeze(self):
+        if self.frozen:
+            self.frozen = False
+            for sequencer, updated in enumerate(self.sequencers_updated):
+                if updated:
+                    self.set_sequencer(sequencer)
 
 class Zurich_sequencer():
 

@@ -5,6 +5,7 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
 	adc, mnames =  device.setup_adc_reducer_iq(qubit_id, raw=True)
 	adc.set_nop(int(device.get_sample_global('readout_adc_points')))
+	adc.set_nums(int(device.get_sample_global('uncalibrated_readout_nums')))
 	mean_sample = data_reduce.data_reduce(adc)
 	mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
 	mean_sample.filters['Std_Voltage_AC'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)

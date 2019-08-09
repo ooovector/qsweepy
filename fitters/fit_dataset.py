@@ -26,11 +26,13 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
 	linear_parameter_ids=list(set(np.arange(len(data.shape)))-set([time_parameter_id])-set(sweep_parameter_ids_positive))
 	initial_axes_order = [(0, p) for p in sweep_parameter_ids_positive]+[(1, p) for p in linear_parameter_ids]+[(2, time_parameter_id)]
-	initial_axes_order = [(a[0],a[1],i) for i, a in enumerate(initial_axes_order)]
+	initial_axes_order = [(a[0],a[1]) for i, a in enumerate(initial_axes_order)]
+	print('initial_axes_order', initial_axes_order)
 	sorted_axes_order = sorted(initial_axes_order)
 
 	transposition = [a[1] for a in sorted_axes_order]
-	inverse_transposition = [a[2] for a in sorted_axes_order]
+	#inverse_transposition = [a[2] for a in sorted_axes_order]
+	inverse_transposition = [transposition.index(i) for i in range(len(transposition))]
 
 	t = dataset.parameters[time_parameter_id].values
 	t_fit = resample_x_fit(t)
@@ -49,8 +51,19 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
 		# load fit data from last measurement
 		if hasattr(source_measurement_updated, 'fit'):
-			order_amplitudes = [a for i, a in enumerate(transposition) if i < len(linear_parameter_shape)+len(sweep_parameter_shape)]
+			order_amplitudes = np.asarray([a for i, a in enumerate(transposition) if i < len(linear_parameter_shape)+len(sweep_parameter_shape)])
+			if len(order_amplitudes):
+				removals = [i for i in range(max(order_amplitudes)) if i not in order_amplitudes]
+				for removal in removals:
+					order_amplitudes[order_amplitudes>removal] -= 1
+				order_amplitudes = order_amplitudes.tolist()
+
 			order_fit_parameters = [a for i, a in enumerate(order_amplitudes) if i < len(sweep_parameter_shape)]
+			if len(order_fit_parameters):
+				removals = [i for i in range(max(order_fit_parameters)) if i not in order_fit_parameters ]
+				for removal in removals:
+					order_fit_parameters[order_fit_parameters > removal] -= 1
+				order_fit_parameters = order_fit_parameters.tolist()
 
 			if len(linear_parameter_shape)+len(sweep_parameter_shape):  A_sorted = np.transpose(source_measurement_updated.fit.datasets['amplitudes'].data, order_amplitudes)
 			else: 					                                    A_sorted = source_measurement_updated.fit.datasets['amplitudes'].data

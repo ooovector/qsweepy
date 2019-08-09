@@ -25,6 +25,7 @@ class interleaved_benchmarking:
 		self.interleaving_sequences = None
 		
 		self.final_ground_state_rotation = True
+		self.prepare_random_sequence_before_measure = True
 	
 	# used to transformed any of the |0>, |1>, |+>, |->, |i+>, |i-> states into the |0> state
 	# low-budget function only appropiate for clifford benchmarking
@@ -175,6 +176,9 @@ class interleaved_benchmarking:
 		self.current_seq = seq
 		
 	def measure(self):
+		if self.prepare_random_sequence_before_measure:
+			self.prepare_random_interleaving_sequences()
+			self.set_interleaved_sequence(0)
 		measurement = self. measurer.measure()
 
 		#measurement['Pulse sequence'] = np.array([object()])
