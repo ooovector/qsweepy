@@ -12,9 +12,11 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
         readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
         measurement_name = 'iq'+qubit_id
         qubit_id = [qubit_id]
+        exp_sin_fitter_mode = 'sync'
     else: # otherwise use calibrated measurer
         readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
         measurement_name = 'resultnumbers'
+        exp_sin_fitter_mode = 'unsync'
 
     def set_ex_length(length):
         pre_pulse_sequences = [p for pulse in pre_pulses for p in pulse.get_pulse_sequence(0)]
@@ -38,7 +40,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
         arg_id = -2 # the last parameter is resultnumbers, so the time-like argument is -2
     else:
         arg_id = -1
-    fitter_arguments = (measurement_name, exp_sin_fitter(), arg_id, np.arange(len(extra_sweep_args)))
+    fitter_arguments = (measurement_name, exp_sin_fitter(mode=exp_sin_fitter_mode), arg_id, np.arange(len(extra_sweep_args)))
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                                             *extra_sweep_args,

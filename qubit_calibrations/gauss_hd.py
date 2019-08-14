@@ -9,38 +9,44 @@ from .channel_amplitudes import channel_amplitudes
 #
 #   return [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
 
-def gauss_hd_ape_pihalf(device, qubit_id, num_pulses_range, phase_sign='+', channel_amplitudes=None):
-    readout_pulse = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
-    pi2_pulse = get_excitation_pulse(device=device, qubit_id=qubit_id, rotation_angle=np.pi/2., channel_amplitudes_override=channel_amplitudes)
-    channel_amplitudes = pi2_pulse.references['channel_amplitudes']
-    metadata = {'qubit_id':qubit_id}
-    references = {'channel_amplitudes': channel_amplitudes,
-                  'pi_half_pulse': pi2_pulse}
+
+def gauss_hd_ape_pihalf(device, qubit_id, num_pulses_range, phase_sign='+'):
+    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
+    pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id, rotation_angle=np.pi/2.)
+    channel_amplitudes_ = device.exdir_db.select_measurement_by_id(pi2_pulse.references['channel_amplitudes'])
+    metadata = {'qubit_id': qubit_id}
+    references = {'channel_amplitudes': channel_amplitudes_.id,
+                  'pi_half_pulse': pi2_pulse.id}
     amplitude = float(pi2_pulse.metadata['amplitude'])
+    sigma = float(pi2_pulse.metadata['sigma'])
+    length = float(pi2_pulse.metadata['length'])
+    alpha = float(pi2_pulse.metadata['alpha'])
 
     def set_num_pulses(num_pulses):
         channel_pulses_xp = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha)
-                                for c, a in channel_amplitudes.metadata.items()]
+                                for c, a in channel_amplitudes_.metadata.items()]
         channel_pulses_xm = [(c, device.pg.gauss_hd, -float(a) * amplitude, sigma, alpha)
-                                for c, a in channel_amplitudes.metadata.items()]
+                                for c, a in channel_amplitudes_.metadata.items()]
         channel_pulses_yp = [(c, device.pg.gauss_hd, float(a) * amplitude*1j, sigma, alpha)
-                                for c, a in channel_amplitudes.metadata.items()]
+                                for c, a in channel_amplitudes_.metadata.items()]
         channel_pulses_ym = [(c, device.pg.gauss_hd, -float(a) * amplitude*1j, sigma, alpha)
-                                for c, a in channel_amplitudes.metadata.items()]
+                                for c, a in channel_amplitudes_.metadata.items()]
         if phase_sign=='+':
             pulse = [device.pg.pmulti(length, *tuple(channel_pulses_xp))] + \
                     ([device.pg.pmulti(length, *tuple(channel_pulses_xp))] +
                      [device.pg.pmulti(length, *tuple(channel_pulses_xm))])*num_pulses + \
                     [device.pg.pmulti(length, *tuple(channel_pulses_ym))]
         elif phase_sign=='-':
-            pulse = [device.pg.pmulti(length, *tuple(channel_pulses_ym))] + \
+            pulse = [device.pg.pmulti(length, *tuple(channel_pulses_xp))] + \
                     ([device.pg.pmulti(length, *tuple(channel_pulses_xp))] +
                      [device.pg.pmulti(length, *tuple(channel_pulses_xm))]) * num_pulses + \
                     [device.pg.pmulti(length, *tuple(channel_pulses_yp))]
 
         device.pg.set_seq(pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
 
-    fitter_arguments = (measurement_name, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+    #measurement_name = [m for m in measurer.get_points().keys()][0]
+    measurement_name = list( measurer.get_points().keys())[0]
+    fitter_arguments = (measurement_name, exp_sin_fitter(), -1, [])
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                         (num_pulses_range, set_num_pulses, 'Quasiidentity pulse number'),
                                         fitter_arguments=fitter_arguments,

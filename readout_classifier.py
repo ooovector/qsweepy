@@ -59,12 +59,12 @@ def probability_aware_readout_fidelity(y_true, y_pred_proba):
 probability_aware_readout_fidelity_scorer = make_scorer(probability_aware_readout_fidelity, needs_proba=True)
 
 def evaluate_classifier(classifier, X, y):
-	scores = cross_validate(classifier, X, y, scoring={'fidelity':readout_fidelity_scorer, 'probability_aware_fidelity': probability_aware_readout_fidelity_scorer}, cv=3)
+	scores = cross_validate(classifier, X, y, scoring={'fidelity':readout_fidelity_scorer})#, 'probability_aware_fidelity': probability_aware_readout_fidelity_scorer}, cv=3)
 	fidelity  = scores['test_fidelity']
-	roc_auc  = scores['test_probability_aware_fidelity']
-	return {'fidelity':np.mean(fidelity), 'probability_aware_fidelity':np.mean(roc_auc)}
+	#roc_auc  = scores['test_probability_aware_fidelity']
+	return {'fidelity':np.mean(fidelity)}#, 'probability_aware_fidelity':np.mean(roc_auc)}
 
-readout_classifier_scores = ['fidelity', 'probability_aware_fidelity']
+readout_classifier_scores = ['fidelity']#, 'probability_aware_fidelity']
 
 class linear_classifier(BaseEstimator, ClassifierMixin):
 	def __init__(self, purify=True, cov_mode='equal'):

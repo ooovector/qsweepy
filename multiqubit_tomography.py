@@ -90,7 +90,7 @@ class multiqubit_tomography:
 
 		if self.reconstruction_type == 'cvxopt':
 			x = cvxpy.Variable(len(projections), complex=True)
-			rmat_normalized = reconstruction_matrix/np.mean(np.abs(measurement_results))
+			rmat_normalized = np.asarray(reconstruction_matrix/np.mean(np.abs(measurement_results)), dtype=complex)
 			meas_normalized = np.asarray(measurement_results).ravel()/np.mean(np.abs(measurement_results))
 			lstsq_objective = cvxpy.atoms.sum_squares(cvxpy.abs(rmat_normalized @ x - meas_normalized))
 			matrix_size = int(np.round(np.sqrt(len(projections))))

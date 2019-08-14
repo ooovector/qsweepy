@@ -172,7 +172,7 @@ class Zurich_HDAWG1808():
             '''.format(wave_length = wave_length)))
             play_fragments.append(textwrap.dedent('''
             if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-                repeat({rep_rate}) {{
+                while(true) {{
                     waitDigTrigger(1);
                     wait(getUserReg({pre_delay_reg}));
                     playWave(w_I_{wave_length},w_Q_{wave_length});
@@ -184,7 +184,7 @@ class Zurich_HDAWG1808():
             ''').format(wave_length = wave_length, wave_length_supersamp = wave_length//8, **parameters))
         zero_length_program = textwrap.dedent('''
         if (getUserReg({wave_length_reg}) == 0) {{
-            repeat({rep_rate}) {{
+            while(true) {{
                 waitDigTrigger(1);
                 wait({nsupersamp});
                 waitWave();
@@ -305,7 +305,7 @@ class Zurich_HDAWG1808():
             self.daq.setInt('/' + self.device + '/awgs/%d/enable' % out_seq, 0)
         #self.daq.sync()
 
-    def set_output(self, channel, output):
+    def set_output(self, output, channel):
         self.daq.set([['/' + self.device + '/SIGOUTS/%d/ON' % channel, output]])
         #self.daq.sync()
 
@@ -336,7 +336,7 @@ class Zurich_HDAWG1808():
     def get_range(self, channel):
         return self.range[channel]
 
-    def set_filter(self, channel, filter):
+    def set_filter(self, filter, channel):
         self.filter[channel] = filter
         self.daq.set([['/' + self.device + '/SIGOUTS/%d/FILTER' % channel, range]])
         self.daq.sync()
@@ -422,7 +422,7 @@ class Zurich_HDAWG1808():
     # In this part of the code channel means the number of awgs
     # for config=0
 
-    def set_sampling_rate(self, channel, rate):
+    def set_sampling_rate(self, rate, channel):
         """	0 2.4 GHz 1 1.2 GHz 2 600 MHz 3 300 MHz 4 150 MHz """
         self.sampling_rate[channel] = rate
         self.daq.set(['/' + self.device + '/AWGS/%d/TIME' % channel, rate])
@@ -431,7 +431,7 @@ class Zurich_HDAWG1808():
     def get_sampling_rate(self, channel):
         return self.sampling_rate[channel]
 
-    def set_amplitude(self, channel, amplitude):
+    def set_amplitude(self, amplitude, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
@@ -445,7 +445,7 @@ class Zurich_HDAWG1808():
 
     # Marker out settings
 
-    def set_marker_out(self, channel, source):
+    def set_marker_out(self, source, channel):
         if source < 19:
             exp_setting = [['/%s/triggers/out/%d/source' % (self.device, channel), source]]
             self.daq.set(exp_setting)
@@ -464,7 +464,7 @@ class Zurich_HDAWG1808():
     # 2 Sine 2: AWG Output is multiplied with Sine Generator signal 1
     # 5 Advanced: Output modulates corresponding sines from modulation carriers.
 
-    def set_modulation(self, channel, mode):
+    def set_modulation(self,  mode, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
@@ -489,7 +489,7 @@ class Zurich_HDAWG1808():
     # self.daq.sync()
 
     # osc_num=integer
-    def set_awg_multi_osc(self, channel, carrier, osc_num):
+    def set_awg_multi_osc(self, carrier, osc_num, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
@@ -506,11 +506,11 @@ class Zurich_HDAWG1808():
             self.daq.set(exp_setting)
             self.daq.sync()
 
-    def get_awg_multi_osc(self, channel, carrier):
+    def get_awg_multi_osc(self, carrier, channel):
         return self.carrier_osc[channel, carrier]
 
     # harm=integer
-    def set_awg_multi_harm(self, channel, carrier, harm):
+    def set_awg_multi_harm(self, carrier, harm, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
@@ -521,7 +521,7 @@ class Zurich_HDAWG1808():
         self.daq.set(exp_setting)
         self.daq.sync()
 
-    def get_awg_multi_harm(self, channel, carrier):
+    def get_awg_multi_harm(self, carrier, channel):
         return self.carrier_harm[channel, carrier]
 
     # freq units=Hz
@@ -535,11 +535,11 @@ class Zurich_HDAWG1808():
         self.daq.set(exp_setting)
         self.daq.sync()
 
-    def get_awg_multi_freq(self, channel, carrier):
+    def get_awg_multi_freq(self, carrier, channel):
         return self.carrier_freq[channel, carrier]
 
     # phase units=deg
-    def set_awg_multi_phase(self, channel, carrier, phase):
+    def set_awg_multi_phase(self, carrier, phase, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
@@ -550,7 +550,7 @@ class Zurich_HDAWG1808():
         self.daq.set(exp_setting)
         self.daq.sync()
 
-    def get_awg_multi_phase(self, channel, carrier):
+    def get_awg_multi_phase(self, carrier, channel):
         return self.carrier_phase[channel, carrier]
 
     # we should add to waveform(16 bits) 2 bits with information about markers(they are simply set
@@ -572,19 +572,19 @@ class Zurich_HDAWG1808():
     def check_waveform(self):
         pass
 
-    def write_waveform(self, channel, waveform):
+    def write_waveform(self,  waveform, channel):
         if len(waveform) != self.get_nop():
             print('Error!!! Length of waveform should be equal', self.get_nop())
         else:
             self._waveforms[channel] = waveform
 
-    def write_digital(self, channel, marker):
+    def write_digital(self, marker, channel):
         if len(marker) != self.get_nop():
             print('Error!!! Length of marker should be equal', self.get_nop())
         else:
             self._marker[channel] = marker
 
-    def set_waveform(self, channel, waveform):
+    def set_waveform(self, waveform, channel):
         sequencer = channel // 2
 
         waveform_nop = np.zeros(self.get_nop(), dtype=float)

@@ -78,7 +78,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     if len(qubit_ids) == 2:
         HZ_group = clifford.two_qubit_clifford(*tuple([g for g in generators.values()]),  plus_op_parallel=device.pg.parallel, plus_op_sequential=lambda x: sum(x), cphase = two_qubit_gate)
     elif len(qubit_ids) == 1:
-        HZ_group = clifford.generate_group(HZ)
+        HZ_group = clifford.generate_group(generators[qubit_ids[0]])
     else:
         raise ValueError ('More than two qubits are unsupported')
 

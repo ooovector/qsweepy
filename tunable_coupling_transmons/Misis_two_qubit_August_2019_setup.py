@@ -13,7 +13,7 @@ device_settings = {'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
                    'hdawg_address': 'hdawg-dev8108',
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
                    'adc_timeout': 10,
-                   'adc_trig_rep_period': 50 * 125,  # 10 kHz rate period
+                   'adc_trig_rep_period': 200 * 125,  # 10 kHz rate period
                    'adc_trig_width': 2,  # 80 ns trigger length
                    }
 
@@ -21,20 +21,20 @@ cw_settings = {}
 pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
                    'ex_clock': 1000e6,  # 1 GHz - clocks of some devices
-                   'rep_rate': 20e3,  # 10 kHz - pulse sequence repetition rate
+                   'rep_rate': 5e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
                    'global_num_points_delta': 400,
-                   'hdawg_ch0_amplitude': 0.3,
-                   'hdawg_ch1_amplitude': 0.3,
+                   'hdawg_ch0_amplitude': 0.5,
+                   'hdawg_ch1_amplitude': 0.5,
                    'hdawg_ch2_amplitude': 0.8,
                    'hdawg_ch3_amplitude': 0.8,
-                   'hdawg_ch4_amplitude': 0.8,
+                   'hdawg_ch4_amplitude': 0.9,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq': 3.40e9,
+                   'lo1_freq': 3.70e9,
                    'pna_freq': 6.06e9,
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
@@ -56,7 +56,6 @@ class hardware_setup():
         self.pna = None
         self.lo1 = None
         self.rf_switch = None
-        self.awg_tek = None
         self.sa = None
         self.coil_device = None
         self.hdawg = None
@@ -145,11 +144,13 @@ class hardware_setup():
             self.hdawg.set_amplitude(channel=channel, amplitude=self.pulsed_settings['hdawg_ch%d_amplitude'%channel])
             self.hdawg.set_offset(channel=channel, offset=0 * 1.0)
             self.hdawg.set_digital(channel=channel, marker=[0]*(global_num_points))
+            self.hdawg.daq.set([['/{}/sigouts/{}/range'.format(self.hdawg.device, channel), 1]])
+        self.hdawg.daq.set([['/{}/sigouts/4/range'.format(self.hdawg.device), 2]])
         self.hdawg.set_all_outs()
         self.hdawg.run()
 
-        self.ro_trg = awg_digital.awg_digital(self.awg_tek, 1, delay_tolerance=20e-9)  # triggers readout card
-        self.coil = awg_channel.awg_channel(self.awg_tek, 5)  # coil control
+        self.ro_trg = awg_digital.awg_digital(self.hdawg, 1, delay_tolerance=20e-9)  # triggers readout card
+        self.coil = awg_channel.awg_channel(self.hdawg, 5)  # coil control
         # ro_trg.mode = 'set_delay' #M3202A
         # ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
         self.ro_trg.mode = 'waveform'  # AWG5014C
@@ -158,7 +159,7 @@ class hardware_setup():
         self.adc.set_nums(self.pulsed_settings['adc_nums'])
 
     def set_switch_if_not_set(self, value, channel):
-        if not self.rf_switch.do_get_switch(channel=channel):
+        if self.rf_switch.do_get_switch(channel=channel) != value:
             self.rf_switch.do_set_switch(value, channel=channel)
 
     def setup_iq_channel_connections(self, exdir_db):
@@ -186,7 +187,7 @@ class hardware_setup():
         self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'coil': awg_channel.awg_channel(self.awg_tek, 4)}  # coil control
+        self.fast_controls = {'coil': awg_channel.awg_channel(self.hdawg, 4)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']
