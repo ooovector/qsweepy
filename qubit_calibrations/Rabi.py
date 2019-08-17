@@ -7,7 +7,7 @@ from . import excitation_pulse
 import traceback
 
 
-def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0, pre_pulses=tuple(), measurement_type='Rabi_rect'):
+def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0, pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', additional_metadata={}):
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
         readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
         measurement_name = 'iq'+qubit_id
@@ -19,8 +19,14 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
         exp_sin_fitter_mode = 'unsync'
 
     def set_ex_length(length):
-        pre_pulse_sequences = [p for pulse in pre_pulses for p in pulse.get_pulse_sequence(0)]
-        ex_pulse_seq = excitation_pulse.get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase=0.)
+        pre_pulse_sequences = []
+        for pulse in pre_pulses:
+            if hasattr(pulse, 'get_pulse_sequence'):
+                pre_pulse_sequences += pulse.get_pulse_sequence(0.0)
+            else:
+                pre_pulse_sequences += pulse
+        #pre_pulse_sequences = [p for pulse in pre_pulses for p in pulse.get_pulse_sequence(0)]
+        ex_pulse_seq = excitation_pulse.get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase=0.)*repeats
         delay_seq = [device.pg.pmulti(readout_delay)]
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
@@ -34,7 +40,8 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
         references.update(measurer.references)
 
     for pre_pulse_id, pre_pulse in enumerate(pre_pulses):
-        references.update({('pre_pulse', str(pre_pulse_id)): pre_pulse.id})
+        if hasattr(pre_pulse, 'id'):
+            references.update({('pre_pulse', str(pre_pulse_id)): pre_pulse.id})
 
     if len(qubit_id)>1:
         arg_id = -2 # the last parameter is resultnumbers, so the time-like argument is -2
@@ -42,20 +49,24 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
         arg_id = -1
     fitter_arguments = (measurement_name, exp_sin_fitter(mode=exp_sin_fitter_mode), arg_id, np.arange(len(extra_sweep_args)))
 
+    metadata = {'qubit_id': ','.join(qubit_id),
+                'extra_sweep_args': str(len(extra_sweep_args)),
+                'tail_length': str(tail_length),
+                'readout_delay': str(readout_delay),
+                'repeats': str(repeats)}
+    metadata.update(additional_metadata)
+
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                                             *extra_sweep_args,
                                                             (lengths, set_ex_length, 'Excitation length', 's'),
-                                                            fitter_arguments = fitter_arguments,
-                                                            measurement_type = measurement_type,
-                                                            metadata={'qubit_id': ','.join(qubit_id),
-                                                                      'extra_sweep_args': str(len(extra_sweep_args)),
-                                                                      'tail_length': str(tail_length),
-                                                                      'readout_delay': str(readout_delay)},
+                                                            fitter_arguments=fitter_arguments,
+                                                            measurement_type=measurement_type,
+                                                            metadata=metadata,
                                                             references=references)
 
     return measurement
 
-def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='Rabi_rect', pre_pulses=tuple()):
+def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='Rabi_rect', pre_pulses=tuple(), tail_length = 0, additional_metadata={}):
     # check if we have fitted Rabi measurements on this qubit-channel combo
     #Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
     #Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
@@ -70,7 +81,7 @@ def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='R
     lengths = np.arange(0, min_step*scan_points, min_step)
     print (0, min_step*scan_points, min_step)
     while not (good_fit or np.max(lengths)>max_scan_length):
-        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=lengths, measurement_type=measurement_type, pre_pulses=pre_pulses)
+        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=lengths, measurement_type=measurement_type, pre_pulses=pre_pulses, tail_length=tail_length, additional_metadata=additional_metadata)
         fit_results = measurement.fit.metadata
         if int(fit_results['frequency_goodness_test']):
             return measurement

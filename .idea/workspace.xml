@@ -2,21 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/qsweepy.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/qsweepy.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fitters/single_period_sin.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fitters/exp_sin.py" beforeDir="false" afterPath="$PROJECT_DIR$/fitters/exp_sin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fitters/fit_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/fitters/fit_dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instrument_drivers/ADS54J40.py" beforeDir="false" afterPath="$PROJECT_DIR$/instrument_drivers/ADS54J40.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instrument_drivers/HDAWG_1808_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/instrument_drivers/HDAWG_1808_new.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/multiqubit_tomography.py" beforeDir="false" afterPath="$PROJECT_DIR$/multiqubit_tomography.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clifford.py" beforeDir="false" afterPath="$PROJECT_DIR$/clifford.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pulses.py" beforeDir="false" afterPath="$PROJECT_DIR$/pulses.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_calibrations/Rabi.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/Rabi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_calibrations/benchmarking.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/benchmarking.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/gauss_hd.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/gauss_hd.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/qubit_calibrations/parametric_two_qubit_gate.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/parametric_two_qubit_gate.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/readout_classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/readout_classifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sweep_extras.py" beforeDir="false" afterPath="$PROJECT_DIR$/sweep_extras.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_August_2019_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_August_2019_setup.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />

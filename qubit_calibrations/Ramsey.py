@@ -1,10 +1,52 @@
 from .readout_pulse import get_qubit_readout_pulse, get_uncalibrated_measurer
 from ..fitters.exp_sin import exp_sin_fitter
+from ..fitters.single_period_sin import SinglePeriodSinFitter
 from .channel_amplitudes import channel_amplitudes
 import numpy as np
 from . import excitation_pulse
 
-def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None, target_freq_offset=None, readout_delay=0):
+def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None, channel_amplitudes2=None):
+	'''
+	:param device qubit_device:
+	'''
+	readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id2) # we want to measure qubit 2 because otherwise wtf are we are doing the second pi/2 pulse for
+	phase_scan_points = int(device.get_sample_global(name='process_phase_scan_points'))
+	phases = np.linspace(0, 2*np.pi, phase_scan_points, endpoint=False)
+	ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id1, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
+	ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id2, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+
+	def set_phase(phase):
+		device.pg.set_seq(ex_pulse1.get_pulse_sequence(0.0) +
+						  process.get_pulse_sequence() +
+						  ex_pulse2.get_pulse_sequence(phase) +
+						  device.trigger_readout_seq +
+						  readout_pulse.get_pulse_sequence())
+
+	references = {'ex_pulse1':ex_pulse1.id,
+				  'ex_pulse2':ex_pulse2.id,
+				  ('frequency_controls', qubit_id1): device.get_frequency_control_measurement_id(qubit_id=qubit_id1),
+				  ('frequency_controls', qubit_id2): device.get_frequency_control_measurement_id(qubit_id=qubit_id2),
+				  'process': process.id}
+	metadata = {'q1': qubit_id1,
+				'q2': qubit_id2}
+	if hasattr(measurer, 'references'):
+		references.update(measurer.references)
+
+	fitter_arguments = ('iq'+qubit_id2, SinglePeriodSinFitter(), -1, [])
+
+	measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
+											  				(phases, set_phase, 'Phase','radians'),
+											  				fitter_arguments = fitter_arguments,
+											  				measurement_type='Ramsey_process',
+											  				metadata=metadata,
+											  				references=references)
+
+	return measurement
+
+
+def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None,
+           target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='Ramsey',
+		   additional_references = {}, additional_metadata = {}):
 	if type(lengths) is type(None):
 		lengths = np.arange(0,
 							float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
@@ -17,7 +59,10 @@ def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channe
 
 	def set_delay(length):
 		#ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
-		delay_seq = [device.pg.pmulti(length)]
+		if delay_seq_generator is None:
+			delay_seq = [device.pg.pmulti(length)]
+		else:
+			delay_seq = delay_seq_generator(length)
 		readout_delay_seq = [device.pg.pmulti(readout_delay)]
 		readout_trigger_seq = device.trigger_readout_seq
 		readout_pulse_seq = readout_pulse.pulse_sequence
@@ -32,6 +77,8 @@ def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channe
 	references = {'ex_pulse1':ex_pulse1.id,
 				  'ex_pulse2':ex_pulse2.id,
 				  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
+	references.update(additional_references)
+
 	if hasattr(measurer, 'references'):
 		references.update(measurer.references)
 
@@ -41,12 +88,13 @@ def Ramsey(device, qubit_id, *extra_sweep_args, channel_amplitudes1=None, channe
 			  'extra_sweep_args':str(len(extra_sweep_args)),
 			  'target_offset_freq': str(target_freq_offset),
 			  'readout_delay':str(readout_delay)}
+	metadata.update(additional_metadata)
 
 	measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
 											  *extra_sweep_args,
 											  (lengths, set_delay, 'Delay','s'),
 											  fitter_arguments = fitter_arguments,
-											  measurement_type='Ramsey',
+											  measurement_type=measurement_type,
 											  metadata=metadata,
 											  references=references)
 
@@ -70,7 +118,7 @@ def get_Ramsey_pulse_frequency(device, Ramsey_measurement):
 	if np.max(channel2_frequencies) - np.min(channel2_frequencies) < frequency_rounding:
 		raise Exception('Channel 2 frequency spreads are larger than frequency rounding')
 
-def Ramsey_adaptive(device, qubit_id, set_frequency=True):
+def Ramsey_adaptive(device, qubit_id, set_frequency=True, delay_seq_generator=None, measurement_type='Ramsey', additional_references = {}, additional_metadata={}):
 	# check if we have fitted Rabi measurements on this qubit-channel combo
 	#Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
 	#Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
@@ -83,18 +131,22 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 	points_per_oscillation_target = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Ramsey_points_per_oscillation'))
 	frequency_rounding = float(device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
 	target_offset = 1./(min_step*points_per_oscillation_target)
+	target_offset_correction = 0
 
 	lengths = np.arange(0, min_step*scan_points, min_step)
 	qubit_frequency_guess = device.get_qubit_fq(qubit_id)
+
 	while not np.max(lengths)>max_scan_length:
-		# go bown the rabbit hole for
-		measurement = Ramsey(device, qubit_id, lengths=lengths, target_freq_offset=target_offset)
+		# go down the rabbit hole for
+		measurement = Ramsey(device, qubit_id, lengths=lengths, target_freq_offset=(target_offset+target_offset_correction),
+							 delay_seq_generator=delay_seq_generator, measurement_type=measurement_type,
+							 additional_references=additional_references, additional_metadata=additional_metadata)
 		fit_results = measurement.fit.metadata
 		if not (int(fit_results['frequency_goodness_test'])):
 			raise Exception('Failed to calibrate Ramsey: frequency_goodness_test failed on qubit {}, measurement {}'.format(qubit_id, measurement.id))
 
 		# reset frequency?
-		frequency_delta = float(fit_results['f']) - target_offset
+		frequency_delta = float(fit_results['f']) - (target_offset)
 		num_delta_periods = np.abs(frequency_delta*(np.max(measurement.datasets['iq'+qubit_id].parameters[0].values)-np.min(measurement.datasets['iq'+qubit_id].parameters[0].values)))
 		num_decay_periods = np.abs(frequency_delta*float(fit_results['T']))
 		if num_delta_periods > 1/8 and num_decay_periods > 1/8 and set_frequency:
@@ -104,10 +156,11 @@ def Ramsey_adaptive(device, qubit_id, set_frequency=True):
 			assert(np.abs(frequency_delta) < np.abs(target_offset/2.))
 			print('Updating qubit frequency: old frequency {}, new frequency {}'.format(old_frequency, new_frequency))
 			device.update_pulsed_frequencies()
+		elif num_delta_periods > 1/8 and num_decay_periods > 1/8:
+			target_offset_correction = -frequency_delta+target_offset_correction
 
 		if int(fit_results['decay_goodness_test']):
-			return device.exdir_db.select_measurement(measurement_type='fit_dataset_1d',
-													  references_that={'fit_source':measurement.id})
+			return device.exdir_db.select_measurement(measurement_type='fit_dataset_1d', references_that={'fit_source':measurement.id})
 
 		lengths *= _range
 		target_offset /= _range
