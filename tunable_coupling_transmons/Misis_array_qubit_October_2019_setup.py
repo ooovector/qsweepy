@@ -5,8 +5,8 @@ from qsweepy import awg_iq_multi
 
 import numpy as np
 
-device_settings = {'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
-                   'lo1_address': 'TCPIP0::10.20.61.59::inst0::INSTR',
+device_settings = {'vna_address': 'TCPIP0::10.20.61.161::inst0::INSTR',
+                   'lo1_address': 'TCPIP0::10.20.61.10::inst0::INSTR',
                    'lo1_timeout': 5000, 'rf_switch_address': '10.20.61.224',
                    'use_rf_switch': True,
                    'pxi_chassis_id': 0,
@@ -34,8 +34,8 @@ pulsed_settings = {'lo1_power': 18,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq': 3.70e9,
-                   'pna_freq': 6.06e9,
+                   'lo1_freq': 5.80e9,
+                   'pna_freq': 6.9e9,
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
@@ -68,7 +68,7 @@ class hardware_setup():
 
     def open_devices(self):
         # RF switch for making sure we know what sample we are measuring
-        self.pna = Agilent_N5242A('pna', address=self.device_settings['vna_address'])
+        self.pna = RS_ZNB20('pna', address=self.device_settings['vna_address'])
         self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
@@ -164,27 +164,26 @@ class hardware_setup():
 
     def setup_iq_channel_connections(self, exdir_db):
         # промежуточные частоты для гетеродинной схемы new:
-        self.iq_devices = {'iq_ex1': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db),
+        self.iq_devices = {'iq_ex1': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0, 1, self.lo1, exdir_db=exdir_db),
                            # M3202A
                            # 'iq_ex2': hardware.iq_ex2 = awg_iq_multi.Awg_iq_multi(awg2, awg2, 2, 3, lo_ex), #M3202A
-                           'iq_ex3': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 6, 7, self.lo1, exdir_db=exdir_db),
+                           #'iq_ex3': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 6, 7, self.lo1, exdir_db=exdir_db),
                            # M3202A
-                           'iq_ro': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0,            1, self.pna,
-                                                              exdir_db=exdir_db)}  # M3202A
+                           'iq_ro': awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 6, 7, self.pna, exdir_db=exdir_db)}  # M3202A
         # iq_pa = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
         self.iq_devices['iq_ex1'].name = 'ex1'
         # iq_ex2.name='ex2'
-        self.iq_devices['iq_ex3'].name = 'ex3'
+        #self.iq_devices['iq_ex3'].name = 'ex3'
         # iq_pa.name='pa'
         self.iq_devices['iq_ro'].name = 'ro'
 
         self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.set_switch_if_not_set(1, channel=1)
         # iq_ex2.calibration_switch_setter = lambda: self.rf_switch.do_set_switch(2, channel=1) if not self.rf_switch.do_get_switch(channel=1)==2 else None
-        self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.set_switch_if_not_set(3, channel=1)
+        #self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.set_switch_if_not_set(3, channel=1)
         self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.set_switch_if_not_set(4, channel=1)
 
         self.iq_devices['iq_ex1'].sa = self.sa
-        self.iq_devices['iq_ex3'].sa = self.sa
+        #self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
         self.fast_controls = {'coil': awg_channel.awg_channel(self.hdawg, 4)}  # coil control

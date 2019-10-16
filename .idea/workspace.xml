@@ -2,15 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/fitters/single_period_sin.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tunable_coupling_transmons/Misis_array_qubit_October_2019_setup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/clifford.py" beforeDir="false" afterPath="$PROJECT_DIR$/clifford.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pulses.py" beforeDir="false" afterPath="$PROJECT_DIR$/pulses.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/Rabi.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/Rabi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/Ramsey.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/benchmarking.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/benchmarking.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/qubit_calibrations/parametric_two_qubit_gate.py" beforeDir="false" afterPath="$PROJECT_DIR$/qubit_calibrations/parametric_two_qubit_gate.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -20,6 +13,124 @@
   </component>
   <component name="FavoritesManager">
     <favorites_list name="qsweepy" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_August_2019_setup.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="60">
+              <caret line="3" column="32" lean-forward="true" selection-start-line="3" selection-start-column="32" selection-end-line="3" selection-end-column="32" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_array_qubit_October_2019_setup.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="240">
+              <caret line="17" column="20" lean-forward="true" selection-start-line="17" selection-start-column="20" selection-end-line="17" selection-end-column="20" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/instrument_drivers/HDAWG_1808_new.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="660">
+              <caret line="318" column="17" selection-start-line="318" selection-start-column="17" selection-end-line="318" selection-end-column="17" />
+              <folding>
+                <element signature="e#0#37#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ponyfiles/exdir_db.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="780">
+              <caret line="39" column="21" selection-start-line="39" selection-start-column="21" selection-end-line="39" selection-end-column="21" />
+              <folding>
+                <element signature="e#0#41#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ponyfiles/data_structures.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="140">
+              <caret line="37" selection-start-line="37" selection-end-line="37" />
+              <folding>
+                <element signature="e#0#18#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ponyfiles/database.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-501">
+              <caret line="14" column="35" selection-start-line="14" selection-start-column="35" selection-end-line="14" selection-end-column="35" />
+              <folding>
+                <element signature="e#0#22#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/qubit_calibrations/gauss_hd.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="420">
+              <caret line="23" selection-start-line="23" selection-end-line="23" />
+              <folding>
+                <element signature="e#0#31#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/qubit_calibrations/benchmarking.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="2420">
+              <caret line="131" column="44" selection-start-line="131" selection-start-column="44" selection-end-line="131" selection-end-column="44" />
+              <folding>
+                <element signature="e#0#32#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/qubit_calibrations/excitation_pulse.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="3920">
+              <caret line="202" column="34" selection-start-line="202" selection-start-column="34" selection-end-line="202" selection-end-column="34" />
+              <folding>
+                <element signature="e#0#41#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/qubit_calibrations/Rabi.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="40">
+              <caret line="8" selection-start-line="8" selection-end-line="9" selection-end-column="52" />
+              <folding>
+                <element signature="e#0#77#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -31,20 +142,86 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/tunable_coupling_transmons/Misis_array_qubit_October_2019_setup.py" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="-7" />
+    <option name="width" value="780" />
+    <option name="height" value="839" />
+  </component>
   <component name="ProjectId" id="1PK0B4YmJday7cOYuvFiPZH1omH" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="fitters" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="instrument_drivers" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="ponyfiles" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="qubit_calibrations" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="qsweepy" type="b2602c69:ProjectViewProjectNode" />
+              <item name="qsweepy" type="462c0819:PsiDirectoryNode" />
+              <item name="tunable_coupling_transmons" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope">
+        <subPane subId="Scope 'Project Files'; set:Project Files; class com.intellij.psi.search.scope.ProjectFilesScope">
+          <expand>
+            <path>
+              <item name="qsweepy" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
+              <item name="C:\qtlab_replacement\qsweepy" type="442cc68d:ScopeViewTreeModel$RootNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+    </panes>
+  </component>
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/tunable_coupling_transmons" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Documents\qubits\qtlab_replacement\qsweepy\tunable_coupling_transmons" />
-      <recent name="C:\qtlab_replacement\qsweepy\tunable_coupling_transmons" />
-    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\qtlab_replacement\qsweepy\ponyfiles" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\qtlab_replacement\qsweepy\tunable_coupling_transmons" />
+      <recent name="C:\Documents\qubits\qtlab_replacement\qsweepy\tunable_coupling_transmons" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -72,17 +249,77 @@
     </task>
     <servers />
   </component>
+  <component name="ToolWindowManager">
+    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
+    <layout>
+      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.5915493" visible="true" weight="0.14541623" />
+      <window_info id="Structure" order="1" sideWeight="0.4084507" side_tool="true" visible="true" weight="0.14541623" />
+      <window_info id="Favorites" order="2" sideWeight="0.39761648" side_tool="true" weight="0.1227608" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.31852654" />
+      <window_info anchor="bottom" id="Run" order="2" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Version Control" order="7" />
+      <window_info anchor="bottom" id="Terminal" order="8" />
+      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info anchor="bottom" id="Python Console" order="10" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" x="0" y="0" width="434" height="856" id="Documentation" order="3" side_tool="true" weight="0.39285713" />
+    </layout>
+  </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
       <map>
         <entry key="MAIN">
           <value>
             <State>
+              <option name="RECENTLY_FILTERED_USER_GROUPS">
+                <collection />
+              </option>
+              <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
+                <collection />
+              </option>
               <option name="COLUMN_ORDER" />
             </State>
           </value>
         </entry>
       </map>
     </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list />
+          </value>
+        </entry>
+        <entry key="User">
+          <value>
+            <list />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_two_qubit_August_2019_setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="3" column="32" lean-forward="true" selection-start-line="3" selection-start-column="32" selection-end-line="3" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tunable_coupling_transmons/Misis_array_qubit_October_2019_setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="17" column="20" lean-forward="true" selection-start-line="17" selection-start-column="20" selection-end-line="17" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
   </component>
 </project>
