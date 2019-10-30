@@ -23,6 +23,7 @@ class Sweeper:
         self.db = db
         self.default_save_path = ''
         self.sample_name = sample_name
+        self.ignore_callback_errors = True
         self.on_start = [(db.create_in_database, tuple()),
                          (save_exdir.save_exdir, (True,)),
                          (db.update_in_database, tuple()),
@@ -63,6 +64,7 @@ class Sweeper:
                            on_start=on_start+self.on_start,
                            on_finish=on_finish+self.on_finish,
                            on_update=on_update+self.on_update,
+                           ignore_callback_errors=self.ignore_callback_errors,
                            **kwargs)
 
     def sweep_fit_dataset_1d_onfly(self, *args, on_start=[], on_update=[], on_finish=[], fitter_arguments=tuple(), **kwargs):
@@ -93,4 +95,5 @@ class Sweeper:
                            on_start=on_start+self.on_start+[fitter_callback]+self.on_start_fit,
                            on_update=on_update+self.on_update+self.on_update_fit,
                            on_finish=on_finish+self.on_finish+self.on_finish_fit,
+                           ignore_callback_errors=self.ignore_callback_errors,
                            **kwargs)

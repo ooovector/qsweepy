@@ -85,9 +85,6 @@ class pulses:
     def rect(self, channel, length, amplitude):
         return amplitude * np.ones(int(round(length * self.channels[channel].get_clock())), dtype=np.complex)
 
-    def vf_pulse(self):
-        return [self.freq * self.clock * t for t in range(0, self.length)]
-
     def pause(self, channel, length):
         return self.rect(channel, length, 0)
 

@@ -1,6 +1,7 @@
 import numpy as np
 
-def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, plus_op_sequential, cphase=None, cphase_name='CZ', error=1e-3):
+def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, cphase=None, cphase_name='CZ', error=1e-3):
+	# see https://arxiv.org/pdf/1210.7011.pdf
 	c_q1 = generate_group(generators_q1)
 	c_q2 = generate_group(generators_q2)
 	s_q1 = {}
@@ -8,12 +9,29 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, plus_op_s
 	pi2_q1 = {}
 	pi2_q2 = {}
 	# finding s-gates
-	for name, clifford in c_q1.items():
-		if np.abs(np.trace(clifford['unitary']@clifford['unitary']@clifford['unitary']))-clifford['unitary'].shape[0]<1e-3:
-			s_q1[name] = clifford
-	for name, clifford in c_q2.items():
-		if np.abs(np.trace(clifford['unitary']@clifford['unitary']@clifford['unitary']))-clifford['unitary'].shape[0]<1e-3:
-			s_q2[name] = clifford
+	def find_s_gates_from_cliffords(cliffords):
+		for name, clifford in cliffords.items():
+			# has no 2-nd-order axis
+			if not np.abs(np.abs(np.trace(clifford['unitary'] @ clifford['unitary'])) - clifford['unitary'].shape[0]) < error:
+				# has a 3-rd order axis
+				if np.abs(np.abs(np.trace(clifford['unitary'] @ clifford['unitary'] @ clifford['unitary'])) - clifford['unitary'].shape[0]) < error:
+					generator = clifford
+		s = {}
+		s0 = generator['unitary'] @ generator['unitary'] @ generator['unitary']
+		s1 = generator['unitary']
+		s2 = generator['unitary'] @ generator['unitary']
+		norm = np.abs(np.trace(s0))
+		for name, clifford in cliffords.items():
+			if np.abs(np.abs(np.sum(s0 * np.conj(clifford['unitary']))) - norm)<error:
+				s[name] = clifford
+			if np.abs(np.abs(np.sum(s1 * np.conj(clifford['unitary']))) - norm) < error:
+				s[name] = clifford
+			if np.abs(np.abs(np.sum(s2 * np.conj(clifford['unitary']))) - norm) < error:
+				s[name] = clifford
+		return s
+	s_q1 = find_s_gates_from_cliffords(c_q1)
+	s_q2 = find_s_gates_from_cliffords(c_q2)
+	print ('s_q1 length:', len(s_q1))
 	# finding pi/2-gates
 	for name, clifford in c_q1.items():
 		square = clifford['unitary'] @ clifford['unitary']
@@ -43,9 +61,10 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, plus_op_s
 			# cphase-like
 			for name3, s1 in s_q1.items():
 				for name4, s2 in s_q2.items():
+					print (len(group), name1+' '+name2+' '+cphase_name+' '+name3+' '+name4)
 					group[name1+' '+name2+' '+cphase_name+' '+name3+' '+name4] = {
 						'unitary': clifford1['unitary']@clifford2['unitary']@cphase['unitary']@s1['unitary']@s2['unitary'],
-						'pulses': plus_op_sequential(plus_op_parallel(s2['pulses'],s1['pulses']),cphase['pu1ses'],plus_op_parallel(clifford2['pulses']+clifford1['pulses']))}
+						'pulses': plus_op_parallel(s2['pulses'],s1['pulses'])+cphase['pulses']+plus_op_parallel(clifford2['pulses']+clifford1['pulses'])}
 
 	# iswap from cnot and iswap-like from cphase
 	for name1, clifford1 in pi2_q1.items():

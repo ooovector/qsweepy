@@ -19,6 +19,41 @@ def get_hadamard(device, qubit_id):
 	return sequence_z + pi2.get_pulse_sequence(np.pi) + sequence_z
 
 
+def get_vf(device, qubit_id, freq):
+	pi2 = get_excitation_pulse(device, qubit_id, np.pi/2.)
+	channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+		device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
+
+	v_pulse = [(c, pulses.vf, freq) for c, a in channel_amplitudes_.items()]
+
+	for name, two_qubit_gate in device.get_two_qubit_gates().items():
+		if two_qubit_gate.metadata['pulse_type'] == 'parametric':
+			if two_qubit_gate.metadata['q1'] == qubit_id:
+				factor = float(two_qubit_gate.metadata['carrier_harmonic'])
+				if two_qubit_gate.metadata['transition_q1'] == '01':
+					factor *= 1
+				elif two_qubit_gate.metadata['transition_q1'] == '12':
+					factor *= -1
+				else:
+					factor = 0
+			elif two_qubit_gate.metadata['q2'] == qubit_id:
+				factor = -float(two_qubit_gate.metadata['carrier_harmonic'])
+				if two_qubit_gate.metadata['transition_q2'] == '01':
+					factor *= 1
+				elif two_qubit_gate.metadata['transition_q2'] == '12':
+					factor *= -1
+				else:
+					factor = 0
+			else:
+				factor = 0
+			if not factor == 0.0:
+				v_pulse.append((two_qubit_gate.metadata['carrier_name'], pulses.vf, factor*freq))
+
+	sequence_f = [device.pg.pmulti(0, *tuple(v_pulse))]
+
+	return sequence_f
+
+
 def get_s(device, qubit_id, phase = np.pi/2.):
 	pi2 = get_excitation_pulse(device, qubit_id, np.pi/2.)
 	channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
