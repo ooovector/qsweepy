@@ -28,7 +28,7 @@ class qubit_device:
             if 'r' in qubit:
                 if 'Fr' in qubit['r']:
                     try:
-                        assert(self.get_qubit_fr(qubit_id)-qubit['r']['Fr'])<self.ftol
+                        assert(abs(self.get_qubit_fr(qubit_id)-qubit['r']['Fr'])<self.ftol)
                     except Exception as e:
                         print(str(e), type(e))
                         self.set_qubit_fr(qubit_id=qubit_id, fr=qubit['r']['Fr'])
@@ -41,7 +41,7 @@ class qubit_device:
             if 'q' in qubit:
                 if 'F01_min' in qubit['q']['F']:
                     try:
-                        assert(self.get_qubit_fq(qubit_id, transition_name='01')-qubit['q']['F']['F01_min'])<self.ftol
+                        assert(abs(self.get_qubit_fq(qubit_id, transition_name='01')-qubit['q']['F']['F01_min'])<self.ftol)
                     except Exception as e:
                         print(str(e), type(e))
                         self.set_qubit_fq(qubit_id=qubit_id, fq=qubit['q']['F']['F01_min'], transition_name='01')
@@ -359,6 +359,7 @@ class qubit_device:
 
     def setup_adc_reducer_iq(self, qubits, raw=False): ### pimp this code to make it more universal. All the hardware belongs to the hardware
         # file, but how do we do that here without too much boilerplate???
+        # params: qubits: str or list #
         feature_id = 0
 
         adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
@@ -370,11 +371,16 @@ class qubit_device:
         adc_reducer.avg_cov_mode = 'iq'
 
         qubit_measurement_dict = {}
+
+        if type(qubits) is str:
+            qubits = [qubits]
         for qubit_id in qubits:
             if feature_id > 1:
                 raise ValueError('Cannot setup hardware adc_reducer for more that 2 qubits')
             readout_channel_name = [i for i in self.get_qubit_readout_channel_list(qubit_id=qubit_id).keys()][0]
             calibration = self.modem.iq_readout_calibrations[readout_channel_name]
+
+            print(qubit_id, len(calibration['feature']))
             qubit_measurement_dict[qubit_id] = 'avg_cov'+str(feature_id)
 
             adc_reducer.set_feature_iq(feature_id=feature_id, feature=calibration['feature'])

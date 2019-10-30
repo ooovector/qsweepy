@@ -8,7 +8,7 @@ import numpy as np
 device_settings = {'vna_address': 'TCPIP0::10.20.61.161::inst0::INSTR',
                    'lo1_address': 'TCPIP0::10.20.61.10::inst0::INSTR',
                    'lo1_timeout': 5000, 'rf_switch_address': '10.20.61.224',
-                   'use_rf_switch': True,
+                   'use_rf_switch': False,
                    'pxi_chassis_id': 0,
                    'hdawg_address': 'hdawg-dev8108',
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
@@ -19,30 +19,30 @@ device_settings = {'vna_address': 'TCPIP0::10.20.61.161::inst0::INSTR',
 
 cw_settings = {}
 pulsed_settings = {'lo1_power': 18,
-                   'vna_power': 16,
+                   'vna_power': 12,
                    'ex_clock': 1000e6,  # 1 GHz - clocks of some devices
                    'rep_rate': 5e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
                    'global_num_points_delta': 400,
-                   'hdawg_ch0_amplitude': 0.5,
-                   'hdawg_ch1_amplitude': 0.5,
+                   'hdawg_ch0_amplitude': 0.8,
+                   'hdawg_ch1_amplitude': 0.8,
                    'hdawg_ch2_amplitude': 0.8,
                    'hdawg_ch3_amplitude': 0.8,
                    'hdawg_ch4_amplitude': 0.9,
                    'hdawg_ch5_amplitude': 0.8,
-                   'hdawg_ch6_amplitude': 0.8,
-                   'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq': 5.80e9,
-                   'pna_freq': 6.9e9,
+                   'hdawg_ch6_amplitude': 0.5,
+                   'hdawg_ch7_amplitude': 0.5,
+                   'lo1_freq': 5.75e9,
+                   'pna_freq': 6.96e9,
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
-                   'trigger_readout_length': 200e-9,
+                   'trigger_readout_length': 20e-9,
                    'modem_dc_calibration_amplitude': 1.0,
                    'adc_nop': 1024,
-                   'adc_nums': 50000,  ## Do we need control over this? Probably, but not now... WUT THE FUCK MAN
+                   'adc_nums': 25000,  ## Do we need control over this? Probably, but not now... WUT THE FUCK MAN
                    }
 
 
@@ -177,10 +177,10 @@ class hardware_setup():
         # iq_pa.name='pa'
         self.iq_devices['iq_ro'].name = 'ro'
 
-        self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.set_switch_if_not_set(1, channel=1)
+        self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: None #self.set_switch_if_not_set(1, channel=1)
         # iq_ex2.calibration_switch_setter = lambda: self.rf_switch.do_set_switch(2, channel=1) if not self.rf_switch.do_get_switch(channel=1)==2 else None
         #self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.set_switch_if_not_set(3, channel=1)
-        self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.set_switch_if_not_set(4, channel=1)
+        self.iq_devices['iq_ro'].calibration_switch_setter = lambda: None #self.set_switch_if_not_set(4, channel=1)
 
         self.iq_devices['iq_ex1'].sa = self.sa
         #self.iq_devices['iq_ex3'].sa = self.sa
