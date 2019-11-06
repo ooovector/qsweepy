@@ -1,7 +1,6 @@
 from . import data_reduce
 import numpy as np
 from . import readout_classifier
-import cvxpy
 
 class multiqubit_tomography:
 	def __init__(self, measurer, pulse_generator, proj_seq, reconstruction_basis={}):
@@ -64,6 +63,7 @@ class multiqubit_tomography:
 		self.prepare_seq = seq
 
 	def reconstruct(self, measurement_results):
+		from cvxpy import Variable, atoms, abs, reshape, Minimize, Problem, CVXOPT
 		reconstruction_operator_names = []
 		reconstruction_operators = []
 		basis_axes_names = self.reconstruction_basis.keys()
@@ -89,21 +89,27 @@ class multiqubit_tomography:
 		reconstruction = {str(k):v for k,v in zip(basis_axes_names, projections)}
 
 		if self.reconstruction_type == 'cvxopt':
-			x = cvxpy.Variable(len(projections), complex=True)
+			#x = cvxpy.Variable(len(projections), complex=True)
+			x = Variable(len(projections), complex=True)
 			rmat_normalized = np.asarray(reconstruction_matrix/np.mean(np.abs(measurement_results)), dtype=complex)
 			meas_normalized = np.asarray(measurement_results).ravel()/np.mean(np.abs(measurement_results))
-			lstsq_objective = cvxpy.atoms.sum_squares(cvxpy.abs(rmat_normalized @ x - meas_normalized))
+			#lstsq_objective = cvxpy.atoms.sum_squares(cvxpy.abs(rmat_normalized @ x - meas_normalized))
+			lstsq_objective = atoms.sum_squares(abs(rmat_normalized @ x - meas_normalized))
 			matrix_size = int(np.round(np.sqrt(len(projections))))
-			x_reshaped = cvxpy.reshape(x, (matrix_size, matrix_size))
+			#x_reshaped = cvxpy.reshape(x, (matrix_size, matrix_size))
+			x_reshaped = reshape(x, (matrix_size, matrix_size))
 			psd_constraint = x_reshaped >> 0
 			hermitian_constraint = x_reshaped.H == x_reshaped
 			# Create two constraints.
 			constraints = [psd_constraint, hermitian_constraint]
 			# Form objective.
-			obj = cvxpy.Minimize(lstsq_objective)
+			#obj = cvxpy.Minimize(lstsq_objective)
+			obj = Minimize(lstsq_objective)
 			# Form and solve problem.
-			prob = cvxpy.Problem(obj, constraints)
-			prob.solve(solver=cvxpy.CVXOPT, verbose=True)
+			#prob = cvxpy.Problem(obj, constraints)
+			#prob.solve(solver=cvxpy.CVXOPT, verbose=True)
+			prob = Problem(obj, constraints)
+			prob.solve(solver=CVXOPT, verbose=True)
 
 			reconstruction = {str(k): v for k, v in zip(basis_axes_names, np.asarray(x.value))}
 
