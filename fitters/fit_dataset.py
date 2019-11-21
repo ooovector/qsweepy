@@ -117,13 +117,17 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
             #print ('x fit shape: ', x_fit.shape, ' x shape: ', t.shape)
             #print ('y fit shape: ', y_fit.shape, ' y real: ', y_real.shape)
-            num_amplitudes = y_fit.shape[0]//2
+
+            #print ('num_amplitudes: ', num_amplitudes)
+            #print ('fitresults', fitresults)
             if unpack_complex:
+                num_amplitudes = y_fit.shape[0] // 2
                 fit_3d[sweep_parameter_id, :, :] = y_fit[:num_amplitudes,:]+1j*y_fit[num_amplitudes:,:]
                 #fitresults['A'] = fitresults['A'][:num_amplitudes]+1j*fitresults['A'][num_amplitudes:]
                 # if fit result is twice the length of the amplitude, build a complex out of it
                 for fitresult in fitresults.keys():
-                    if np.asarray(fitresults[fitresult]).shape == num_amplitudes*2:
+                    #print ('fitresult_name', fitresult, 'value', np.asarray(fitresults[fitresult]).ravel())
+                    if len(np.asarray(fitresults[fitresult]).ravel()) == num_amplitudes*2:
                         fitresults[fitresult] = fitresults[fitresult][:num_amplitudes]+1j*fitresults[fitresult][num_amplitudes:]
             else:
                 fit_3d[sweep_parameter_id, :, :] = y_fit
