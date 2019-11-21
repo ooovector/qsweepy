@@ -7,6 +7,7 @@ from . import excitation_pulse
 from . import Rabi
 from . import channel_amplitudes
 from . import Ramsey
+from . import calibrated_readout
 
 
 def iswap_frequency_scan(device, gate, q):
@@ -43,7 +44,7 @@ def calibrate_iswap_phase_single_pulse(device, gate_pulse, num_pulses):
 def two_qubit_gate_channel_amplitudes (device, gate):
     return channel_amplitudes.channel_amplitudes(device, **{gate.metadata['carrier_name']:float(gate.metadata['amplitude'])})
 
-
+'''
 def get_frequency_shift(device, gate, recalibrate=True, force_recalibration=False):
     # frequency difference calibration
     try:
@@ -81,91 +82,243 @@ def get_frequency_shift(device, gate, recalibrate=True, force_recalibration=Fals
     print('frequency_shift: ', frequency_shift)
 
     return frequency_delta_q1, frequency_delta_q2
-
-
+'''
+'''
 def get_long_process_vf(device, gate, inverse=False, recalibrate=True, force_recalibration=False):
     frequency_delta_q1, frequency_delta_q2 = get_frequency_shift(device, gate, recalibrate=recalibrate, force_recalibration=force_recalibration)
     factor = -1 if not inverse else 1
     vf1 = excitation_pulse.get_vf(device, gate.metadata['q1'], frequency_delta_q1*factor)
     vf2 = excitation_pulse.get_vf(device, gate.metadata['q2'], frequency_delta_q2*factor)
     return vf1+vf2
+'''
 
 
-def calibrate_parametric_iswap_length(device, gate, calibration_qubit='1'):
+def get_vf(device, gate, frequency_shift):
+    carrier_name = gate.metadata['carrier_name']
+    carrier_harmonic = float(gate.metadata['carrier_harmonic'])
+    return [device.pg.pmulti(0, (carrier_name, pulses.vf, frequency_shift * carrier_harmonic))]
+
+
+def frequency_shift_scan(device, gate, pulse, frequency_shift_range, calibration_qubit='1'):
+    readout_pulse, measurer = calibrated_readout.get_calibrated_measurer(device, [pulse.metadata['q1'], pulse.metadata['q2']])
+    pi_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id=gate.metadata['q1' if calibration_qubit == '1' else 'q2'],
+                                                     rotation_angle=np.pi)
+
+    def set_frequency_shift(frequency_shift):
+        device.pg.set_seq(pi_pulse.get_pulse_sequence(0.0)+\
+                          pulse.get_pulse_sequence(0.0, frequency_shift=frequency_shift)+\
+                          device.trigger_readout_seq+\
+                          readout_pulse.get_pulse_sequence())
+
+    references = {'excitation_pulse':pi_pulse.id,
+                  'parametric_pulse':pulse.id}
+    return device.sweeper.sweep(measurer,
+                                (frequency_shift_range, set_frequency_shift, 'Frequency shift', 'Hz'),
+                                measurement_type='frequency_shift_scan', metadata={}, references=references)
+
+
+def get_parametric_iswap_length_adaptive_calibration(device, gate, frequency_shift=0, recalibrate=True, force_recalibration=False):
+    try:
+        if force_recalibration:
+            raise IndexError('force_recalibration')
+        calibration = device.exdir_db.select_measurement(
+            measurement_type=gate.metadata['physical_type'] + '_adaptive_calibration_summary',
+            references_that={'gate': gate.id},
+            metadata={'frequency_shift':frequency_shift, 'q1':gate.metadata['q1'], 'q2':gate.metadata['q2']})
+    except IndexError as e:
+        traceback.print_exc()
+        if not recalibrate:
+            raise
+        calibration = calibrate_parametric_iswap_length_adaptive(device, gate, calibration_qubit='1', frequency_shift=frequency_shift)
+    return calibration
+
+def calibrate_parametric_iswap_length_adaptive(device, gate, calibration_qubit='1', frequency_shift=0):
+    scan_points = int(device.get_qubit_constant(qubit_id=gate.metadata['q1'],
+                                                name='adaptive_Rabi_amplitude_scan_points'))
+    # estimating coherence time
+    T2_q1 = float(device.exdir_db.select_measurement_by_id(Ramsey.get_Ramsey_coherence_measurement(device, qubit_id=gate.metadata['q1']).id).metadata['T'])
+    T2_q2 = float(device.exdir_db.select_measurement_by_id(Ramsey.get_Ramsey_coherence_measurement(device, qubit_id=gate.metadata['q2']).id).metadata['T'])
+    #print (T2_q1.metadata)
+    max_scan_length = 1/(1/T2_q1+1/T2_q2)
+
     if calibration_qubit == '1':
         excite = excitation_pulse.get_excitation_pulse(device=device, qubit_id=gate.metadata['q1'], rotation_angle=np.pi)
     else:
-        excite = excitation_pulse.get_excitation_pulse(device=device, qubit_id=gate.metadata['q2'],
-                                                       rotation_angle=np.pi)
+        excite = excitation_pulse.get_excitation_pulse(device=device, qubit_id=gate.metadata['q2'], rotation_angle=np.pi)
 
-    vf_pulse = get_long_process_vf(device, gate)
+    vf_pulse = get_vf(device, gate, frequency_shift)  # = get_long_process_vf(device, gate)
+
+    if calibration_qubit == '1':
+        projector_func = lambda x: x[:, 2] - x[:, 1]
+    else:
+        projector_func = lambda x: x[:, 1] - x[:, 2]
+
+    def infer_parameter_from_measurements(measurements, dataset_name, optimization_parameter_id, projector_func):
+        parameter_values = measurements[-1].datasets[dataset_name].parameters[optimization_parameter_id].values
+        measurement_interpolated_combined = np.zeros(parameter_values.shape)
+        for measurement in measurements:
+            measurement_interpolated_combined += np.interp(parameter_values,
+                      measurement.datasets[dataset_name].parameters[optimization_parameter_id].values,
+                      projector_func(measurement.datasets[dataset_name].data))
+        return parameter_values[np.argmin(measurement_interpolated_combined)]
+
+    repeats = 2
+    pulse_length = float(get_iswap_pulse_nophase(device, gate,
+                                           frequency_shift=frequency_shift, rotation_angle=np.pi).metadata['length'])
+    adaptive_measurements = []
+    while repeats*pulse_length < max_scan_length:
+        lengths = pulse_length+np.linspace(-pulse_length/repeats, pulse_length/repeats, scan_points)
+
+        adaptive_measurements.append(Rabi.Rabi_rect(
+            device=device, qubit_id=[gate.metadata['q1'], gate.metadata['q2']],
+            lengths=lengths,
+            tail_length=float(gate.metadata['tail_length']),
+            channel_amplitudes=two_qubit_gate_channel_amplitudes(device, gate),
+            measurement_type=gate.metadata['physical_type'] + '_adaptive_calibration',
+            pre_pulses=(excite, vf_pulse),
+            repeats=repeats, additional_metadata={'frequency_shift': str(frequency_shift)},))
+        pulse_length = infer_parameter_from_measurements(adaptive_measurements, 'resultnumbers',
+                                                         optimization_parameter_id=0, projector_func=projector_func)
+        repeats *= 2
+
+    return device.exdir_db.save(measurement_type=gate.metadata['physical_type'] + '_adaptive_calibration_summary',
+                         references={'gate': gate.id},
+                         metadata={'frequency_shift':frequency_shift, 'length':pulse_length,
+                                   'q1':gate.metadata['q1'], 'q2':gate.metadata['q2']})
+
+def calibrate_parametric_iswap_length(device, gate, expected_frequency=None, calibration_qubit='1', frequency_shift=0):
+    if calibration_qubit == '1':
+        excite = excitation_pulse.get_excitation_pulse(device=device, qubit_id=gate.metadata['q1'], rotation_angle=np.pi)
+    else:
+        excite = excitation_pulse.get_excitation_pulse(device=device, qubit_id=gate.metadata['q2'], rotation_angle=np.pi)
+
+    vf_pulse = get_vf(device, gate, frequency_shift)#= get_long_process_vf(device, gate)
     Rabi_rect_measurement_q1 = Rabi.Rabi_rect_adaptive(device=device, qubit_id=[gate.metadata['q1'], gate.metadata['q2']], tail_length = float(gate.metadata['tail_length']),
-            channel_amplitudes=two_qubit_gate_channel_amplitudes(device, gate), measurement_type=gate.metadata['physical_type']+'_calibration', pre_pulses=(excite,  vf_pulse))
-    ## TODO: fix this shit!!!!! it doesn't use the frequency shifts after all.
+            channel_amplitudes=two_qubit_gate_channel_amplitudes(device, gate), measurement_type=gate.metadata['physical_type']+'_calibration', pre_pulses=(excite,  vf_pulse),
+            repeats = 1, additional_metadata={'frequency_shift': str(frequency_shift)}, expected_frequency=expected_frequency)
 
     fit_m1 = Rabi_rect_measurement_q1.fit
 
     return Rabi_rect_measurement_q1, fit_m1
 
 
-def get_gate_calibration(device, gate, recalibrate=True, force_recalibration=False):
+def get_pulse_length_from_Rabi_rect_fit(fit, rotation_angle):
+    extra_periods = np.floor(rotation_angle / (2 * np.pi))
+    f = float(fit.metadata['f'])
+    phi = float(fit.metadata['phi'])
+    ##TODO: this code doesn;t work for rotation_angle not  pi+2*pi*n
+    # finding minimal pi-pulse length
+    candidate_num_periods = [(np.pi - phi) / (2 * np.pi), (np.pi + phi) / (2 * np.pi),
+                             (np.pi - phi + np.pi) / (2 * np.pi), (np.pi + phi + np.pi) / (2 * np.pi)]
+    candidate_lengths_minimal_positive = [(num_periods - np.floor(num_periods)) / f for num_periods in
+                                          candidate_num_periods]
+    # now look at our fit and check which phase most corresponds to what is expected from iSWAp
+    # we know the qubit order and that this measurement should have state 01 at minimum at pi, and state 10 at max.
+    target = fit.datasets['resultnumbers'].data[:, 1] - fit.datasets['resultnumbers'].data[:, 2]
+    target_values = np.interp(candidate_lengths_minimal_positive,
+                              fit.datasets['resultnumbers'].parameters[0].values,
+                              target)
+    #print('candidates: ', candidate_lengths_minimal_positive)
+    #print('target values of candidates: ', target_values)
+    length = candidate_lengths_minimal_positive[np.argmin(target_values)]
+    length += +extra_periods / float(fit.metadata['f'])
+    #print('length: ', length)
+    return length
+
+
+def get_iswap_pulse_nophase(device, gate, frequency_shift=0, expected_frequency=None, recalibrate=True, force_recalibration=False, rotation_angle=None):
     channel_amplitudes_ = two_qubit_gate_channel_amplitudes(device, gate)
-
-    frequency_delta_q1, frequency_delta_q2 = get_frequency_shift(device, gate, recalibrate, force_recalibration)
-    frequency_shift = frequency_delta_q1 - frequency_delta_q2
-
     try:
         if force_recalibration:
             raise IndexError('force_recalibration')
         query = two_qubit_Rabi_measurements_query(qubit_ids=[gate.metadata['q1'], gate.metadata['q2']],
-                                                   measurement_type=gate.metadata['physical_type']+'_calibration',
-                                                   frequency=device.awg_channels[list(channel_amplitudes_.metadata.keys())[0]].get_frequency(),
-                                                   frequency_tolerance=device.get_qubit_constant(qubit_id=gate.metadata['q1'], name='frequency_rounding'),
-                                                   frequency_controls=device.get_frequency_control_measurement_id(qubit_id=gate.metadata['q1']),
-                                                   channel_amplitudes_=channel_amplitudes_.id,
-                                                   frequency_shift=frequency_shift)
-        # print (query)
+                                                  measurement_type=gate.metadata['physical_type'] + '_calibration',
+                                                  frequency=device.awg_channels[
+                                                      list(channel_amplitudes_.metadata.keys())[0]].get_frequency(),
+                                                  frequency_tolerance=device.get_qubit_constant(
+                                                      qubit_id=gate.metadata['q1'], name='frequency_rounding'),
+                                                  frequency_controls=device.get_frequency_control_measurement_id(
+                                                      qubit_id=gate.metadata['q1']),
+                                                  channel_amplitudes_=channel_amplitudes_.id,
+                                                  frequency_shift=frequency_shift)
         fit_id = device.exdir_db.db.db.select(query)
+        #print (query)
         fit_m1 = device.exdir_db.select_measurement_by_id(fit_id[0])
         m1 = device.exdir_db.select_measurement_by_id(fit_m1.references['fit_source'])
-        #m1 = device.exdir_db.select_measurement(measurement_type='two_qubit_Rabi',
-        #										references_that={'channel_amplitudes':channel_amplitudes_.id})
-        #fit_m1 = device.exdir_db.select_measurement(measurement_type='fit_dataset_1d',
-        #											references_that={'fit_source':m1.id})
     except IndexError as e:
         traceback.print_exc()
         if not recalibrate:
             raise
-        m1, fit_m1, = calibrate_parametric_iswap_length(device, gate)
-    rotation_angle = float(gate.metadata['rotation_angle'])
-    f = float(fit_m1.metadata['f'])
-    phi = float(fit_m1.metadata['phi'])
-    candidate_num_periods = [(rotation_angle-phi)/(2*np.pi), (rotation_angle+phi)/(2*np.pi),
-                         (rotation_angle-phi+np.pi)/(2*np.pi), (rotation_angle+phi+np.pi)/(2*np.pi)]
-    candidate_lengths_minimal_positive = [(num_periods-np.floor(num_periods))/f for num_periods in candidate_num_periods]
-    # now look at our fit and check which phase most corresponds to what is expected from iSWAp
-    # we know the qubit order and that this measurement should have state 01 at minimum at pi, and state 10 at max.
-    target = fit_m1.datasets['resultnumbers'].data[:,1]-fit_m1.datasets['resultnumbers'].data[:,2]
-    target_values = np.interp(fit_m1.datasets['resultnumbers'].parameters[-2].values, target, candidate_lengths_minimal_positive)
-    print ('candidates: ', candidate_lengths_minimal_positive)
-    print ('target values of candidates: ', target_values)
-    length = candidate_lengths_minimal_positive[np.argmin(target_values)]
-    print ('length: ', length)
+        m1, fit_m1, = calibrate_parametric_iswap_length(device, gate, frequency_shift=frequency_shift, expected_frequency=expected_frequency)
+    if rotation_angle is None:
+        rotation_angle = float(gate.metadata['rotation_angle'])
+    length = get_pulse_length_from_Rabi_rect_fit(fit_m1, rotation_angle)
 
-    gate_without_phase = ParametricTwoQubitGate(device,
-                                  q1=gate.metadata['q1'],
-                                  q2=gate.metadata['q2'],
-                                  phase_q1=np.nan, #gate['q1'],
-                                  phase_q2=np.nan, #gate['q2'],
-                                  rotation_angle = np.pi,
-                                  length=length, tail_length=gate.metadata['tail_length'],
-                                  channel_amplitudes=channel_amplitudes_.id,
-                                  Rabi_rect_measurement=m1.id,
-                                  gate_settings=gate.id,
-                                  frequency_shift=frequency_shift)
+    return ParametricTwoQubitGate(device, q1=gate.metadata['q1'], q2=gate.metadata['q2'], phase_q1=np.nan,
+                                  phase_q2=np.nan, rotation_angle=rotation_angle, length=length,
+                                  tail_length=gate.metadata['tail_length'], channel_amplitudes=channel_amplitudes_.id,
+                                  Rabi_rect_measurement=m1.id, gate_settings=gate.id, frequency_shift=frequency_shift,
+                                  carrier_name=gate.metadata['carrier_name'],
+                                  carrier_harmonic=gate.metadata['carrier_harmonic'])
+
+
+def get_gate_calibration(device, gate, recalibrate=True, force_recalibration=False, rotation_angle=None):
+    frequency_rounding = float(device.get_sample_global(name='frequency_rounding'))
+    channel_amplitudes_ = two_qubit_gate_channel_amplitudes(device, gate)
+
+    T2_q1 = float(device.exdir_db.select_measurement_by_id(Ramsey.get_Ramsey_coherence_measurement(device, qubit_id=gate.metadata['q1']).id).metadata['T'])
+    T2_q2 = float(device.exdir_db.select_measurement_by_id(Ramsey.get_Ramsey_coherence_measurement(device, qubit_id=gate.metadata['q2']).id).metadata['T'])
+    #print (T2_q1.metadata)
+    T2 = 1/(1/T2_q1+1/T2_q2)
+
+    gate_nophase = get_iswap_pulse_nophase(device, gate, frequency_shift = 0)
+    expected_frequency = float(device.exdir_db.select_measurement(measurement_type='fit_dataset_1d', references_that={'fit_source': gate_nophase.references['Rabi_rect']}).metadata['f'])
+
+    iteration = 0
+    best_frequency = 0
+    periods = 1
+    max_iterations = 1
+
+    while iteration < max_iterations:  # loop exit condition: frequency scan has points closer than frequency_rounding
+        #coherence_time = float(device.exdir_db.select_measurement_by_id(gate_noshift.references['Rabi_rect']).metadata['decay'])
+        length = float(gate_nophase.metadata['length'])
+        try:
+            q1_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id='1', rotation_angle=np.pi)
+            frequency_shift_scan_ = device.exdir_db.select_measurement(measurement_type='frequency_shift_scan',
+                                                        references_that = {'parametric_pulse': gate_nophase.id,
+                                                                           'excitation_pulse': q1_excitation_pulse.id})
+        except IndexError as e:
+            scan_points = int(device.get_sample_global(name='adaptive_Rabi_amplitude_scan_points'))*3
+            frequency_shift_scan_ = frequency_shift_scan(device, gate, gate_nophase, (np.linspace(-np.sqrt(periods)/(length), np.sqrt(periods)/(length), scan_points)+best_frequency))
+
+        frequency_shift_scan_delta = frequency_shift_scan_.datasets['resultnumbers'].parameters[0].values[1] - \
+                                     frequency_shift_scan_.datasets['resultnumbers'].parameters[0].values[0]
+
+        target = frequency_shift_scan_.datasets['resultnumbers'].data[:, 1] - frequency_shift_scan_.datasets['resultnumbers'].data[:, 2]
+        best_frequency = frequency_shift_scan_.datasets['resultnumbers'].parameters[0].values[np.argmin(target)]
+        best_frequency = frequency_rounding*np.round(best_frequency/frequency_rounding)
+
+        periods = 1+(4**iteration-1)*2
+        gate_nophase = get_iswap_pulse_nophase(device, gate, frequency_shift=best_frequency, rotation_angle=np.pi*periods+np.pi/16., expected_frequency=expected_frequency)
+        expected_frequency = float(device.exdir_db.select_measurement(measurement_type='fit_dataset_1d', references_that={'fit_source': gate_nophase.references['Rabi_rect']}).metadata['f'])
+        iteration += 1
+        if frequency_shift_scan_delta < frequency_rounding or float(gate_nophase.metadata['length']) > T2:
+            break
+
+    #gate_nophase = get_iswap_pulse_nophase(device, gate, frequency_shift=best_frequency, rotation_angle=np.pi,
+    #                                  expected_frequency=expected_frequency)
+    length_calibration = get_parametric_iswap_length_adaptive_calibration(device, gate, frequency_shift=best_frequency, recalibrate=recalibrate,
+                                                     force_recalibration=force_recalibration)
+
+    gate_nophase = ParametricTwoQubitGate(device, q1=gate.metadata['q1'], q2=gate.metadata['q2'], phase_q1=np.nan,
+                           phase_q2=np.nan, rotation_angle=rotation_angle, length=length_calibration.metadata['length'],
+                           tail_length=gate.metadata['tail_length'], channel_amplitudes=channel_amplitudes_.id,
+                           Rabi_rect_measurement=gate_nophase.references['Rabi_rect'], gate_settings=gate.id,
+                           frequency_shift=best_frequency, carrier_name=gate.metadata['carrier_name'],
+                           carrier_harmonic=gate.metadata['carrier_harmonic'])
 
     try:
-        references = {'process': gate_without_phase.id}
+        references = {'process': gate_nophase.id}
         metadata_scan1 = {'q1': gate.metadata['q1'],
                           'q2': gate.metadata['q2']}
         metadata_scan2 = {'q1': gate.metadata['q2'],
@@ -178,7 +331,7 @@ def get_gate_calibration(device, gate, recalibrate=True, force_recalibration=Fal
         traceback.print_exc()
         if not recalibrate:
             raise
-        phase_scan1, phase_scan2, phase_scan1_fit, phase_scan2_fit = calibrate_iswap_phase_single_pulse(device, gate_without_phase, 1)
+        phase_scan1, phase_scan2, phase_scan1_fit, phase_scan2_fit = calibrate_iswap_phase_single_pulse(device, gate_nophase, 1)
 
     # we want -np.pi/2. phase from iSWAP; exchange qubits since phase is applied after iSWAP
     phase_q2 = -float(phase_scan1_fit.metadata['phi']) - np.pi/2.
@@ -187,16 +340,19 @@ def get_gate_calibration(device, gate, recalibrate=True, force_recalibration=Fal
     gate_with_phase = ParametricTwoQubitGate(device,
                                   q1=gate.metadata['q1'],
                                   q2=gate.metadata['q2'],
-                                  phase_q1=phase_q1, #gate['q1'],
-                                  phase_q2=phase_q2, #gate['q2'],
-                                  rotation_angle = np.pi,
-                                  length=length, tail_length=0,
+                                  phase_q1=phase_q1,
+                                  phase_q2=phase_q2,
+                                  rotation_angle = rotation_angle,
+                                  length=gate_nophase.metadata['length'],
+                                  tail_length=gate.metadata['tail_length'],
                                   channel_amplitudes=channel_amplitudes_.id,
-                                  Rabi_rect_measurement=m1.id,
+                                  Rabi_rect_measurement=gate_nophase.id,
                                   phase_scan_q1=phase_scan1.id,
                                   phase_scan_q2=phase_scan2.id,
                                   gate_settings=gate.id,
-                                  frequency_shift=frequency_shift)
+                                  frequency_shift=best_frequency,
+                                  carrier_name=gate.metadata['carrier_name'],
+                                  carrier_harmonic=gate.metadata['carrier_harmonic'])
     return gate_with_phase
 
 
@@ -214,7 +370,9 @@ class ParametricTwoQubitGate(MeasurementState):
                         'phase_q2': str(kwargs['phase_q2']),
                         'q1': str(kwargs['q1']),
                         'q2': str(kwargs['q2']),
-                        'frequency_shift': str(kwargs['frequency_shift'])}
+                        'frequency_shift': str(kwargs['frequency_shift']),
+                        'carrier_name': str(kwargs['carrier_name']),
+                        'carrier_harmonic': str(kwargs['carrier_harmonic'])}
 
             if 'calibration_type' in kwargs:
                 metadata['calibration_type'] = kwargs['calibration_type']
@@ -240,20 +398,30 @@ class ParametricTwoQubitGate(MeasurementState):
         #print ('inverse_references in __init__:', inverse_references)
         self.channel_amplitudes = channel_amplitudes.channel_amplitudes(self.device.exdir_db.select_measurement_by_id(self.references['channel_amplitudes']))
 
-    def get_pulse_sequence(self, phase=0.0):
-        pulse_sequence = get_long_process_vf(self.device, self, inverse=False)
+    def get_pulse_sequence(self, phase=0.0, frequency_shift = None):
+        #pulse_sequence = get_long_process_vf(self.device, self, inverse=False)
+        if frequency_shift is None:
+            frequency_shift = float(self.metadata['frequency_shift'])
+        pulse_sequence = get_vf(self.device, self, frequency_shift)
         pulse_sequence += excitation_pulse.get_rect_cos_pulse_sequence(device = self.device,
                                            channel_amplitudes = self.channel_amplitudes,
                                            tail_length = float(self.metadata['tail_length']),
                                            length = float(self.metadata['length']),
                                            phase = phase)
+        pulse_sequence += get_vf(self.device, self, 0)
+        # subtract accumulated phase during the pulse as is it will be compensated through single-qubit rotations
+        # which are calibrated properly
+        carrier_name = self.metadata['carrier_name']
+        accumulation_time = len(pulse_sequence[1][carrier_name])/self.device.pg.channels[carrier_name].get_clock()
+        carrier_harmonic = float(self.metadata['carrier_harmonic'])
+        pulse_sequence += [self.device.pg.pmulti(0, (carrier_name, pulses.vz, -(accumulation_time*frequency_shift)*2*np.pi*carrier_harmonic))]
+        # adding single-qubit rotations
         if np.isfinite(float(self.metadata['phase_q1'])):
             pulse_sequence += excitation_pulse.get_s(self.device, self.metadata['q1'],
                                                      phase=float(self.metadata['phase_q1']))
         if np.isfinite(float(self.metadata['phase_q2'])):
             pulse_sequence += excitation_pulse.get_s(self.device, self.metadata['q2'],
                                                      phase=float(self.metadata['phase_q2']))
-        pulse_sequence += get_long_process_vf(self.device, self, inverse=True)
 
         post_pause_length = float(self.device.get_sample_global(name='two_qubit_pulse_post_pause'))
         pulse_sequence += [self.device.pg.pmulti(post_pause_length)]

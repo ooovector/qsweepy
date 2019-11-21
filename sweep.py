@@ -4,7 +4,8 @@ from .ponyfiles.data_structures import *
 import traceback
 import time
 
-def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
+
+def optimize(target, *params ,initial_simplex=None ,maxfun=200, bounds=None ):
     """
     function is used for paramp only | noted on 13.07.2019
     :param target:
@@ -13,7 +14,7 @@ def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
     :param maxfun:
     :return:
     """
-    from scipy.optimize import fmin
+    from scipy.optimize import fmin, minimize
     x0 = [p[1] for p in params]
     print(x0)
     def tfunc(x):
@@ -30,7 +31,11 @@ def optimize(target, *params ,initial_simplex=None ,maxfun=200 ):
         return f
     if initial_simplex:
         initial_simplex = np.asarray(initial_simplex)/x0
-    solution = fmin(tfunc, np.ones(len(x0)), maxfun=maxfun, initial_simplex=initial_simplex)*x0
+    solution = minimize(tfunc, np.ones(len(x0)),  #
+                        method='Nelder-Mead',
+                        options={'initial_simplex':initial_simplex,
+                                 'maxfev': maxfun},
+                        bounds=bounds).x*x0
     score = tfunc(solution/x0)
     return solution, score
 
@@ -111,6 +116,7 @@ def sweep(measurer, *parameters, shuffle=False,
           on_start=[], on_update=[], on_finish=[],
           use_deferred=False,
           ignore_callback_errors=True,
+          on_update_divider = 1,
           **kwargs):
     """
     Performs a n-d parametric sweep.
@@ -166,18 +172,18 @@ def sweep(measurer, *parameters, shuffle=False,
         nonlocal state
         indeces = list(indeces)
         for dataset in single_measurement_result.keys():
-            print (dataset)
             state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
             state.datasets[dataset].indeces_updates = tuple(indeces+[...])
         state.done_sweeps += 1
 
-        for event_handler, arguments in on_update:
-            try:
-                event_handler(state, indeces, *arguments)
-            except Exception as e:
-                if not ignore_callback_errors:
-                    raise
-                traceback.print_exc()
+        if (not (state.done_sweeps % on_update_divider)) or state.done_sweeps == state.total_sweeps:
+            for event_handler, arguments in on_update:
+                try:
+                    event_handler(state, indeces, *arguments)
+                except Exception as e:
+                    if not ignore_callback_errors:
+                        raise
+                    traceback.print_exc()
 
     for event_handler, arguments in on_start:
         try:
@@ -190,7 +196,6 @@ def sweep(measurer, *parameters, shuffle=False,
     ################
     if hasattr(measurer, 'pre_sweep'):
         measurer.pre_sweep()
-
     for indeces in all_indeces:
         if state.request_stop_acq:
             break
@@ -216,6 +221,7 @@ def sweep(measurer, *parameters, shuffle=False,
 
         state.measurement_time += time.time() - measurement_start
 
+        
     if hasattr(measurer, 'join_deferred'):
         print ('Waiting to join deferred threads:')
         measurer.join_deferred()

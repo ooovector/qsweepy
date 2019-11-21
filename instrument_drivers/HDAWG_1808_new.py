@@ -694,6 +694,7 @@ class Zurich_HDAWG1808():
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
+        time.sleep(0.3)
 
     def get_waveform(self, channel):
         return self._waveforms[channel]
@@ -715,7 +716,7 @@ class Zurich_HDAWG1808():
     # Oscillator frequency
     def set_frequency(self, osc_num, freq):
         self.osc_freq[osc_num] = freq
-        self.daq.set([['/' + self.device + '/OSCS/%d/HARMONIC' % osc_num, freq]])
+        self.daq.set([['/' + self.device + '/OSCS/%d/FREQ' % osc_num, freq]])
         self.daq.sync()
 
     def get_frequency(self, osc_num):

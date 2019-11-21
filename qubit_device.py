@@ -28,29 +28,31 @@ class qubit_device:
             if 'r' in qubit:
                 if 'Fr' in qubit['r']:
                     try:
-                        assert(self.get_qubit_fr(qubit_id)-qubit['r']['Fr'])<self.ftol
+                        assert(abs(self.get_qubit_fr(qubit_id)-qubit['r']['Fr']))<self.ftol
                     except Exception as e:
                         print(str(e), type(e))
                         self.set_qubit_fr(qubit_id=qubit_id, fr=qubit['r']['Fr'])
                 if 'iq_devices' in qubit['r']:
-                    try:
-                        assert(qubit['r']['iq_devices'] == self.get_qubit_readout_channel_list(qubit_id))
-                    except Exception as e:
-                        print(str(e), type(e))
-                        self.set_qubit_readout_channel_list(qubit_id, qubit['r']['iq_devices'])
+                    self.set_qubit_readout_channel_list(qubit_id, qubit['r']['iq_devices'])
             if 'q' in qubit:
                 if 'F01_min' in qubit['q']['F']:
+
                     try:
-                        assert(self.get_qubit_fq(qubit_id, transition_name='01')-qubit['q']['F']['F01_min'])<self.ftol
+                        assert(abs(self.get_qubit_fq(qubit_id, transition_name='01')-qubit['q']['F']['F01_min']))<self.ftol
                     except Exception as e:
                         print(str(e), type(e))
                         self.set_qubit_fq(qubit_id=qubit_id, fq=qubit['q']['F']['F01_min'], transition_name='01')
-                if 'iq_devices' in qubit['q']:
+                if 'F12_min' in qubit['q']['F']:
                     try:
-                        assert(qubit['q']['iq_devices'] == self.get_qubit_excitation_channel_list(qubit_id))
+                        assert(abs(self.get_qubit_fq(qubit_id, transition_name='12')-qubit['q']['F']['F12_min']))<self.ftol
                     except Exception as e:
                         print(str(e), type(e))
-                        self.set_qubit_excitation_channel_list(qubit_id, qubit['q']['iq_devices'])
+                        self.set_qubit_fq(qubit_id=qubit_id, fq=qubit['q']['F']['F12_min'], transition_name='12')
+                if 'iq_devices' in qubit['q']:
+                    self.set_qubit_excitation_channel_list(qubit_id, qubit['q']['iq_devices'])
+                if 'iq_devices_transitions' in qubit['q']:
+                    self.set_qubit_excitation_transition_list(qubit_id, qubit['q']['iq_devices_transitions'])
+
             for key, value in qubit.items():
                 if key != 'r' and key != 'q':
                     try:
@@ -178,42 +180,30 @@ class qubit_device:
         metadata['qubit_id'] = qubit_id
         self.exdir_db.save(measurement_type='qubit_excitation_channel_list', metadata=metadata)
 
-    def get_qubit_excitation_channel_list(self, qubit_id):
-        """
-        Loads channel_name: device_name map from exdir_db system.
+    def set_qubit_excitation_transition_list(self, qubit_id, transition_list):
+        metadata = {k:v for k,v in transition_list.items()}
+        metadata['qubit_id'] = qubit_id
+        self.exdir_db.save(measurement_type='qubit_excitation_transition_list', metadata=metadata)
 
-        channel_name
-            name of the channel in the sample to be measured.
-        device_name
-            name of the device that sends EM energy into this channel.
-
-        Parameters
-        ----------
-        qubit_id : str
-            qubit identifier
-
-        Returns
-        -------
-        excitations_map : dict[str,str]
-            channel_name: channel_device_name dictionary
-
-        Notes
-        ------
-        As a consequence: only one device can be connected to the specific channel.
-
-        See Also
-        -------
-        qubit_device.set_qubits_from_dict : the way to load this parameters to the exdir_db system.
-        """
+    def get_qubit_excitation_channel_list(self, qubit_id, transition='01'):
         excitations_db_metadata = self.exdir_db.select_measurement(measurement_type='qubit_excitation_channel_list',
                                                                    metadata={'qubit_id': qubit_id}).metadata
-        excitations_db_metadata = copy.deepcopy(excitations_db_metadata)
+        if transition is not None:
+            excitation_transition_types = self.exdir_db.select_measurement(measurement_type='qubit_excitation_transition_list',
+                                                                       metadata={'qubit_id': qubit_id}).metadata
 
-        # everything except qubit_id represents mapping from channels to devices
-        del excitations_db_metadata["qubit_id"]
-        excitations_map = excitations_db_metadata
+            excitations = {k:v for k,v in excitations_db_metadata.items() if k != 'qubit_id' and excitation_transition_types[k] == transition}
+        else:
+            excitations = {k:v for k,v in excitations_db_metadata.items() if k != 'qubit_id'}
+        #excitations_db_metadata = copy.deepcopy(excitations_db_metadata)
 
-        return excitations_map
+        return excitations
+
+    def get_qubit_excitation_transition_list(self, qubit_id):
+        excitation_transition_types = self.exdir_db.select_measurement(
+            measurement_type='qubit_excitation_transition_list',
+            metadata={'qubit_id': qubit_id}).metadata
+        return {k: v for k, v in excitation_transition_types.items() if k != 'qubit_id'}
 
     def set_qubit_readout_channel_list(self, qubit_id, device_list):
         metadata = {k:v for k,v in device_list.items()}
@@ -275,18 +265,24 @@ class qubit_device:
         self.awg_channels = {}
         self.readout_channels = {}
         for _qubit_id in self.get_qubit_list():
-            for channel_name, device_name in self.get_qubit_excitation_channel_list(_qubit_id).items():
-                device = iq_devices[device_name]
-                carrier = awg_iq_multi.Carrier(device)
+            for channel_name, device_name in self.get_qubit_excitation_channel_list(_qubit_id, None).items():
+                if device_name in iq_devices:
+                    device = iq_devices[device_name]
+                    carrier = awg_iq_multi.Carrier(device)
+                    device.carriers[channel_name] = carrier
+                else:
+                    carrier = awg_channel.awg_channel_carrier(fast_controls[device_name], frequency = None)
                 assert (channel_name not in self.awg_channels)
-                device.carriers[channel_name] = carrier
                 self.awg_channels[channel_name] = carrier
 
             for channel_name, device_name in self.get_qubit_readout_channel_list(_qubit_id).items():
-                device = iq_devices[device_name]
-                carrier = awg_iq_multi.Carrier(device)
+                if device_name in iq_devices:
+                    device = iq_devices[device_name]
+                    carrier = awg_iq_multi.Carrier(device)
+                    device.carriers[channel_name] = carrier
+                else:
+                    carrier = awg_channel.awg_channel_carrier(fast_controls[device_name], frequency=None)
                 assert (channel_name not in self.awg_channels)
-                device.carriers[channel_name] = carrier
                 self.awg_channels[channel_name] = carrier
                 self.readout_channels[channel_name] = carrier
 
@@ -296,7 +292,6 @@ class qubit_device:
         for gate_id, gate in self.get_two_qubit_gates().items():
             if gate.metadata['pulse_type'] == 'parametric':
                 control_name = gate.metadata['control']
-
                 control = fast_controls[control_name]
                 carrier_name = gate.metadata['carrier_name']
                 assert (carrier_name not in self.awg_channels)
@@ -313,8 +308,15 @@ class qubit_device:
         for _qubit_id in self.get_qubit_list():
             fr = self.get_qubit_fr(_qubit_id)
             fq = self.get_qubit_fq(_qubit_id)
-            for channel_name, device_name in self.get_qubit_excitation_channel_list(_qubit_id).items():
-                self.awg_channels[channel_name].set_frequency(fq)
+            transitions = self.get_qubit_excitation_transition_list(_qubit_id)
+            for channel_name, device_name in self.get_qubit_excitation_channel_list(_qubit_id, None).items():
+                if transitions[channel_name] == '01':
+                    self.awg_channels[channel_name].set_frequency(fq)
+                elif transitions[channel_name] == 'q01r10':
+                    self.awg_channels[channel_name].set_frequency(fr-fq)
+                elif transitions[channel_name] == '12':
+                    fq12 = self.get_qubit_fq(_qubit_id, transition_name='12')
+                    self.awg_channels[channel_name].set_frequency(fq12)
                 iq_devices.append(self.awg_channels[channel_name].parent)
             for channel_name, device_name in self.get_qubit_readout_channel_list(_qubit_id).items():
                 self.awg_channels[channel_name].set_frequency(fr)
@@ -329,7 +331,8 @@ class qubit_device:
                 carrier.set_frequency(frequency)
 
         for d in list(set(iq_devices)):
-            d.do_calibration(d.sa)
+            if hasattr(d, 'do_calibration'):
+                d.do_calibration(d.sa)
 
     def setup_modem_readout(self, hardware):
         hardware.adc.set_nums(int(self.get_sample_global('delay_calibration_nums')))

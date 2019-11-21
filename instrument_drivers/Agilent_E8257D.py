@@ -50,7 +50,7 @@ class Agilent_E8257D(Instrument):
 		self.add_parameter('power',
 			flags=Instrument.FLAG_GETSET, units='dBm', minval=-20, maxval=18, type=float)
 		self.add_parameter('phase',
-			flags=Instrument.FLAG_GETSET, units='rad', minval=-numpy.pi, maxval=numpy.pi, type=float)
+			flags=Instrument.FLAG_GETSET, units='rad', minval=-numpy.inf, maxval=numpy.inf, type=float)
 		self.add_parameter('frequency',
 			flags=Instrument.FLAG_GETSET, units='Hz', minval=1e5, maxval=20e9, type=float)
 		self.add_parameter('status',

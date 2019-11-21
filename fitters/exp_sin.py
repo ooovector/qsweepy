@@ -139,7 +139,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         parameters['points_per_period'] = np.nan
         parameters['decays_in_scan_length'] = np.nan
 
-    frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.5 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
+    frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.2 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
     decay_goodness_test = parameters['decays_in_scan_length']>0.75 and frequency_goodness_test and np.isfinite(parameters['T'])
     parameters['frequency_goodness_test'] = 1 if frequency_goodness_test else 0
     parameters['decay_goodness_test'] = 1 if decay_goodness_test else 0

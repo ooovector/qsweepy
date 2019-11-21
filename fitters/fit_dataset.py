@@ -85,7 +85,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
             if unpack_complex:
                 #print('unpacking old_A_2d complex, old shape: ', old_A_2d.shape)
                 #old_A_2d = np.vstack([np.real(A_sorted).T, np.imag(A_sorted).T]).T
-                old_amplitudes_2d = {k: np.vstack([np.real(v).T, np.imag(v).T]) for k, v in old_amplitudes_2d}
+                old_amplitudes_2d = {k: np.vstack([np.real(v).T, np.imag(v).T]) for k, v in old_amplitudes_2d.items()}
                 #print('new shape: ', old_A_2d.shape)
             old_fit_parameters_1d = {k: np.reshape(v, [np.prod(sweep_parameter_shape)]) for k, v in fit_parameters_sorted.items()}
 
@@ -126,13 +126,15 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
                     if np.asarray(fitresults[fitresult]).shape == num_amplitudes*2:
                         fitresults[fitresult] = fitresults[fitresult][:num_amplitudes]+1j*fitresults[fitresult][num_amplitudes:]
             else:
-                fit_3d[sweep_parameter_id, : ,:] = y_fit
-            fit_parameters.append({k:v for k,v in fitresults.items() if not hasattr(v, '__iter__')})
+                fit_3d[sweep_parameter_id, :, :] = y_fit
+            fit_parameters.append({k: v for k, v in fitresults.items() if not hasattr(v, '__iter__')})
             #A[sweep_parameter_id, :] = fitresults['A']
             for fitresult in fitresults.keys():
                 if hasattr(fitresults[fitresult], '__iter__'):
                     if not fitresult in amplitudes:
                         amplitudes[fitresult] = np.zeros((data_3d.shape[0], data_3d.shape[1]), data_3d.dtype)
+                    if unpack_complex:
+                        fitresults[fitresult] = fitresults[fitresult][:num_amplitudes]+1j*fitresults[fitresult][num_amplitudes:]
                     amplitudes[fitresult][sweep_parameter_id] = fitresults[fitresult]
 
         fit_parameters_pd = pd.DataFrame(fit_parameters)

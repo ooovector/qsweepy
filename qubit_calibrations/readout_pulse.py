@@ -26,7 +26,9 @@ def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
         calibration_type = 'additional_noise_appears'
         amplitude = additional_noise_appears
     else:
-        raise Exception('Compession_1db and additional_noise_appears not found on passthourgh scan!')
+        calibration_type = 'maximum'
+        amplitude = 1.0
+        #raise Exception('Compession_1db and additional_noise_appears not found on passthourgh scan!')
     readout_channel = passthrough_measurement.metadata['channel']
     length = float(passthrough_measurement.metadata['length'])
     metadata={'pulse_type': 'rect',
@@ -168,8 +170,10 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
     return measurement
 
-def get_uncalibrated_measurer(device, qubit_id):
+
+def get_uncalibrated_measurer(device, qubit_id, transition='01'):
     try:
+        assert transition == '01'
         qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)
         reducer = data_reduce.data_reduce(measurer)
         reducer.filters['iq'+qubit_id] = data_reduce.cross_section_reducer(measurer, 'resultnumbers', 0, 1)

@@ -29,6 +29,11 @@ class pulses:
         self.channels = channels
         self.settings = {}
 
+        self.initial_delay = 1e-6
+        self.final_delay = 1e-6
+        self.global_pre = [self.p(None, self.initial_delay, None)]
+        self.global_post = [self.p(None, self.final_delay, None)]
+
     ## generate waveform of a gaussian pulse with quadrature phase mixin
     def gauss_hd(self, channel, length, amp_x, sigma, alpha=0.):
         gauss = gaussian(int(round(length * self.channels[channel].get_clock())),
@@ -149,9 +154,7 @@ class pulses:
 
     def set_seq(self, seq, force=True):
         from time import time
-        initial_delay = 1e-6
-        final_delay = 1e-6
-        pulse_seq_padded = [self.p(None, initial_delay, None)] + seq + [self.p(None, final_delay, None)]
+        pulse_seq_padded = self.global_pre + seq + self.global_post
         try:
             for channel, channel_device in self.channels.items():
                 channel_device.freeze()

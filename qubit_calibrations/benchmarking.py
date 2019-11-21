@@ -114,6 +114,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     fitter_arguments=fitter_arguments,
                                     measurement_type='clifford_bench',
                                     metadata={'qubit_ids': ','.join(qubit_ids)},
+                                    shuffle=True,
                                     references=references)
 
     ## interleaver measurement is found, bench "interleaver" gate
@@ -133,6 +134,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     fitter_arguments=fitter_arguments,
                                     measurement_type='interleaved_bench',
                                     metadata={'qubit_ids': ','.join(qubit_ids)},
+                                    shuffle=True,
                                     references=references)
 
         return interleaved_bench
@@ -182,6 +184,7 @@ def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_
                                     (seq_lengths, pi2_bench.set_sequence_length_and_regenerate, 'Gate number', ''),
                                     *params,
                                     (random_sequence_ids, pi2_bench.set_interleaved_sequence, 'Random sequence id', ''),
+                                    shuffle=True,
                                     measurement_type='pi2_bench',
                                     metadata={'qubit_id':qubit_id}, references={'pi2_pulse':pi2_pulse.id})
     return clifford_bench

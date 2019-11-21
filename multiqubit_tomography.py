@@ -2,6 +2,7 @@ from . import data_reduce
 import numpy as np
 from . import readout_classifier
 import cvxpy
+import traceback
 
 class multiqubit_tomography:
 	def __init__(self, measurer, pulse_generator, proj_seq, reconstruction_basis={}):
@@ -103,9 +104,13 @@ class multiqubit_tomography:
 			obj = cvxpy.Minimize(lstsq_objective)
 			# Form and solve problem.
 			prob = cvxpy.Problem(obj, constraints)
-			prob.solve(solver=cvxpy.CVXOPT, verbose=True)
+			try:
+				prob.solve(solver=cvxpy.CVXOPT, verbose=True)
 
-			reconstruction = {str(k): v for k, v in zip(basis_axes_names, np.asarray(x.value))}
+				reconstruction = {str(k): v for k, v in zip(basis_axes_names, np.asarray(x.value))}
+			except ValueError as e:
+				traceback.print_exc()
+
 
 		if self.reconstruction_output_mode == 'array':
 			it = np.nditer([self.reconstruction_output_array, None], flags=['refs_ok'], op_dtypes=(object, complex))

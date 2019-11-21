@@ -7,9 +7,10 @@ from . import excitation_pulse
 import traceback
 
 
-def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0, pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', additional_metadata={}):
+def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0,
+              pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', additional_metadata={}):
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition)
         measurement_name = 'iq'+qubit_id
         qubit_id = [qubit_id]
         exp_sin_fitter_mode = 'sync'
@@ -53,7 +54,8 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
                 'extra_sweep_args': str(len(extra_sweep_args)),
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
-                'repeats': str(repeats)}
+                'repeats': str(repeats),
+                'transition':transition}
     metadata.update(additional_metadata)
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
@@ -66,22 +68,32 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, lengths=None, *extra_sweep_a
 
     return measurement
 
-def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='Rabi_rect', pre_pulses=tuple(), tail_length = 0, additional_metadata={}):
+
+def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, transition='01', measurement_type='Rabi_rect', pre_pulses=tuple(),
+                       repeats=1, tail_length = 0, additional_metadata={}, expected_frequency=None):
     # check if we have fitted Rabi measurements on this qubit-channel combo
     #Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
     #Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
 
     #for fit in Rabi_fits:
+    max_scan_length = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_max_scan_length'))
     min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
     scan_points = int(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_scan_points'))
     _range = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_range'))
-    max_scan_length = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_max_scan_length'))
+
+    if expected_frequency is None:
+        lengths = np.arange(0, min_step * scan_points, min_step)
+    else:
+        num_periods = int(np.round(np.sqrt(scan_points)))
+        lengths = np.arange(0, num_periods/expected_frequency, 1/(num_periods*expected_frequency))
 
     good_fit = False
-    lengths = np.arange(0, min_step*scan_points, min_step)
+
     print (0, min_step*scan_points, min_step)
     while not (good_fit or np.max(lengths)>max_scan_length):
-        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, lengths=lengths, measurement_type=measurement_type, pre_pulses=pre_pulses, tail_length=tail_length, additional_metadata=additional_metadata)
+        measurement = Rabi_rect(device, qubit_id, channel_amplitudes, transition=transition, lengths=lengths,
+                                measurement_type=measurement_type, pre_pulses=pre_pulses, repeats=1,
+                                tail_length=tail_length, additional_metadata=additional_metadata)
         fit_results = measurement.fit.metadata
         if int(fit_results['frequency_goodness_test']):
             return measurement
@@ -89,7 +101,8 @@ def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, measurement_type='R
 
     raise ValueError('Failed measuring Rabi frequency for qubit {} on channel_amplitudes {}'.format(qubit_id, channel_amplitudes.metadata))
 
-def calibrate_all_single_channel_Rabi(device, _qubit_id=None, remove_bad=False):
+
+def calibrate_all_single_channel_Rabi(device, _qubit_id=None, transition='01', remove_bad=False):
     if _qubit_id is None:
         _qubit_id = device.get_qubit_list()
     elif type(_qubit_id) is int:
@@ -98,10 +111,11 @@ def calibrate_all_single_channel_Rabi(device, _qubit_id=None, remove_bad=False):
     for qubit_id in _qubit_id:
         amplitude_default = float(device.get_qubit_constant(qubit_id=qubit_id, name='amplitude_default'))
         qubit_channel_calibrated = {}
-        for channel_name, device_name in device.get_qubit_excitation_channel_list(qubit_id).items():
-            ch = channel_amplitudes(device, **{channel_name:amplitude_default})
+        for channel_name, device_name in device.get_qubit_excitation_channel_list(qubit_id,
+                    transition=transition).items():
+            ch = channel_amplitudes(device, **{channel_name: amplitude_default})
             try:
-                excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=ch)
+                excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2., transition=transition, channel_amplitudes_override=ch)
                 qubit_channel_calibrated[channel_name] = device_name
             except Exception as e:
                 print ('Failed to Rabi-calibrate channel ', channel_name)

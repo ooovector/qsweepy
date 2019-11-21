@@ -92,7 +92,7 @@ class awg_channel:
 	def set_amplitude(self, amplitude):
 		return self.awg.set_amplitude(amplitude, channel=self.channel)
 	def get_amplitude(self):
-		return self.awg.get_amplitude(amplitude)
+		return self.awg.get_amplitude()
 	def get_nop(self):
 		return self.awg.get_nop()
 	def get_clock(self):

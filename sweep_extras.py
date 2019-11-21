@@ -1,7 +1,7 @@
 from . import sweep
 from . import plotly_plot
 from .fitters.fit_dataset import fit_dataset_1d
-
+from datetime import timedelta
 '''
 Interactive stuff:
 - (matplotlib) UI &  & telegram bot,
@@ -30,7 +30,7 @@ class Sweeper:
                          #(sweep_fit.fit_on_start, (db,))
                          ]
         self.on_update = [(save_exdir.update_exdir, tuple()),
-                          #(sweep_fit.sweep_fit, (db, ))
+                          (self.print_time, tuple())
                           ]
         self.on_finish = [#(sweep_fit.fit_on_finish, (db, )),
                           (db.update_in_database,tuple()),
@@ -66,6 +66,11 @@ class Sweeper:
                            on_update=on_update+self.on_update,
                            ignore_callback_errors=self.ignore_callback_errors,
                            **kwargs)
+
+    def print_time(self, state, indeces):
+        time_per_sweep = state.measurement_time/state.done_sweeps
+        total_time=time_per_sweep*state.total_sweeps
+        print("Time left:", timedelta(seconds = round(total_time-state.measurement_time)), end="\r")
 
     def sweep_fit_dataset_1d_onfly(self, *args, on_start=[], on_update=[], on_finish=[], fitter_arguments=tuple(), **kwargs):
         """

@@ -237,7 +237,8 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle
                                         references=references)
     return measurement
 
-def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, alpha=0):
+
+def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, transition='01', alpha=0):
     #max_num_pulses =
     # get T2 result
     # coherence_measurement = get_Ramsey_coherence_measurement(device=device, qubit_id=qubit_id)
@@ -263,7 +264,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
         return amplitudes[np.argmin(measurement_interpolated_combined)]
 
     rotation_angle = 2*np.pi/inverse_rotation_cycles
-    rect_pulse = get_rect_excitation_pulse(device, qubit_id, rotation_angle)
+    rect_pulse = get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition=transition)
     channel_amplitudes = device.exdir_db.select_measurement_by_id(rect_pulse.references['channel_amplitudes'])
     if len(channel_amplitudes.metadata)> 2:
         raise ValueError('Default excitation pulse has more than one excitation channel')
@@ -275,9 +276,9 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
 
     amplitude_guess = float(rect_pulse.metadata['length'])/per_amplitude_angle_guess(pulse_length, pulse_length/sigmas_in_gauss)
     amplitude_range = amplitude_guess
-    print ('rect_pulse.metadata[length]:', rect_pulse.metadata['length'])
-    print ('rotation_angle: ', rotation_angle)
-    print ('amplitude_guess: ' ,amplitude_guess)
+    #print ('rect_pulse.metadata[length]:', rect_pulse.metadata['length'])
+    #print ('rotation_angle: ', rotation_angle)
+    #print ('amplitude_guess: ', amplitude_guess)
     sigma = pulse_length/sigmas_in_gauss
 
     while (num_pulses <= max_num_pulses):
@@ -298,36 +299,40 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
                 'alpha':alpha,
                 'inverse_rotation_cycles':inverse_rotation_cycles,
                 'length': pulse_length,
-                'sigma': sigma}
+                'sigma': sigma,
+                'transition': transition}
 
     return device.exdir_db.save(measurement_type='gauss_hd_Rabi_amplitude_adaptive',
                                 references=references,
                                 metadata=metadata)
 
-def get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, recalibrate=True):
+def get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition='01', recalibrate=True):
     try:
         meas = device.exdir_db.select_measurement(measurement_type='gauss_hd_Rabi_amplitude_adaptive',
                                        metadata={'qubit_id':qubit_id,
-                                                 'inverse_rotation_cycles':int(np.round(2*np.pi/rotation_angle)), #this is crap
+                                                 'inverse_rotation_cycles':int(np.round(2*np.pi/rotation_angle)),
+                                                 'transition': transition,#this is crap
                                                  })
-        return gauss_hd_excitation_pulse(device, qubit_id=qubit_id, rotation_angle=rotation_angle,
+        return gauss_hd_excitation_pulse(device, qubit_id=qubit_id, transition='01', rotation_angle=rotation_angle,
                                      length = meas.metadata['length'], sigma=meas.metadata['sigma'],
                                      alpha = meas.metadata['alpha'], amplitude=meas.metadata['amplitude_guess'],
                                      gauss_hd_Rabi_amplitude_adaptive_measurement = meas.id,
                                      channel_amplitudes = meas.references['channel_amplitudes'])
     except:
         if recalibrate:
-            meas = gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles=int(np.round(2*np.pi/rotation_angle)))
+            meas = gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, transition=transition,
+                            inverse_rotation_cycles=int(np.round(2*np.pi/rotation_angle)))
         else:
             raise
 
-        return gauss_hd_excitation_pulse(device, qubit_id=qubit_id, rotation_angle=rotation_angle,
+        return gauss_hd_excitation_pulse(device, qubit_id=qubit_id, transition=transition,
+                                    rotation_angle=rotation_angle,
                                      length = meas.metadata['length'], sigma=meas.metadata['sigma'],
                                      alpha = meas.metadata['alpha'], amplitude=meas.metadata['amplitude_guess'],
                                      gauss_hd_Rabi_amplitude_adaptive_measurement = meas.id,
                                      channel_amplitudes = meas.references['channel_amplitudes'])
 
-def Rabi_amplitude_measurements_query (qubit_id, frequency, frequency_tolerance, frequency_controls, channel_amplitudes_override=None):
+def Rabi_amplitude_measurements_query (qubit_id, frequency, transition, frequency_tolerance, frequency_controls, channel_amplitudes_override=None):
     '''
     Perfectly ugly query for retrieving Rabi oscillation measurements corresponding to a qubit, and, possibly, a 'channel'
     '''
@@ -351,6 +356,11 @@ def Rabi_amplitude_measurements_query (qubit_id, frequency, frequency_tolerance,
         qubit_id_metadata.data_id = measurement.id AND
         qubit_id_metadata.name = 'qubit_id' AND
         qubit_id_metadata.value = '{qubit_id}'
+        
+    INNER JOIN metadata transition_metadata ON
+        transition_metadata.data_id = measurement.id AND
+        transition_metadata.name = 'transition' AND
+        transition_metadata.value = '{transition}'
 
     INNER JOIN reference channel_amplitudes_reference ON
         channel_amplitudes_reference.this = measurement.id AND
@@ -392,6 +402,7 @@ def Rabi_amplitude_measurements_query (qubit_id, frequency, frequency_tolerance,
     ) Rabi_measurements
 '''
     return query.format(qubit_id=qubit_id,
+        transition=transition,
         frequency=frequency,
         frequency_tolerance = frequency_tolerance,
         channel_amplitudes_clause = channel_amplitudes_clause,
@@ -405,6 +416,7 @@ class gauss_hd_excitation_pulse(MeasurementState):
             super().__init__(args[1])
         else: # otherwise initialize from dict and device
             metadata = {'qubit_id': kwargs['qubit_id'],
+                        'transition': kwargs['transition'],
                         'rotation_angle': str(kwargs['rotation_angle']),
                         'pulse_type': 'gauss_hd',
                         'length': str(kwargs['length']),

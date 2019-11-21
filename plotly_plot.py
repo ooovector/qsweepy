@@ -283,7 +283,7 @@ def plot(selected_traces, cross_sections, db):
 							   'thicknessmode': 'fraction',
 							   'x': (col + 1.0-x_offset)/num_cols,
 							   'y': (row + 0.5)/num_rows}
-			plot_trace['colorscale'] = 'Viridis'
+			plot_trace['colorscale'] = 'Blackbody'
 			plot_trace['z'] = data_to_plot.T
 		else:
 			plot_trace['mode'] = style
