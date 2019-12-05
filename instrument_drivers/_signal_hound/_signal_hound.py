@@ -1,7 +1,11 @@
 import ctypes
 import logging
+import os
+
+module_dir = os.path.dirname(os.path.abspath(__file__))
+
 try:
-	signal_hound_dll = ctypes.WinDLL ("sa_api.dll")
+	signal_hound_dll = ctypes.WinDLL (module_dir+"\\sa_api.dll")
 except Exception as e:
 	print (e)
 
@@ -86,7 +90,7 @@ log_units = 0
 volt_units = 1
 #define SA_VOLT_UNITS  (0x1)
 power_units = 2
-#define SA_POWER_UNITS (0x2) 
+#define SA_POWER_UNITS (0x2)
 bypass = 3
 #define SA_BYPASS      (0x3)
 
@@ -112,7 +116,7 @@ ref_unused = 0
 ref_internal_out = 1
 #define SA_REF_INTERNAL_OUT (1)
 ref_external_out = 2
-#define SA_REF_EXTERNAL_IN (2) 
+#define SA_REF_EXTERNAL_IN (2)
 
 get_serial_number_list_proto = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int*8, ctypes.POINTER(ctypes.c_int))
 get_serial_number_list = get_serial_number_list_proto(("saGetSerialNumberList", signal_hound_dll), ((2, 'serial_numbers'), (2, 'device_count')) )
@@ -185,7 +189,7 @@ config_audio = config_audio_proto(("saConfigAudio", signal_hound_dll), ((1, 'dev
 																		(1, 'bandwidth'), (1, 'audio_low_pass_freq'), \
 																		(1, 'audio_high_pass_freq'), (1, 'fm_deemphasis')))
 #SA_API saStatus saConfigAudio(int device, int audioType, double centerFreq,
-#                              double bandwidth, double audioLowPassFreq, 
+#                              double bandwidth, double audioLowPassFreq,
 #                              double audioHighPassFreq, double fmDeemphasis);
 
 config_real_time_proto = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_int)
@@ -340,8 +344,8 @@ config_if_output = config_if_output_proto(("saConfigIFOutput", signal_hound_dll)
 class self_test_results(ctypes.Structure):
 	_fields_ = [('high_band_mixer', ctypes.c_bool),
 				('low_band_mixer', ctypes.c_bool),
-				('attenuator', ctypes.c_bool), 
-				('second_if', ctypes.c_bool), 
+				('attenuator', ctypes.c_bool),
+				('second_if', ctypes.c_bool),
 				('preamplifier', ctypes.c_bool),
 				('high_band_mixer_value', ctypes.c_double),
 				('low_band_mixer_value', ctypes.c_double),
