@@ -221,7 +221,8 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
             frequency=device.get_qubit_fq(qubit_id),
             frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'),
             frequency_controls = device.get_frequency_control_measurement_id(qubit_id=qubit_id),
-            channel_amplitudes_override=channel_amplitudes_override.id if hasattr (channel_amplitudes_override, 'id') else channel_amplitudes_override))
+            channel_amplitudes_override=channel_amplitudes_override.id if hasattr (channel_amplitudes_override, 'id') else channel_amplitudes_override,
+            sample_name = device.exdir_db.sample_name))
         print ('good Rabi fits:', fits)
         for Rabi_fit_id in fits:
             try:
@@ -247,7 +248,7 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
             raise ValueError('No excitation pulses found, recalibrate is set to False, so fail')
 
 
-def Rabi_measurements_query (qubit_id, transition, frequency, frequency_tolerance, frequency_controls, channel_amplitudes_override=None):
+def Rabi_measurements_query (qubit_id, transition, frequency, frequency_tolerance, frequency_controls,sample_name, channel_amplitudes_override=None):
     '''
     Perfectly ugly query for retrieving Rabi oscillation measurements corresponding to a qubit, and, possibly, a 'channel'
     '''
@@ -343,7 +344,8 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
     WHERE
         measurement.measurement_type = 'Rabi_rect' AND
         (NOT measurement.invalid OR (measurement.invalid IS NULL))
-        {channel_amplitudes_clause}
+        {channel_amplitudes_clause} AND 
+        measurement.sample_name = '{sample_name}'
 --		  (SELECT COUNT(*) FROM metadata
 --			  WHERE metadata.data_id = channel_amplitudes.id) = 1
 
@@ -367,4 +369,5 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
         frequency=frequency,
         frequency_tolerance = frequency_tolerance,
         channel_amplitudes_clause = channel_amplitudes_clause,
-        frequency_controls = frequency_controls)
+        frequency_controls = frequency_controls,
+                        sample_name=sample_name)

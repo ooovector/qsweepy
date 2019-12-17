@@ -173,14 +173,13 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 def get_uncalibrated_measurer(device, qubit_id, transition='01'):
     try:
-        assert transition == '01'
-        qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)
-        reducer = data_reduce.data_reduce(measurer)
-        reducer.filters['iq'+qubit_id] = data_reduce.cross_section_reducer(measurer, 'resultnumbers', 0, 1)
-        return qubit_readout_pulse_, reducer
+       assert transition == '01'
+       qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)
+       reducer = data_reduce.data_reduce(measurer)
+       reducer.filters['iq'+qubit_id] = data_reduce.cross_section_reducer(measurer, 'resultnumbers', 0, 1)
+       return qubit_readout_pulse_, reducer
     except:
-        traceback.print_exc()
-        pass
+       traceback.print_exc()
 
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
