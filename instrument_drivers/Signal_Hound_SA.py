@@ -15,11 +15,11 @@ def get_signal_hounds():
 
 class Signal_Hound_SA(Instrument):
 	'''
-	This is the python driver for the Agilent_N9030A
+	This is the python driver for the Signal Hound SA124 spectrum analyzer
 
 	Usage:
 	Initialise with
-	<name> = instruments.create('<name>', address='<GPIB address>', reset=<bool>)
+	<name> = instruments.create('<name>', <serial number> )
 	
 	'''
 
@@ -29,9 +29,8 @@ class Signal_Hound_SA(Instrument):
 
 		Input:
 			name (string)    : name of the instrument
-			address (string) : GPIB address
+			serial (int) : serial number
 		'''
-		
 		logging.info(__name__ + ' : Initializing instrument')
 		Instrument.__init__(self, name, tags=['physical'])
 		self._device = _signal_hound.open_device_by_serial_number(serial_number=serial)
@@ -82,7 +81,12 @@ class Signal_Hound_SA(Instrument):
 		self.add_parameter('span', type=float,
 			flags=Instrument.FLAG_GETSET,
 			minval=_signal_hound.min_span, maxval=_signal_hound.sa124_max_freq,
-			units='Hz', tags=['sweep'])        
+			units='Hz', tags=['sweep'])  
+
+		self.add_parameter('averages', type=int,
+			flags=Instrument.FLAG_SET|Instrument.FLAG_SOFTGET,
+			minval=1, maxval=1024, tags=['sweep'])					
+	
 
 #		self.add_parameter('zerospan', type=bool,
 #			flags=Instrument.FLAG_GETSET)
@@ -109,6 +113,7 @@ class Signal_Hound_SA(Instrument):
 		self.set_res_bw(_signal_hound.max_rbw)
 		self.set_video_bw(_signal_hound.max_rbw)
 		self.set_reject_if(True)
+		self.set_averages(1)
 		_signal_hound.initiate(self._device, _signal_hound.sweeping, 0)
 		
 		self.get_all()
@@ -125,24 +130,27 @@ class Signal_Hound_SA(Instrument):
 		
 	def get_tracedata(self):
 		'''
-		Get the data of the current trace in dBm
-
-		Output:
-			'AmpPha':_ Amplitude and Phase
+		Get the data of the current trace in mW
 		'''
 		_signal_hound.initiate(self._device, _signal_hound.sweeping, 0)
 		nop, start_freq, bin_size = _signal_hound.query_sweep_info(self._device)
+		
 		min = (ctypes.c_float*nop)()
 		max = (ctypes.c_float*nop)()
-		end = 0
+		datamin = np.zeros(nop)
+		datamax = np.zeros(nop)
 		
-		while end < nop:
-			begin, end = _signal_hound.get_partial_sweep_32f(self._device, min, max)
-			plt.pause(0.05)
+		for _ in range(self.averages):
+			end = 0
+			while end < nop:
+				begin, end = _signal_hound.get_partial_sweep_32f(self._device, min, max)
+				plt.pause(0.05)
+			datamin += 10.**(np.asarray(max, dtype=np.float)/10.)
+			datamax += 10.**(np.asarray(min, dtype=np.float)/10.)
 			
 		datax = np.linspace(start_freq, start_freq+bin_size*(nop-1), nop)
-		datamin = 10**(np.asarray(max, dtype=np.float)/10)
-		datamax = 10**(np.asarray(min, dtype=np.float)/10)
+		datamin = datamin/self.averages
+		datamax = datamax/self.averages
 		
 		return [datax, datamin, datamax]
 	  
@@ -203,6 +211,9 @@ class Signal_Hound_SA(Instrument):
 		nop, start_freq, bin_size = _signal_hound.query_sweep_info(self._device)
 		return nop 
 
+	def do_set_averages(self, n):
+		self.averages = n
+	
 	def do_set_centerfreq(self,cf):
 		'''
 		Set the center frequency
@@ -377,8 +388,7 @@ class Signal_Hound_SA(Instrument):
 			res_bw = 250e3
 		if video_bw > res_bw:
 			video_bw = res_bw
-			self.set_video_bw(video_bw)
-			return
+			
 		vbw_6MHz_allowed = False
 		
 		if span > 100e6:
@@ -393,25 +403,21 @@ class Signal_Hound_SA(Instrument):
 				video_wb = 6e6
 			else:
 				video_bw = vbw_max
-			self.set_video_bw(video_bw)
-			return
+			
 		if video_bw < vbw_min:
 			video_bw = vbw_min
-			self.set_video_bw(video_bw)
-			return
-			
 		_signal_hound.config_sweep_coupling(self._device, res_bw, video_bw, reject_if)
-		
+	
 	def do_set_res_bw(self, res_bw):
+	
 		rbw_max = 250e3
 		rbw_min = 0.1
 		
 		_signal_hound.initiate(self._device, _signal_hound.sweeping, 0)
 		nop, start_freq, bin_size = _signal_hound.query_sweep_info(self._device)
 		span = (nop-1)*bin_size
-		
 		video_bw = self.get_video_bw()
-		reject_if = self.get_reject_if()
+		
 		if not video_bw: 
 			video_bw = 250e3
 		rbw_6MHz_allowed = False
@@ -428,16 +434,16 @@ class Signal_Hound_SA(Instrument):
 				res_wb = 6e6
 			else:
 				res_bw = rbw_max
-			self.set_res_bw(res_bw)
+			
 		if res_bw < rbw_min:
 			res_bw = rbw_min
-			self.set_res_bw(res_bw)
 
 		if video_bw > res_bw:
 			video_bw = res_bw			
 		
+		reject_if = self.get_reject_if()
+		self.video_bw = video_bw
 		_signal_hound.config_sweep_coupling(self._device, res_bw, video_bw, reject_if)
-		self.set_video_bw(video_bw)
 
 	def do_set_reject_if (self, reject_if):
 		video_bw = self.get_video_bw()

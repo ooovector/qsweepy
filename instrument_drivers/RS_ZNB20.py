@@ -43,7 +43,6 @@ class RS_ZNB20(Instrument):
 			name (string)	: name of the instrument
 			address (string) : GPIB address
 		'''
-		
 		logging.info(__name__ + ' : Initializing instrument')
 		Instrument.__init__(self, name, tags=['physical'])
 
@@ -154,7 +153,7 @@ class RS_ZNB20(Instrument):
 		#  self.set_zerospan(True)
 		
 		self.clear()
-		self.select_measurement(1)
+		#self.select_measurement(1)
 		
 		self.get_all()
 	
@@ -237,12 +236,12 @@ class RS_ZNB20(Instrument):
 	'''	
 	def clear(self):
 		self._visainstrument.write("*CLS")
-	
+	'''
 	def select_measurement(self,Mnum):
 		#Select Mnum = 1 after default preset
 		self._visainstrument.write("CALC:PAR:MNUM {:d}".format(Mnum) )
 		self._visainstrument.ask("*OPC?")
-	
+	'''
 	def set_measurement(self,Mtype):
 		#Mtype = "S11"|"S21"|"S22"|"S12"
 		#Select measurement before doing this
