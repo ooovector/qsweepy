@@ -7,11 +7,13 @@ import datetime
 
 
 class Exdir_db:
-    def __init__(self, db, sample_name=None):
+    def __init__(self, db, sample_name=None, old_prefix='', new_prefix=''):
         self.db = db
         if not sample_name:
             sample_name = 'anonymous-sample'
         self.sample_name = sample_name
+        self.old_prefix = old_prefix
+        self.new_prefix = new_prefix
 
     def save_measurement(self, data):
         """
@@ -74,6 +76,14 @@ class Exdir_db:
         except KeyError:  # everything has been invalidated
             pass
 
+    def replace_file_prefixes(self, filename):
+        try:
+            assert filename[:len(self.old_prefix)] == self.old_prefix
+        except:
+            print ('Expected prefix: ', self.old_prefix, ' got prefix: ', filename[:len(self.old_prefix)])
+            raise
+        return self.new_prefix + filename[len(self.old_prefix):]
+
     def select_measurement(self, measurement_type, metadata={},
                            references_this={}, references_that={},
                            ignore_invalidation=False):
@@ -99,13 +109,17 @@ class Exdir_db:
                                                           references_that=references_that,
                                                           ignore_invalidation=ignore_invalidation)
 
-        file_to_load = list(measurement_db_list.order_by(lambda d: desc(d.id)).limit(1))[0].filename
-        return save_exdir.load_exdir(file_to_load, db=self.db)
+        filename_db = list(measurement_db_list.order_by(lambda d: desc(d.id)).limit(1))[0].filename
+        filename_converted = self.replace_file_prefixes(filename_db)
+
+        return save_exdir.load_exdir(filename_converted, db=self.db, filename_db = filename_db)
 
     def select_measurement_by_id(self, id):
         print("Exdir_db.select_measurement_by_id: trying to load measurement state by id: ",
               self.db.Data[id].filename)
-        return save_exdir.load_exdir(self.db.Data[id].filename, db=self.db)
+        filename_db = self.db.Data[id].filename
+        filename_converted = self.replace_file_prefixes(filename_db)
+        return save_exdir.load_exdir(filename_converted, db=self.db, filename_db = filename_db)
 
     def select_measurements_db(self, measurement_type: str, metadata={},
                                references_this={}, references_that={},
