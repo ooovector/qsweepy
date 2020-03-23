@@ -133,7 +133,7 @@ class LazyMeasParFromExdir:
         return str(self)
 
 
-def load_exdir(filename, db=None, lazy=False):
+def load_exdir(filename, db=None, filename_db = None, lazy=False):
     """
     Loads measurement state from ExDir file system and database if the latter is provided.
 
@@ -163,6 +163,9 @@ def load_exdir(filename, db=None, lazy=False):
     # stdout.flush()
     # print('load_exdir: file open time: ',  file_open_time - load_start)
     # stdout.flush()
+
+    if filename_db is None:
+        filename_db = filename
 
     try:
         state = MeasurementState()
@@ -206,7 +209,7 @@ def load_exdir(filename, db=None, lazy=False):
 
         if db:
             # get db record and add info to the returned measurement state
-            db_record = get(i for i in db.Data if (i.filename == filename))
+            db_record = get(i for i in db.Data if (i.filename == filename_db))
             # print (filename)
             state.id = db_record.id
             state.start = db_record.start
