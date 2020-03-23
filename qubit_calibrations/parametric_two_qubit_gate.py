@@ -42,7 +42,7 @@ def calibrate_iswap_phase_single_pulse(device, gate_pulse, num_pulses):
 
 
 def two_qubit_gate_channel_amplitudes (device, gate):
-    return channel_amplitudes.channel_amplitudes(device, **{gate.metadata['carrier_name']:float(gate.metadata['amplitude'])})
+    return channel_amplitudes.channel_amplitudes(device, **{gate.metadata['carrier_name']: float(gate.metadata['amplitude'])})
 
 '''
 def get_frequency_shift(device, gate, recalibrate=True, force_recalibration=False):

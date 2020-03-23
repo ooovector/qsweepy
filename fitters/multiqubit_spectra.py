@@ -8,7 +8,8 @@ def data_abs(meas):
     return meas
 	
 def fq_coil(p,x):
-    frb, Cc, EJ1, EJ2, EC, phi0,L = p
+    frb, Cc, EJ1, EJ2, EC, phi0=p[:6]
+    L = p[-1]
     return fq_r(x, frb, Cc, EJ1, EJ2, EC, phi0, L)/1e9
 	
 def fq_r (x, frb, Cc, EJ1, EJ2, EC, phi0,L): 
@@ -32,24 +33,28 @@ def two_tone_spectrum_frequency_extract(meas, remove_outliers_ = True):
     z = meas.datasets['S-parameter'].data[:,:,0]
     metadata = meas.metadata
 
-    if metadata['resonator_id']!='9':
+    resonator_id = metadata['resonator_id'] if 'resonator_id' in metadata else metadata['qubit_id']
+    if resonator_id!='9':
         fit = data_abs(z)
         fit = find_freqs_abs(fit,y)
-    if metadata['resonator_id']=='9':
+    if resonator_id=='9':
         fit = z
         for i in range(len(fit)):
             fit[i]=fit[i]-np.median(np.real(fit[i]))-1j*np.median(np.imag(fit[i]))
-        fit = find_freqs_min(np.imag(fit),y)
+        fit = find_freqs_abs(np.imag(fit),y)
     if remove_outliers_:
-        x, fit = remove_outliers(x, fit)
+        x, fit = remove_outliers(x, fit,resonator_id)
     
     return x, fit, metadata ### TODO: MHZ -> Hz??
 	
 	
-def remove_outliers(x,y):
+def remove_outliers(x,y,resonator_id):
     d2_abs = np.abs(np.gradient(np.gradient(y)))
     d2_abs_av = np.mean(d2_abs)
-    good_points= d2_abs<d2_abs_av*2
+    if resonator_id!='9':
+        good_points= d2_abs<d2_abs_av*2
+    else:
+        good_points= d2_abs<d2_abs_av*10
     return x[good_points], y[good_points]
 	
 def get_Adaptive_two_tone_sprectoscopy_measurement(exdir_db_inst, _id):
@@ -57,8 +62,12 @@ def get_Adaptive_two_tone_sprectoscopy_measurement(exdir_db_inst, _id):
         meas = exdir_db_inst.select_measurement(measurement_type="Adaptive_two_tone_spectroscopy_2", 
                                 metadata={'resonator_id':_id})
     except:
-        meas = exdir_db_inst.select_measurement(measurement_type="Adaptive_two_tone_spectroscopy", 
+        try:
+            meas = exdir_db_inst.select_measurement(measurement_type="Adaptive_two_tone_spectroscopy", 
                                 metadata={'resonator_id':_id})
+        except:
+            meas = exdir_db_inst.select_measurement(measurement_type="Adaptive_two_tone_spectroscopy", 
+                                metadata={'qubit_id':_id})
         
     p = exdir_db_inst.select_measurement(measurement_type="Adaptive_two_tone_spectroscopy_parameters", 
                             metadata={'qubit_id':_id}).metadata ## TODO: should be loaded by reference
@@ -118,22 +127,26 @@ def load_spectrum_data_for_fit(exdir_db_inst, qubit_ids, qubit_coil_ids=None, fu
         V['qubit_id'] = int(qubit_id)
         V['f'] = y
         data = pd.concat([data, V])
-        
-    for qubit_id  in qubit_ids:
-        for qubit_coil_id in qubit_coil_ids:
-            try:
-                x,y, metadata = get_Nondiag_two_tone_spectroscopy(exdir_db_inst, qubit_id, qubit_coil_id)
-                y=y/1e9
-            except IndexError as e:
-                continue
+    
+    try:
+        for qubit_id  in qubit_ids:
+            for qubit_coil_id in qubit_coil_ids:
+                try:
+                    x,y, metadata = get_Nondiag_two_tone_spectroscopy(exdir_db_inst, qubit_id, qubit_coil_id)
+                    y=y/1e9
+                except IndexError as e:
+                    continue
 
-            V = pd.DataFrame(np.zeros((len(y), len(full_qubit_list))), columns=full_qubit_list)
-            V[qubit_coil[metadata['non_diag_coil'][6:]]] = x
-            V[qubit_coil[metadata['coil'][6:]]] = float(metadata['volt_coil'])
-            
-            V['qubit_id'] = int(qubit_id)
-            V['f'] = y
-            data = pd.concat([data, V])
+                V = pd.DataFrame(np.zeros((len(y), len(full_qubit_list))), columns=full_qubit_list)
+                V[qubit_coil[metadata['non_diag_coil'][6:]]] = x
+                V[qubit_coil[metadata['coil'][6:]]] = float(metadata['volt_coil'])
+
+                V['qubit_id'] = int(qubit_id)
+                V['f'] = y
+                data = pd.concat([data, V])
+    except:
+        print('Failed loading nondiagonal stuff')
+        pass
     return data
 
 fqbare = lambda EJ1, EJ2, EC,flux: (8*EC)**0.5*((EJ1-EJ2)**2*np.sin(np.pi*flux)**2+\
@@ -296,8 +309,8 @@ def build_p0_dict(qubits):
            '7': 11.666e9, '8': 10.903e9, '9': 11.563e9, '10': 11.045e9, '11': 11.265e9}
     EJ2 = {'1': 1.9435e9, '2': 1.6731e9, '3': 1.9114e9, '4': 1.7694e9, '5': 1.8107e9, '6': 1.6079e9,
            '7': 1.9888e9, '8': 2.1891e9, '9': 2.0010e9, '10': 1.9410e9, '11': 1.9456e9}
-    phi0 = {'1': 0.0796, '2': 0.0869, '3': 0.0828, '4': 0.0845, '5': 0.0861, '6': 0.0919,
-           '7': 0.0759, '8': 0.0815, '9': 0.0758, '10': 0.0703, '11': 0.0813}
+    phi0 = {'1': 0.1672, '2': 0.1127, '3': 0.1305, '4': 0.0936, '5': 0.1193, '6': 0.1103,
+           '7': 0.1237, '8': 0.1235, '9': 0.1060, '10': 0.0640, '11':  0.0756}
     parameters = {
     'qubits': [qubit_id for qubit_id in qubits.keys()],
     'fr': {qubit_id: qubit['r']['Fr'] for qubit_id, qubit in qubits.items()},
@@ -315,115 +328,133 @@ def build_p0_dict(qubits):
                  }
     return parameters
 
-def build_bounds_from_parameters_dict(parameters):
+def build_bounds_from_parameters_dict(parameters, parameters_fixed = {'fr':[], 'EC':155e6}):
     num_qubits = len(parameters['qubits'])
     qubit_ids = parameters['qubits']
     
     podgon_low = []
-    #podgon.extend([parameters['fr'][qubit_id]/1e9 for qubit_id in qubit_ids])
-    podgon_low.extend([parameters['EJ1'][qubit_id]/1e9/2 for qubit_id in qubit_ids])
-    podgon_low.extend([parameters['EJ2'][qubit_id]/1e9/2 for qubit_id in qubit_ids])
-    podgon_low.extend([parameters['phi0'][qubit_id]/2 for qubit_id in qubit_ids])
-    
-    
-    podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['central'])*2 for qubit_id in qubit_ids])
-    podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['right'])*5 \
-                       for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ < num_qubits-1])
-    podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['left'])*5 \
-                       for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ > 0])
-    
-    #podgon_low.append(parameters['EC']/1e9/2)
-    podgon_low.append(parameters['g']/2)
-    podgon_low.append(parameters['J1']/1.5)
-    podgon_low.append(parameters['J2']/1.5)
-    
-    
     podgon_up = []
     #podgon.extend([parameters['fr'][qubit_id]/1e9 for qubit_id in qubit_ids])
-    podgon_up.extend([parameters['EJ1'][qubit_id]/1e9*2 for qubit_id in qubit_ids])
-    podgon_up.extend([parameters['EJ2'][qubit_id]/1e9*2 for qubit_id in qubit_ids])
-    podgon_up.extend([parameters['phi0'][qubit_id]*2 for qubit_id in qubit_ids])
+    if 'EJ1' not in parameters_fixed:
+        podgon_low.extend([parameters['EJ1'][qubit_id]/1e9/2 for qubit_id in qubit_ids])
+        podgon_up.extend([parameters['EJ1'][qubit_id]/1e9*2 for qubit_id in qubit_ids])
+    if 'EJ2' not in parameters_fixed:
+        podgon_low.extend([parameters['EJ2'][qubit_id]/1e9/2 for qubit_id in qubit_ids])
+        podgon_up.extend([parameters['EJ2'][qubit_id]/1e9*2 for qubit_id in qubit_ids])
+    if 'phi0' not in parameters_fixed:
+        podgon_low.extend([parameters['phi0'][qubit_id]/2 for qubit_id in qubit_ids])
+        podgon_up.extend([parameters['phi0'][qubit_id]*2 for qubit_id in qubit_ids])
     
-    podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['central'])*2 for qubit_id in qubit_ids])
-    podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['right'])*5 \
+    if 'inductances' not in parameters_fixed:
+        podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['central'])*2 for qubit_id in qubit_ids])
+        podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['right'])*5 \
                        for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ < num_qubits-1])
-    podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['left'])*5 \
+        podgon_low.extend([-np.abs(parameters['inductances'][qubit_id]['left'])*5 \
                        for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ > 0])
+
+        podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['central'])*2 for qubit_id in qubit_ids])
+        podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['right'])*5 \
+                           for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ < num_qubits-1])
+        podgon_up.extend([np.abs(parameters['inductances'][qubit_id]['left'])*5 \
+                           for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ > 0])
     
-    #podgon_up.append(parameters['EC']/1e9*2)
-    podgon_up.append(parameters['g']*2)
-    podgon_up.append(parameters['J1']*1.5)
-    podgon_up.append(parameters['J2']*1.5)
-    
+    #podgon_low.append(parameters['EC']/1e9/2)
+    if 'g' not in parameters_fixed:
+        podgon_low.append(parameters['g']/2)
+        podgon_up.append(parameters['g']*2)   
+    if 'J1' not in parameters_fixed:
+        podgon_low.append(parameters['J1']/1.5)
+        podgon_up.append(parameters['J1']*1.5)
+    if 'J2' not in parameters_fixed:
+        podgon_low.append(parameters['J2']/1.5)
+        podgon_up.append(parameters['J2']*1.5)
     
     return tuple([tuple(podgon_low),tuple(podgon_up)])
 
-def build_podgon_list_from_parameters_dict(parameters):
+def build_podgon_list_from_parameters_dict(parameters, parameters_fixed={'EC':155e6}):
     num_qubits = len(parameters['qubits'])
     qubit_ids = parameters['qubits']
     
     podgon = []
     #podgon.extend([parameters['fr'][qubit_id]/1e9 for qubit_id in qubit_ids])
-    podgon.extend([parameters['EJ1'][qubit_id]/1e9 for qubit_id in qubit_ids])
-    podgon.extend([parameters['EJ2'][qubit_id]/1e9 for qubit_id in qubit_ids])
-    podgon.extend([parameters['phi0'][qubit_id] for qubit_id in qubit_ids])
+    if 'EJ1' not in parameters_fixed:
+        podgon.extend([parameters['EJ1'][qubit_id]/1e9 for qubit_id in qubit_ids])
+    if 'EJ2' not in parameters_fixed:
+        podgon.extend([parameters['EJ2'][qubit_id]/1e9 for qubit_id in qubit_ids])
+    if 'phi0' not in parameters_fixed:
+        podgon.extend([parameters['phi0'][qubit_id] for qubit_id in qubit_ids])
     
-    podgon.extend([parameters['inductances'][qubit_id]['central'] for qubit_id in qubit_ids])
-    podgon.extend([parameters['inductances'][qubit_id]['right'] \
+    if 'inductances' not in parameters_fixed:
+        podgon.extend([parameters['inductances'][qubit_id]['central'] for qubit_id in qubit_ids])
+        podgon.extend([parameters['inductances'][qubit_id]['right'] \
                        for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ < num_qubits-1])
-    podgon.extend([parameters['inductances'][qubit_id]['left'] \
+        podgon.extend([parameters['inductances'][qubit_id]['left'] \
                        for qubit_id_, qubit_id in enumerate(qubit_ids) if qubit_id_ > 0])
     
     #podgon.append(parameters['EC']/1e9)
-    podgon.append(parameters['g'])
-    podgon.append(parameters['J1'])
-    podgon.append(parameters['J2'])
+    if 'g' not in parameters_fixed:
+        podgon.append(parameters['g'])
+    if 'J1' not in parameters_fixed:
+        podgon.append(parameters['J1'])
+    if 'J2' not in parameters_fixed:
+        podgon.append(parameters['J2'])
     
     return podgon
 
-def build_parameters_dict_from_podgon_list(p,parameters_fixed, qubit_ids):
+def build_parameters_dict_from_podgon_list(p, parameters_fixed, qubit_ids):
     num_qubits = len(qubit_ids)
     
     #print (p)
-    
+    parameters = {}
     #fr   = p[:num_qubits]
     #p = p[num_qubits:]
     EJ1  = p[:num_qubits]
     p = p[num_qubits:]
+    parameters['EJ1'] = {qubit_id: EJ1_*1e9 for qubit_id, EJ1_ in zip(qubit_ids, EJ1)}
+    
     EJ2  = p[:num_qubits]
     p = p[num_qubits:]
+    parameters['EJ2'] = {qubit_id: EJ2_*1e9 for qubit_id, EJ2_ in zip(qubit_ids, EJ2)}
+    
     phi0 = p[:num_qubits]
     p = p[num_qubits:]
+    parameters['phi0'] = {qubit_id: phi0_ for qubit_id, phi0_ in zip(qubit_ids, phi0)}
     
-    L = p[:(3*num_qubits-2)]
-    p = p[(3*num_qubits-2):]
-    #EC   = p[0]
-    g    = p[0]
-    J1   = p[1]
-    J2   = p[2]
-    
-    inductances = {}
-    for qubit_id_, qubit_id in enumerate(qubit_ids):
-        inductances[qubit_id] = {'central':L[qubit_id_]}
-        if qubit_id_ < num_qubits-1:
-            inductances[qubit_id]['right'] = L[num_qubits+qubit_id_]
-        if qubit_id_ > 0:
-            inductances[qubit_id]['left'] = L[2*num_qubits-2+qubit_id_]
+    if 'inductances' not in parameters_fixed:
+        L = p[:(3*num_qubits-2)]
+        p = p[(3*num_qubits-2):]
+        
+        inductances = {}
+        for qubit_id_, qubit_id in enumerate(qubit_ids):
+            inductances[qubit_id] = {'central':L[qubit_id_]}
+            if qubit_id_ < num_qubits-1:
+                inductances[qubit_id]['right'] = L[num_qubits+qubit_id_]
+            if qubit_id_ > 0:
+                inductances[qubit_id]['left'] = L[2*num_qubits-2+qubit_id_]
+                
+        parameters['inductance'] = inductances        
+    if 'EC' not in parameters_fixed:
+        EC = p[0]
+        p = p[1:]
+        parameters['EC'] = EC
+    if 'g' not in parameters_fixed:
+        g = p[0]
+        p = p[1:]
+        parameters['g'] = g
+    if 'J1' not in parameters_fixed:
+        J1 = p[0]
+        p = p[1:]
+        parameters['J1'] = J1
+    if 'J2' not in parameters_fixed:
+        J2 = p[0]
+        p = p[1:]
+        parameters['J2'] = J2
             
     ## inductances are saved as [L_11, L_22, ... L_nn, L_12, L_23, L_34, ..., L_{n-1},n, L_21, L_32, ..., L_n,{n-1}]
     
-    parameters = {'qubits':qubit_ids,
+    parameters.update({'qubits':qubit_ids,
               'inductance_matrix_type':'chain-nn',
               'qubit_resonator_individual': 'equal_claws',
-              'qubit_qubit_coupling': 'alternating-chain-nn',
-              'inductances':inductances,
-              #'fr': {qubit_id: fr_*1e9 for qubit_id, fr_ in zip(qubit_ids, fr)},
-              'EJ1': {qubit_id: EJ1_*1e9 for qubit_id, EJ1_ in zip(qubit_ids, EJ1)},
-              'EJ2': {qubit_id: EJ2_*1e9 for qubit_id, EJ2_ in zip(qubit_ids, EJ2)},
-              'phi0': {qubit_id: phi0_ for qubit_id, phi0_ in zip(qubit_ids, phi0)},
-              #'EC': EC*1e9,
-              'g': g,
-              'J1': J1,
-              'J2': J2}
+              'qubit_qubit_coupling': 'alternating-chain-nn'})
     parameters.update(parameters_fixed)
     return parameters

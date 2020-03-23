@@ -127,7 +127,7 @@ class Exdir_db:
             List of MyDatabase.Data instances. Each instance
             represents separate record in Data table of database.
         """
-        q = self.db.Data.select(lambda d: (d.measurement_type == measurement_type))
+        q = self.db.Data.select(lambda d: (d.measurement_type == measurement_type and d.sample_name == self.sample_name))
         if not ignore_invalidation:
             # q2 = q.where(lambda d: 'invalidation' not in d.metadata.name)
             q2 = q.where(lambda d: (not d.invalid) and (not d.incomplete))

@@ -99,6 +99,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
             MSE_rel = MSE_rel_calculator(parameters_new)
             parameters = parameters_new
         else:
+            parameters_old = {k: np.asarray(v)[0] if k != 'A' else v for k,v in parameters_old.items()}
             MSE_rel_old = MSE_rel_calculator(parameters_old)
             parameters = parameters_old if MSE_rel_new > MSE_rel_old else parameters_new
             MSE_rel = MSE_rel_old if MSE_rel_new > MSE_rel_old else MSE_rel_new
@@ -124,7 +125,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         parameters['points_per_period'] = 1/((x[1]-x[0])*parameters['f'])
         parameters['decays_in_scan_length'] = (np.max(x)-np.min(x))/parameters['T']
     except IndexError as e:
-        traceback.print_exc()
+        #traceback.print_exc()
         fitted_curve = np.zeros((y_full.shape[0], len(fit_dataset.resample_x_fit(x_full))))*np.nan
         MSE_rel = np.nan
         if mode == 'sync':

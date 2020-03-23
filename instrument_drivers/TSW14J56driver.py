@@ -154,7 +154,7 @@ class TSW14J56_evm():
 		self.nsamp = 65536
 		self.nsegm = 1
 		#Capture timeout
-		self.timeout = 2
+		self.timeout = 3
 		self.ram_size = 2048 #in words of 32
 		self.num_covariances = 4
 

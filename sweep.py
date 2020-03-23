@@ -183,7 +183,7 @@ def sweep(measurer, *parameters, shuffle=False,
                 except Exception as e:
                     if not ignore_callback_errors:
                         raise
-                    traceback.print_exc()
+                    #traceback.print_exc()
 
     for event_handler, arguments in on_start:
         try:
@@ -191,7 +191,7 @@ def sweep(measurer, *parameters, shuffle=False,
         except Exception as e:
             if not ignore_callback_errors:
                 raise
-            traceback.print_exc()
+            #traceback.print_exc()
 
     ################
     if hasattr(measurer, 'pre_sweep'):

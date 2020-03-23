@@ -455,15 +455,15 @@ class Awg_iq_multi:
         self.awg_I.run()
         self.awg_Q.run()
         sign = 1 if carrier.get_if()>0 else -1
-        solution = [-0.5, 0.2]
+        solution = [-0.2, 0.5]
         print (carrier.get_if(), carrier.frequency)
         for iter_id in range(1):
             def tfunc(x):
                 #dc = x[0] + x[1]*1j
-                target_sideband_id = 1 if carrier.get_if()>0 else -1
+                target_sideband_id = 1 if carrier.get_if() > 0 else -1
                 sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
-                I =  0.4
-                Q =  x[0] + x[1]*1j
+                I = 0.5
+                Q = x[0] + x[1]*1j
                 max_amplitude = self._set_if_cw(self.calib_dc()['dc'], I, Q, carrier.get_if(), half_length)
                 if max_amplitude < 1:
                     clipping = 0
@@ -496,7 +496,7 @@ class Awg_iq_multi:
                       end="")
                 return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping
             #solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-13))
-            solution = fmin(tfunc, solution, maxiter=40, xtol=2**(-12))
+            solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-12))
             num_sidebands = num_sidebands_final
             use_central = True
 

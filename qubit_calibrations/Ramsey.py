@@ -1,4 +1,3 @@
-from .readout_pulse import get_qubit_readout_pulse, get_uncalibrated_measurer
 from ..fitters.exp_sin import exp_sin_fitter
 from ..fitters.single_period_sin import SinglePeriodSinFitter
 from .channel_amplitudes import channel_amplitudes
@@ -9,6 +8,7 @@ def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=No
     '''
     :param device qubit_device:
     '''
+    from .readout_pulse import get_uncalibrated_measurer
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id2) # we want to measure qubit 2 because otherwise wtf are we are doing the second pi/2 pulse for
     phase_scan_points = int(device.get_sample_global(name='process_phase_scan_points'))
     phases = np.linspace(0, 2*np.pi, phase_scan_points, endpoint=False)
@@ -47,6 +47,7 @@ def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=No
 def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None,
            target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='Ramsey',
            additional_references = {}, additional_metadata = {}):
+    from .readout_pulse import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
@@ -102,8 +103,8 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
     return measurement
 
 def get_Ramsey_pulse_frequency(device, Ramsey_measurement):
-    ex_pulse1 = select_measurement_by_id(Ramsey_measurement.references['ex_pulse1'])
-    ex_pulse2 = select_measurement_by_id(Ramsey_measurement.references['ex_pulse1'])
+    ex_pulse1 = device.exdir_db.select_measurement_by_id(Ramsey_measurement.references['ex_pulse1'])
+    ex_pulse2 = device.exdir_db.select_measurement_by_id(Ramsey_measurement.references['ex_pulse2'])
     qubit_id = Ramsey_measurement.metadata['qubit_id']
     frequency_rounding = float(device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
     channel1_frequencies = []
@@ -228,7 +229,7 @@ def get_Ramsey_crosstalk_measurement(device,
     ;
     '''.format(target_qubit_id=target_qubit_id,
                control_qubit_id=control_qubit_id,
-               frequency_controls=device.get_frequency_control_measurement_id(qubit_id=qubit_id)))
+               frequency_controls=device.get_frequency_control_measurement_id(qubit_id=target_qubit_id)))
 
     for measurement in Ramsey_crosstalk_measurements:
         try:
@@ -240,7 +241,7 @@ def get_Ramsey_crosstalk_measurement(device,
     if recalibrate:
         return Ramsey_crosstalk(device, target_qubit_id, control_qubit_id)
     else:
-        raise ValueError('No crosstalk measurement available for qubit {}, recalibrate is False, so fail'.format(qubit_id))
+        raise ValueError('No crosstalk measurement available for qubit {}, recalibrate is False, so fail'.format(target_qubit_id))
 
 def get_Ramsey_coherence_measurement(device,
                                      qubit_id,
@@ -312,6 +313,7 @@ def Ramsey_crosstalk(device,
     #						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
     # if we don't have a ramsey coherence scan, get one
+    from .readout_pulse import get_uncalibrated_measurer
     try:
         deexcited_measurement = device.exdir_db.select_measurement_by_id(get_Ramsey_coherence_measurement(device, target_qubit_id).references['fit_source'])
     except:
@@ -324,7 +326,7 @@ def Ramsey_crosstalk(device,
         target_freq_offset = float(deexcited_measurement.metadata['target_offset_freq'])
 
     #readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id, readout_pulse)
+    readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id)#, readout_pulse)
     ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_control)
     ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
     ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)

@@ -24,6 +24,9 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 		parameters = [MeasurementParameter(values=amplitudes[2:], name='amplitude', setter=False)]
 		measurement.datasets['compression'] = MeasurementDataset(parameters, np.zeros(len(amplitudes) - 2) * np.nan)
 
+		parameters = [MeasurementParameter(values=amplitudes[2:], name='amplitude', setter=False)]
+		measurement.datasets['cos_dist'] = MeasurementDataset(parameters, np.zeros(len(amplitudes) - 2) * np.nan)
+
 	measurement = device.sweeper.sweep(mean_sample,
 							(amplitudes, set_amplitude, 'amplitude'),
 							#(lengths, set_pulse_length, 'length'),
@@ -60,6 +63,8 @@ def compression(measurement, _):
 	noise = measurement.datasets['Std_Voltage_AC'].data[1:,:]
 	error = noise/np.sqrt(int(measurement.metadata['averages']))
 	signal_overlap = np.sum(np.conj(signal[0,:])*signal[1:,:], axis=1)/drive_amplitudes[1:]
+	cos_dist = np.sum(np.conj(signal[0, :])*signal[1:, :], axis=1)/np.sum(np.abs(signal[0, :]*signal[1:, :]), axis=1)
+
 	signal_overlap_estimate = np.real(signal_overlap[0])
 	signal_overlap_error = 0.5*np.sqrt(np.sum((np.abs(signal[1:,:])*error[0,:])**2, axis=1)+np.sum((np.abs(signal[0,:])*error[1:,:])**2,axis=1))/drive_amplitudes[1:]
 	#signal_overlap_estimate = (np.sum(np.abs(signal[0,:])**2) - np.sum(error[0,:]*np.abs(signal[0,:]))-np.sum(np.abs(error[0,:])**2))/drive_amplitudes[0]
@@ -68,13 +73,25 @@ def compression(measurement, _):
 	#plt.plot(np.sum(noise**2, axis=1)/adc.get_nums())
 	#plt.plot(signal_overlap_error)
 	compression = 10*np.log10(np.real(signal_overlap)/np.real(signal_overlap_estimate))
-	db_compression_point = np.argmax(10*np.log10(np.real(signal_overlap)/np.real(signal_overlap_estimate))<-1+10*np.log10(1-signal_overlap_error/signal_overlap_estimate))
+	db_compression_point1 = np.argmax(np.abs(10*np.log10(np.real(signal_overlap)/np.real(signal_overlap_estimate)))>0.8)#-10*np.log10(1-signal_overlap_error/signal_overlap_estimate))
+	db_compression_point2 = np.argmax(np.max(cos_dist)-cos_dist>0.01)
+
+	if np.any(db_compression_point1) and np.any(db_compression_point2):
+		db_compression_point = np.min([db_compression_point1, db_compression_point2])
+	elif np.any(db_compression_point1):
+		db_compression_point = db_compression_point1
+	elif np.any(db_compression_point2):
+		db_compression_point = db_compression_point2
+	else:
+		db_compression_point = None
+
 	#10*np.log10(np.real(signal_overlap)/np.real(signal_overlap_estimate)),-1+10*np.log10(1-signal_overlap_error/signal_overlap_estimate)
 	#10*np.log10(np.real(signal_overlap)/np.real(signal_overlap_estimate))<-1+10*np.log10(1-signal_overlap_error/signal_overlap_estimate)
-	if np.any(db_compression_point):
+	if db_compression_point is not None:
 		measurement.metadata['compression_1db'] = str(drive_amplitudes[db_compression_point+1])
 	else:
-		measurement.metadata['compression_1db'] = 'nan'#ro_amplitude = drive_amplitudes[-1]
+		measurement.metadata['compression_1db'] = 'nan'
 
 	measurement.datasets['compression'].data[:] = compression[:]
+	measurement.datasets['cos_dist'].data[:] = cos_dist[:]
 	#print("Readout amplitude:",ro_amplitude)

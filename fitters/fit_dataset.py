@@ -3,7 +3,7 @@ import pandas as pd
 from ..ponyfiles import data_structures
 
 
-def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-1, sweep_parameter_ids=[], mode=None) -> data_structures.MeasurementState:
+def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-1, sweep_parameter_ids=[], allow_unpack_complex=True, use_resample_x_fit=True, mode=None) -> data_structures.MeasurementState:
     ''' Fits an n-d array of measurements with 1d curve, for example exp-sin or exp (theoretical curve for Rabi, Ramsey, delay in Markov approximation).
         This function is a frontend that uses data_structures, specifically, measurement_parameter.
 
@@ -35,7 +35,10 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
     inverse_transposition = [transposition.index(i) for i in range(len(transposition))]
 
     t = dataset.parameters[time_parameter_id].values
-    t_fit = resample_x_fit(t)
+    if use_resample_x_fit:
+        t_fit = resample_x_fit(t)
+    else:
+        t_fit = np.asarray([i for i in t])
 
     sweep_parameter_shape = np.asarray(data.shape)[sweep_parameter_ids_positive]
     linear_parameter_shape = np.asarray(data.shape)[linear_parameter_ids]
@@ -47,7 +50,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
         data_3d = np.reshape(data_sorted, (np.prod(sweep_parameter_shape), np.prod(linear_parameter_shape), len(t)))
 
         ## TODO: this is a shitty way of checking if something is complex, as it can fail on other complex datatypes.
-        unpack_complex = np.iscomplexobj(data_3d)
+        unpack_complex = np.iscomplexobj(data_3d) and allow_unpack_complex
 
         # load fit data from last measurement
         if hasattr(source_measurement_updated, 'fit'):
@@ -58,7 +61,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
                     order_amplitudes[order_amplitudes>removal] -= 1
                 order_amplitudes = order_amplitudes.tolist()
 
-            order_fit_parameters = [a for i, a in enumerate(order_amplitudes) if i < len(sweep_parameter_shape)]
+            order_fit_parameters = np.asarray([a for i, a in enumerate(order_amplitudes) if i < len(sweep_parameter_shape)])
             if len(order_fit_parameters):
                 removals = [i for i in range(max(order_fit_parameters)) if i not in order_fit_parameters ]
                 for removal in removals:
@@ -107,8 +110,16 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
             if hasattr(source_measurement_updated, 'fit'):
                 old_parameters = {k:v[sweep_parameter_id] for k,v in old_fit_parameters_1d.items()}
+                #for k,v in old_fit_parameters_1d.items():
+                #    print('old_fit_parameters_1d[{}] = {}'.format(k, v))
+                #    print('old_parameters[{}][{}] = {}'.format(k, sweep_parameter_id, old_parameters[k]))
                 #old_parameters['A'] = old_A_2d[sweep_parameter_id,:]
-                old_parameters.update({k:v[sweep_parameter_id, :] for k,v in old_amplitudes_2d.items()})
+                old_parameters.update({k: v[sweep_parameter_id, :] for k,v in old_amplitudes_2d.items()})
+                #for k,v in old_amplitudes_2d.items():
+                    #print ('old_amplitudes_2d[{}] = {}'.format(k,v))
+                    #print ('old_amplitudes_2d[{}][{}] = {}'.format(k, sweep_parameter_id, v[sweep_parameter_id, :]))
+                    #print ('old_parameters[{}][{}] = {}'.format(k, sweep_parameter_id, old_parameters[v]))
+
             else:
                 old_parameters = None
 
@@ -119,7 +130,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
             #print ('y fit shape: ', y_fit.shape, ' y real: ', y_real.shape)
 
             #print ('num_amplitudes: ', num_amplitudes)
-            #print ('fitresults', fitresults)
+            #print ('fitresults: ', fitresults)
             if unpack_complex:
                 num_amplitudes = y_fit.shape[0] // 2
                 fit_3d[sweep_parameter_id, :, :] = y_fit[:num_amplitudes,:]+1j*y_fit[num_amplitudes:,:]
@@ -137,9 +148,10 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
                 if hasattr(fitresults[fitresult], '__iter__'):
                     if not fitresult in amplitudes:
                         amplitudes[fitresult] = np.zeros((data_3d.shape[0], data_3d.shape[1]), data_3d.dtype)
-                    if unpack_complex:
-                        fitresults[fitresult] = fitresults[fitresult][:num_amplitudes]+1j*fitresults[fitresult][num_amplitudes:]
+                    #if unpack_complex:
+                    #    fitresults[fitresult] = fitresults[fitresult][:num_amplitudes]+1j*fitresults[fitresult][num_amplitudes:]
                     amplitudes[fitresult][sweep_parameter_id] = fitresults[fitresult]
+            #print ('amplitudes: ', amplitudes.keys())
 
         fit_parameters_pd = pd.DataFrame(fit_parameters)
 
@@ -149,9 +161,12 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
         amplitudes_sorted = {k: np.reshape(v, [i for i in data_sorted.shape][:-1]) for k,v in amplitudes.items()}
         if len(sweep_parameter_ids):
-            fit_parameters_sorted = {fit_parameter: np.reshape(np.asarray(fit_parameters_pd[fit_parameter]), [i for i in data_sorted.shape][:len(sweep_parameter_ids)]) for fit_parameter in fit_parameters_pd.columns}
+            fit_parameters_sorted = {fit_parameter: np.reshape(np.asarray(fit_parameters_pd[fit_parameter]),
+                                                               [i for i in data_sorted.shape][:len(sweep_parameter_ids)]) for fit_parameter in fit_parameters_pd.columns}
         else:
             fit_parameters_sorted = {fit_parameter: np.asarray(fit_parameters_pd[fit_parameter]) for fit_parameter in fit_parameters_pd.columns}
+
+        #print ('fit_parameters_sorted: ', fit_parameters_sorted)
 
         ## turn fit parameters back to original order
         fit_unsorted = np.transpose(fit_sorted, inverse_transposition)
@@ -169,7 +184,8 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
         if len(sweep_parameter_shape):								fit_parameters_unsorted = {k: np.transpose(v, order_fit_parameters) for k,v in fit_parameters_sorted.items()}
         else:														fit_parameters_unsorted = fit_parameters_sorted
         #print('fit_parameters_pd', fit_parameters_pd)
-        #print ('fit_parameters_unsorted', fit_parameters_unsorted)
+        #print ('fit_parameters_unsorted ', fit_parameters_unsorted)
+        #print ('amplitides_unsorted ', amplitudes_unsorted)
 
         metadata = {'fitter_name': fitter.name, 'fitted_dataset': dataset_name}
         references = {'fit_source': source_measurement.id}
@@ -205,7 +221,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
         #fit_unsorted, A_unsorted, fit_parameters_unsorted, metadata, references, x_fit  = fit_data(source_measurement, None)
         fit_unsorted, amplitudes_unsorted, fit_parameters_unsorted, metadata, references, x_fit = fit_data(source_measurement,
                                                                                                   None)
-        print (fit_parameters_unsorted)
+        #print (fit_parameters_unsorted)
         if not len(sweep_parameter_shape) or not np.prod(sweep_parameter_shape):
             metadata.update({k: str(v.ravel()[0]) for k, v in fit_parameters_unsorted.items() if k not in amplitudes_unsorted})
         if not len(linear_parameter_shape)+len(sweep_parameter_shape) or not np.prod(linear_parameter_shape)*np.prod(sweep_parameter_shape):

@@ -204,7 +204,7 @@ class Zurich_HDAWG1808():
         self._markers[sequencer * 2 + 1][0] = 1
 
         if (sequencer > (self.num_seq - 1)):
-            print('awg_config={}. Max sequencer number ={}'.format(self.awg_config, (self.num_seq - 1)))
+            print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer, self.awg_config, (self.num_seq - 1)))
         self.awgModule.set('awgModule/index', sequencer)
         self.awgModule.set('awgModule/compiler/sourcestring', awg_program)
         start = timeit.default_timer()
@@ -214,21 +214,21 @@ class Zurich_HDAWG1808():
             # compilation failed, raise an exceptionawg
             raise Exception(self.awgModule.getString('awgModule/compiler/statusstring'))
         if self.awgModule.getInt('awgModule/compiler/status') == 0:
-            print("Compilation successful with no warnings, will upload the program to the instrument.")
+            print("Sequencer #{}: Compilation successful with no warnings, will upload the program to the instrument.".format(sequencer))
         if self.awgModule.getInt('awgModule/compiler/status') == 2:
-            print("Compilation successful with warnings, will upload the program to the instrument.")
-            print("Compiler warning: ", self.awgModule.getString('awgModule/compiler/statusstring'))
+            print("Sequencer #{}: Compilation successful with warnings, will upload the program to the instrument.")
+            print("Sequencer #{}: Compiler warning: ", self.awgModule.getString('awgModule/compiler/statusstring'))
         # Wait for the waveform upload to finish
         time.sleep(0.1)
         i = 0
         while (self.awgModule.getDouble('awgModule/progress') < 1.0) and (
                 self.awgModule.getInt('awgModule/elf/status') != 1):
-            print("{} awgModule/progress: {:.2f}".format(i, self.awgModule.getDouble('awgModule/progress')))
+            #print("{} awgModule/progress: {:.2f}".format(i, self.awgModule.getDouble('awgModule/progress')))
             time.sleep(0.1)
             i += 1
-        print("{} awgModule/progress: {:.2f}".format(i, self.awgModule.getDouble('awgModule/progress')))
+        print("Sequencer #{}: {} awgModule/progress: {:.2f}".format(sequencer, i, self.awgModule.getDouble('awgModule/progress')))
         if self.awgModule.getInt('awgModule/elf/status') == 0:
-            print("Upload to the instrument successful.")
+            print("Sequencer #{}: Upload to the instrument successful.".format(sequencer))
         if self.awgModule.getInt('awgModule/elf/status') == 1:
             raise Exception("Upload to the instrument failed.")
         stop = timeit.default_timer()

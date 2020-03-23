@@ -125,7 +125,7 @@ class qubit_device:
             fq_measurement = self.exdir_db.select_measurement(
                 measurement_type='qubit_fq',
                 metadata=metadata,
-                references={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id,
+                references_that={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id,
                                                                                             control_values=control_values)}
             )
         except:
@@ -139,9 +139,10 @@ class qubit_device:
                            metadata=metadata,
                            references={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id, control_values=control_values)})
 
-    def get_qubit_fr(self, qubit_id):
+    def get_qubit_fr(self, qubit_id, control_values={}, ignore_control_values=False, recalibrate=True):
+        from .qubit_calibrations import spectroscopy
         """
-        Reads qubit's readout frequency from exdir_db.
+        Reads qubit's readout frequency from exdir_db for given control_values. If the
 
         Parameters
         ----------
@@ -153,14 +154,38 @@ class qubit_device:
         fr : float
             qubit readout frequency
         """
-        fr_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fr',
-                                                          metadata={'qubit_id':qubit_id})
+        frequency_control_measurement_id = self.get_frequency_control_measurement_id(qubit_id=qubit_id,
+                                                                                     control_values=control_values)
+        try:
+            fr_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fr',
+                                                          metadata={'qubit_id':qubit_id},
+                    references_that={'frequency_controls': frequency_control_measurement_id})
+        except IndexError as e:
+            print ('Could not find fr measurement for qubit {} with frequency controls id {}'.format(qubit_id,
+                                                                                frequency_control_measurement_id))
+            assert not ignore_control_values
+            assert recalibrate
+            assert not len(control_values)
+            fr_measurement = self.exdir_db.select_measurement(measurement_type='qubit_fr',
+                                                              metadata={'qubit_id': qubit_id})
+            fr_guess = float(fr_measurement.metadata['fr'])
+            spectrum_fit = spectroscopy.measure_fr(self, qubit_id, fr_guess)
+            fr = float(spectrum_fit.metadata['fr'])
+
+            self.set_qubit_fr(fr=fr, qubit_id=qubit_id, measurement_reference={'single_tone_spectrum_fit': spectrum_fit.id})
+
         return float(fr_measurement.metadata['fr'])
 
-    def set_qubit_fr(self, fr, qubit_id):
+    def set_qubit_fr(self, fr, qubit_id, control_values={}, measurement_reference={}):
+        references = {'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id,
+                                                                                    control_values=control_values)}
+        references.update(measurement_reference)
+        print(references)
         self.exdir_db.save(measurement_type='qubit_fr',
-                           metadata={'qubit_id':qubit_id,
-                                     'fr': str(fr)})
+                                                  metadata={'qubit_id':qubit_id,
+                                                            'fr': str(fr)},
+                                                  references=references)
+
 
     def set_qubit_list(self, qubit_list):
         self.exdir_db.save(measurement_type='qubit_list', metadata={key: key for key in qubit_list})
@@ -260,6 +285,20 @@ class qubit_device:
             gate_entry = {k: v for k, v in gate.items()}
             gate_entry['gate_id'] = gate_id
             self.exdir_db.save(measurement_type='two_qubit_gate', metadata=gate_entry)
+
+    def get_zgates(self):
+        gates = {}
+        gate_list = [gate for gate in self.exdir_db.select_measurement(measurement_type='zgate_list').metadata.values()]
+        for gate_id in gate_list:
+            gates[gate_id] = self.exdir_db.select_measurement(measurement_type='zgate', metadata={'gate_id': gate_id})
+        return gates
+
+    def set_zgates_from_dict(self, zgates):
+        self.exdir_db.save(measurement_type='zgate_list', metadata={key: key for key in zgates})
+        for gate_id, gate in zgates.items():
+            gate_entry = {k: v for k, v in gate.items()}
+            gate_entry['gate_id'] = gate_id
+            self.exdir_db.save(measurement_type='zgate', metadata=gate_entry)
 
     def create_pulsed_interfaces(self, iq_devices, fast_controls, extra_channels={}):
         self.awg_channels = {}

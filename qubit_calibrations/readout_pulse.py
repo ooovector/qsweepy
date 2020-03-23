@@ -1,8 +1,9 @@
-from .calibrated_readout import *
+from .calibrated_readout import get_calibrated_measurer, readout_fidelity_scan, get_qubit_readout_pulse_from_fidelity_scan
 from ..ponyfiles.data_structures import *
 from .. import data_reduce
-
 import traceback
+
+
 class qubit_readout_pulse(MeasurementState):
     def __init__(self, *args, **kwargs):
         if len(args) and not len(kwargs): # copy constructor
@@ -11,6 +12,7 @@ class qubit_readout_pulse(MeasurementState):
             super().__init__(measurement_type='qubit_readout_pulse', *args, **kwargs)
     def get_pulse_sequence(self):
         return self.pulse_sequence
+
 
 def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
     references = {'passthrough_measurement':passthrough_measurement.id}
@@ -46,6 +48,7 @@ def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
     readout_pulse.pulse_sequence = [device.pg.p(readout_channel, length, device.pg.rect, amplitude)]
     return readout_pulse
 
+
 def get_multi_qubit_readout_pulse(device, qubit_ids, length=None):
     pulses = {}
     references = {}
@@ -67,6 +70,7 @@ def get_multi_qubit_readout_pulse(device, qubit_ids, length=None):
     multi_readout_pulse.pulse_sequence = [device.pg.pmulti(float(length), *pg_args)]
     return multi_readout_pulse
 
+
 def get_qubit_readout_pulse(device, qubit_id, length=None):
     from .readout_passthrough import readout_passthrough
 
@@ -76,12 +80,15 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     if not length:
         length = float(device.get_qubit_constant(name='readout_length', qubit_id=qubit_id))
     amplitudes = np.linspace(0, amplitude, points)
+    ignore_other_qubits = bool(device.get_qubit_constant(name='readout_calibration_ignore_other_qubits', qubit_id=qubit_id))
 
     ## identify metadata
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
-    metadata={'qubit_id':qubit_id}
+    metadata_passthrough = {'qubit_id': qubit_id}
     if length:
-        metadata['length'] = str(length)
+        metadata_passthrough['length'] = str(length)
+    metadata_fidelity_scan = { k:v for k,v in metadata_passthrough.items() }
+    metadata_fidelity_scan['ignore_other_qubits'] = ignore_other_qubits
 
     references = {'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
     if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
@@ -90,20 +97,20 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     ## otherwise, try to calibrate a readout pulse. If that fails,
     ## jump to passthrough measurements
     try:
-        measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata, references_that=references)
+        measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata_fidelity_scan, references_that=references)
         pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
     except Exception as e:
         #print (type(e), str(e))
         traceback.print_exc()
         # if there is no passthrough, calibrate passthrough
         try:
-            measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False)
+            measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False, ignore_other_qubits=ignore_other_qubits)
             pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
         except Exception as e:
             print ('Failed to get readout pulse from fidelity scan, fall back to passthrough')
             traceback.print_exc()
             try:
-                measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata, references_that=references)
+                measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata_passthrough, references_that=references)
                 pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
             except Exception as e:
                 print (type(e), str(e))
@@ -114,7 +121,7 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     return pulse
 
 
-def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None):
+def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None, recalibrate=False):
     qubit_id = qubit_readout_pulse.metadata['qubit_id']
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
     metadata = {'qubit_id':qubit_id}
@@ -123,6 +130,7 @@ def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None):
     if excitation_pulse is not None:
         references['excitation_pulse'] = excitation_pulse.id
     try:
+        assert not recalibrate
         return device.exdir_db.select_measurement(measurement_type='readout_background_calibration', metadata=metadata, references_that=references)
     except Exception as e:
         traceback.print_exc()
@@ -130,6 +138,7 @@ def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None):
         new_measurement.measurement_type = 'readout_background_calibration'
         device.exdir_db.db.update_in_database(new_measurement)
         return new_measurement
+
 
 def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=None):
     qubit_id = qubit_readout_pulse.metadata['qubit_id']
