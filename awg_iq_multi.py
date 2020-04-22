@@ -8,7 +8,6 @@ import logging
 from .save_pkl import *
 from .config import get_config
 from matplotlib import pyplot as plt
-from . import qjson
 #import time
 
 
