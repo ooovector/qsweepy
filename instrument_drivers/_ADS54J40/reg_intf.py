@@ -2,7 +2,9 @@ from numpy import *
 ##############################
 #ADS regs to check program status
 ADS_CTRL_ST_ADDR = 0x156
-ADS_CTRL_ST_VL = 0x64
+#ADS_CTRL_ST_VL = 0x64
+ADS_CTRL_ST_VL = 0xe8
+
 
 ###############################
 CAP_BASE = 0x0

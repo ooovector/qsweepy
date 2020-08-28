@@ -2,7 +2,34 @@ from ..fitters import fit_dataset, resonator_tools
 import numpy as np
 import time
 
-def single_tone_spectroscopy(device, qubit_id, fr_guess):
+
+def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
+    try:
+        device.hardware.set_cw_mode()
+        device.hardware.lo1.set_status(0)
+
+        power = float(device.get_sample_global(name='single_tone_spectrum_power'))
+        bandwidth = float(device.get_sample_global(name='single_tone_spectrum_bandwidth'))
+
+        device.hardware.pna.set_power(power)
+        device.hardware.pna.set_nop(nop)
+        device.hardware.pna.set_bandwidth(bandwidth)
+
+        device.hardware.pna.set_xlim(fmin, fmax)
+        #device.hardware.pna.measure()
+        #time.sleep(device.hardware.pna.get_sweep_time()*0.001)
+        device.hardware.pna.measure()
+        device.sweeper.sweep(device.hardware.pna, *args,
+                               measurement_type='single_tone_spectroscopy_overview',
+                               metadata={ 'vna_power': device.hardware.pna.get_power(),
+                                          'bandwidth': bandwidth})
+    except:
+        raise
+    finally:
+        device.hardware.set_pulsed_mode()
+
+
+def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
     print ('fr_guess: ', fr_guess)
     try:
         device.hardware.set_cw_mode()
@@ -23,9 +50,11 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess):
         device.hardware.pna.measure()
         time.sleep(device.hardware.pna.get_sweep_time()*0.001)
         device.hardware.pna.measure()
-        result = device.sweeper.sweep(device.hardware.pna,
+        result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='resonator_frequency',
-                               metadata={'qubit': qubit_id, 'pna_power': device.hardware.pna.get_power()})
+                               metadata={'qubit': qubit_id,
+                                         'vna_power': device.hardware.pna.get_power(),
+                                         'bandwidth': bandwidth})
     except:
         raise
     finally:
@@ -38,7 +67,7 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess):
             dataset_name='S-parameter',
             fitter=fitter,
             time_parameter_id=-1,
-            sweep_parameter_ids=[],
+            sweep_parameter_ids=np.arange(len(args)),
             allow_unpack_complex=False,
             use_resample_x_fit=False)
 

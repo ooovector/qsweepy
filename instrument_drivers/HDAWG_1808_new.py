@@ -666,9 +666,13 @@ class Zurich_HDAWG1808():
             markers = np.asarray(np.transpose([m1, m2]).ravel())
             vector = (vector << 2 | markers).astype('int16')
 
-            self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
-            # self.daq.sync()
-            self.daq.vectorWrite('/' + self.device + '/awgs/%d/waveform/data' % sequencer, vector)
+            #TODO: fix
+            try:
+                self   .daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
+                # self.daq.sync()
+                self.daq.vectorWrite('/' + self.device + '/awgs/%d/waveform/data' % sequencer, vector)
+            except:
+                pass
             # self.daq.sync()
 
             self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)

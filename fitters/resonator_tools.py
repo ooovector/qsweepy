@@ -27,7 +27,7 @@ def resonator_tools_reflection_port(f, S):
 
 
 class ResonatorToolsFitter:
-    def __init__(self, mode='notch_port'):
+    def __init__(self, mode='resonator_tools_notch_port'):
         self.name = 'resonator_tools_fitter'
         self.mode = mode
 

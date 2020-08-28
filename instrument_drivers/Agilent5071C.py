@@ -25,7 +25,7 @@ import logging
 from time import sleep
 import numpy
 
-class Agilent_N5242A(Instrument):
+class AgilentE5071C(Instrument):
     '''
     This is the python driver for the Agilent VNA X Vector Network Analyzer
 
@@ -56,7 +56,7 @@ class Agilent_N5242A(Instrument):
         self._start = 0
         self._stop = 0
         self._nop = 0
-
+        
 
         # Implement parameters
         #Sweep
@@ -188,15 +188,22 @@ class Agilent_N5242A(Instrument):
 
     def pre_sweep(self):
         #self.init()
-        self.set_trigger_source("MAN")
+        self._visainstrument.write(":TRIG:SOUR BUS")
+        self._visainstrument.write(":INIT:CONT ON")
         self.write("*ESE 1")
-        self.set_average_mode("POIN")
+        self.set_average_mode(":POIN")
+
 
     def post_sweep(self):
-        self.set_trigger_source("IMM")
+        self.set_trigger_source(":IMM")
 
     def init(self):
-        self._visainstrument.write("INIT:IMM")
+        #self._visainstrument.write(":TRIG:SING")
+        self._visainstrument.write(":STAT:OPER:ENAB 16")
+        self._visainstrument.write(":STAT:QUES:ENAB 16")
+        self._visainstrument.write("*SRE 128")
+        self._visainstrument.write("*TRG")
+        #self._visainstrument.ask("*OPC?")
         #if self._zerospan:
         #  self._visainstrument.write('INIT1;*wai')
         #else:
@@ -327,49 +334,21 @@ class Agilent_N5242A(Instrument):
         self.write("*CLS")
         self.init()
         #Set bit in ESR when operation complete
-
-        self.write("*OPC")
-        self.write("*OPC?")
+        #self.ask("*OPC?")
         #Wait until ready and let plots to handle events (mouse drag and so on)
-        while int(self.ask("*ESR?"))==0:
-            sleep(0.002)
+        sleep(self.get_sweep_time()*0.001)
+        self.ask("*OPC?")
 
-        self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
+        #self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
         #data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single)
         #data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double)
         #data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)
         #test
-        data = self._visainstrument.query_binary_values("CALCulate:DATA? SDATA", datatype=u'f')
-        data_size = numpy.size(data)
-        datareal = numpy.array(data[0:data_size:2])
-        dataimag = numpy.array(data[1:data_size:2])
+        self._visainstrument.write("FORM:DATA REAL32;")
+        self._visainstrument.write("FORM:BORD SWAP")
 
-        #print datareal,dataimag,len(datareal),len(dataimag)
-        if format.upper() == 'REALIMAG':
-            if self._zerospan:
-                return numpy.mean(datareal), numpy.mean(dataimag)
-            else:
-                return datareal, dataimag
-        elif format.upper() == 'AMPPHA':
-            if self._zerospan:
-                datareal = numpy.mean(datareal)
-                dataimag = numpy.mean(dataimag)
-                dataamp = numpy.sqrt(datareal*datareal+dataimag*dataimag)
-                datapha = numpy.arctan(dataimag/datareal)
-                return dataamp, datapha
-            else:
-                dataamp = numpy.sqrt(datareal*datareal+dataimag*dataimag)
-                datapha = numpy.arctan2(dataimag,datareal)
-                #Unwrap
-            for i in range(0, len(datapha)-1 ):
-                if datapha[i+1]-datapha[i] >= numpy.pi:
-                    datapha[i+1] = datapha[i+1] - 2.*numpy.pi
-                elif datapha[i+1]-datapha[i] <= -numpy.pi:
-                    datapha[i+1] = datapha[i+1] + 2.*numpy.pi
-
-            return dataamp, datapha
-        else:
-            raise ValueError('get_tracedata(): Format must be AmpPha or RealImag')
+        values = self._visainstrument.query_binary_values("CALC1:DATA:SDAT?")
+        return numpy.array(values)[0:-1:2] + 1j*numpy.array(values)[1::2]
 
     def get_sweep_time(self):
         """
@@ -542,7 +521,7 @@ class Agilent_N5242A(Instrument):
 
     def measure(self):
         data = self.get_tracedata(format='realimag')
-        return {'S-parameter':(data[0]+1j*data[1])}
+        return {'S-parameter':data}
 
     def set_xlim(self, start, stop):
         logging.debug(__name__ + ' : setting start freq to %s Hz' % start)
