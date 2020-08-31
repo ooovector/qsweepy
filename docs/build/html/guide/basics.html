@@ -189,17 +189,17 @@
 <p>QSweepy is a python-based piece of software designed for measurement automation and
 management. It has several key components:</p>
 <p>Basic data structures for measurements and datasets</p>
-<span class="target" id="module-qsweepy.ponyfiles.data_structures"></span><dl class="py class">
-<dt id="qsweepy.ponyfiles.data_structures.MeasurementParameter">
-<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.data_structures.</code><code class="sig-name descname">MeasurementParameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">param</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.data_structures.MeasurementParameter" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-ponyfiles.data_structures"></span><dl class="py class">
+<dt id="ponyfiles.data_structures.MeasurementParameter">
+<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.data_structures.</code><code class="sig-name descname">MeasurementParameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">param</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.data_structures.MeasurementParameter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sweep parameter data structure.
 Data structure has a function (setter), which makes it
 impractical for serialization.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="qsweepy.ponyfiles.data_structures.measurer_point_parameters">
-<code class="sig-prename descclassname">qsweepy.ponyfiles.data_structures.</code><code class="sig-name descname">measurer_point_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.data_structures.measurer_point_parameters" title="Permalink to this definition">¶</a></dt>
+<dt id="ponyfiles.data_structures.measurer_point_parameters">
+<code class="sig-prename descclassname">ponyfiles.data_structures.</code><code class="sig-name descname">measurer_point_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.data_structures.measurer_point_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructs dictionary of lists containing MeasurementParameter for every parameter</p>
 <dl class="simple">
 <dt>measurer</dt><dd><p>an object that supports get_points(), measure(), get_dtype() and get_opts() methods. e.g. Spectrum_M3i2132</p>
@@ -213,45 +213,17 @@ impractical for serialization.</p>
 </dd></dl>
 
 <p>Savingloading meassurements and other data using the exdir format TODO: add link</p>
-<span class="target" id="module-qsweepy.ponyfiles.save_exdir"></span><dl class="py class">
-<dt id="qsweepy.ponyfiles.save_exdir.LazyMeasParFromExdir">
-<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">LazyMeasParFromExdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">exdir_parameter</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.LazyMeasParFromExdir" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sweep parameter data structure.
-Data structure has a function (setter), which makes it
-impractical for serialization.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="qsweepy.ponyfiles.save_exdir.load_exdir">
-<code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">load_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">db</span><span class="p">:</span> <span class="n">qsweepy.ponyfiles.database.MyDatabase</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filename_db</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lazy</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.load_exdir" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loads measurement state from ExDir file system and database if the latter is provided.</p>
-<dl class="simple">
-<dt>filename<span class="classifier">str</span></dt><dd><p>Absolute path to the exdir file.</p>
-</dd>
-<dt>db<span class="classifier">MyDatabase</span></dt><dd><p>Binded pony database instance.</p>
-</dd>
-<dt>lazy<span class="classifier">bool</span></dt><dd><p>If True, function leaves ExDir file open and sets
-retval.exdir to this file.</p>
-</dd>
-</dl>
-<dl class="simple">
-<dt>MeasurementState<span class="classifier">retval</span></dt><dd><p>Measurement state that is obtained from combining data from ExDir by filename and from
-PostSQL by finding record with the same filename</p>
-</dd>
-</dl>
-</dd></dl>
-
 <p>Managing and finding measurements in a database using PonyORM and a Postgresql
 database
-.. automodule:: qsweepy.ponyfiles.database</p>
+.. automodule:: ponyfiles.database</p>
 <p>Instrument drivers
-.. automodule:: qsweepy.instrument_drivers</p>
+.. automodule:: instrument_drivers</p>
 <p>Sweep functions &amp; extras
-.. automodule:: qsweepy.sweep</p>
-<span class="target" id="module-qsweepy.sweep_extras"></span><p>Qubit-chip related classes
-.. autoclass:: qsweepy.qubit_device.QubitDevice</p>
+.. automodule:: sweep</p>
+<p>Qubit-chip related classes
+.. autoclass:: qubit_device.QubitDevice</p>
 <p>Qubit measurement instruments setup
-.. automodule:: qsweepy.tunable_coupling_transmons</p>
+.. automodule:: tunable_coupling_transmons</p>
 </div>
 
 

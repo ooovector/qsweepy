@@ -7,29 +7,29 @@ management. It has several key components:
 Basic data structures for measurements and datasets
 
 
-.. automodule:: qsweepy.ponyfiles.data_structures
+.. automodule:: ponyfiles.data_structures
    :members:
 
 Saving\loading meassurements and other data using the exdir format TODO: add link
 
 
-.. automodule:: qsweepy.ponyfiles.save_exdir
+.. automodule:: ponyfiles.save_exdir
    :members:
 
 Managing and finding measurements in a database using PonyORM and a Postgresql
 database
-.. automodule:: qsweepy.ponyfiles.database
+.. automodule:: ponyfiles.database
 
 Instrument drivers
-.. automodule:: qsweepy.instrument_drivers
+.. automodule:: instrument_drivers
 
 Sweep functions & extras
-.. automodule:: qsweepy.sweep
+.. automodule:: sweep
 
-.. automodule:: qsweepy.sweep_extras
+.. automodule:: sweep_extras
 
 Qubit-chip related classes
-.. autoclass:: qsweepy.qubit_device.QubitDevice
+.. autoclass:: qubit_device.QubitDevice
 
 Qubit measurement instruments setup
-.. automodule:: qsweepy.tunable_coupling_transmons
+.. automodule:: tunable_coupling_transmons
