@@ -8,3 +8,4 @@ ipykernel
 sphinxcontrib-napoleon
 pony
 exdir
+ruamel
