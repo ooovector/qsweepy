@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Basic concepts &mdash; QSweepy 01012014 documentation</title>
+  <title>Basic concepts of the sweeper function &mdash; QSweepy 01012014 documentation</title>
   
 
   
@@ -39,7 +39,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="General information" href="general_information.html" />
-    <link rel="prev" title="Basic concepts" href="basics_ponyfiles.html" /> 
+    <link rel="prev" title="Basic concepts of the database for measurements" href="basics_ponyfiles.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -90,8 +90,8 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basics_ponyfiles.html">Basic concepts</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics_ponyfiles.html">Basic concepts of the database for measurements</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic concepts of the sweeper function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="data_reading.html">How to readout and analyze measured data</a></li>
@@ -142,7 +142,7 @@
     
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Basic concepts</li>
+      <li>Basic concepts of the sweeper function</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -185,15 +185,79 @@
     text-align: unset;
 }
 </style>
-<div class="section" id="basic-concepts">
-<h1>Basic concepts<a class="headerlink" href="#basic-concepts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basic-concepts-of-the-sweeper-function">
+<h1>Basic concepts of the sweeper function<a class="headerlink" href="#basic-concepts-of-the-sweeper-function" title="Permalink to this headline">¶</a></h1>
 <p>QSweepy is a python-based piece of software designed for measurement automation and
 management. It has several key components:</p>
-<p>Basic data structures for measurements and datasets</p>
-<p>Instrument drivers</p>
 <p>Sweep functions &amp; extras</p>
-<p>Qubit-chip related classes</p>
-<p>Qubit measurement instruments setup</p>
+<span class="target" id="module-sweep"></span><dl class="py function">
+<dt id="sweep.optimize">
+<code class="sig-prename descclassname">sweep.</code><code class="sig-name descname">optimize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">params</span></em>, <em class="sig-param"><span class="n">initial_simplex</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxfun</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep.optimize" title="Permalink to this definition">¶</a></dt>
+<dd><p>function is used for paramp only | noted on 13.07.2019
+:param target:
+:param params:
+:param initial_simplex:
+:param maxfun:
+:return:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="sweep.sweep">
+<code class="sig-prename descclassname">sweep.</code><code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">shuffle</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">use_deferred</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">ignore_callback_errors</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">on_update_divider</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep.sweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs a n-d parametric sweep.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurer</strong> – an object that supports get_points(), measure(), get_dtype() and get_opts() methods.</p></li>
+<li><p><strong>parameters</strong> (<em>list</em><em>[</em><em>tuple</em><em>]</em>) – tuple associated with a parameter has the following meaning: (param_values, param_setter, param_name)</p></li>
+<li><p><strong>shuffle</strong> – </p></li>
+<li><p><strong>on_start</strong> – </p></li>
+<li><p><strong>on_update</strong> – </p></li>
+<li><p><strong>on_finish</strong> – </p></li>
+<li><p><strong>use_deferred</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Structure after measurement dict of ndarrays each corresponding to a measurement in the sweep</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MeasurementState</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-sweep_extras"></span><dl class="py class">
+<dt id="sweep_extras.Sweeper">
+<em class="property">class </em><code class="sig-prename descclassname">sweep_extras.</code><code class="sig-name descname">Sweeper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">db</span></em>, <em class="sig-param"><span class="n">sample_name</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper" title="Permalink to this definition">¶</a></dt>
+<dd><p>nice function</p>
+<dl class="py method">
+<dt id="sweep_extras.Sweeper.sweep">
+<code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper.sweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>hook for n-dimensional measurement
+:param args:
+:param on_start:
+:param on_update:
+:param on_finish:
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly">
+<code class="sig-name descname">sweep_fit_dataset_1d_onfly</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">fitter_arguments</span><span class="o">=</span><span class="default_value">()</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly" title="Permalink to this definition">¶</a></dt>
+<dd><p>hook for 1d sweep measurement process
+:param args:
+:param on_start:
+:param on_update:
+:param on_finish:
+:param fitter_arguments:
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -207,7 +271,7 @@ management. It has several key components:</p>
         <a href="general_information.html" class="btn btn-neutral float-right" title="General information" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="basics_ponyfiles.html" class="btn btn-neutral float-left" title="Basic concepts" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="basics_ponyfiles.html" class="btn btn-neutral float-left" title="Basic concepts of the database for measurements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

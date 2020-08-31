@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Basic concepts &mdash; QSweepy 01012014 documentation</title>
+  <title>Basic concepts of the database for measurements &mdash; QSweepy 01012014 documentation</title>
   
 
   
@@ -38,7 +38,7 @@
     
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Basic concepts" href="basics_sweeper.html" />
+    <link rel="next" title="Basic concepts of the sweeper function" href="basics_sweeper.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
@@ -90,8 +90,8 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic concepts</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basics_sweeper.html">Basic concepts</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic concepts of the database for measurements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics_sweeper.html">Basic concepts of the sweeper function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="data_reading.html">How to readout and analyze measured data</a></li>
@@ -142,7 +142,7 @@
     
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Basic concepts</li>
+      <li>Basic concepts of the database for measurements</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -185,8 +185,8 @@
     text-align: unset;
 }
 </style>
-<div class="section" id="basic-concepts">
-<h1>Basic concepts<a class="headerlink" href="#basic-concepts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basic-concepts-of-the-database-for-measurements">
+<h1>Basic concepts of the database for measurements<a class="headerlink" href="#basic-concepts-of-the-database-for-measurements" title="Permalink to this headline">¶</a></h1>
 <p>QSweepy is a python-based piece of software designed for measurement automation and
 management. It has several key components:</p>
 <p>Basic data structures for measurements and datasets</p>
@@ -223,6 +223,37 @@ impractical for serialization.</p>
 </dd></dl>
 
 <p>Savingloading meassurements and other data using the exdir format TODO: add link</p>
+<span class="target" id="module-ponyfiles.save_exdir"></span><dl class="py class">
+<dt id="ponyfiles.save_exdir.LazyMeasParFromExdir">
+<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.save_exdir.</code><code class="sig-name descname">LazyMeasParFromExdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">exdir_parameter</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.save_exdir.LazyMeasParFromExdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sweep parameter data structure.
+Data structure has a function (setter), which makes it
+impractical for serialization.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ponyfiles.save_exdir.load_exdir">
+<code class="sig-prename descclassname">ponyfiles.save_exdir.</code><code class="sig-name descname">load_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">db</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filename_db</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lazy</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.save_exdir.load_exdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads measurement state from ExDir file system and database if the latter is provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>str</em>) – Absolute path to the exdir file.</p></li>
+<li><p><strong>db</strong> (<a class="reference internal" href="#ponyfiles.database.MyDatabase" title="ponyfiles.database.MyDatabase"><em>MyDatabase</em></a>) – Binded pony database instance.</p></li>
+<li><p><strong>lazy</strong> (<em>bool</em>) – If True, function leaves ExDir file open and sets
+retval.exdir to this file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>MeasurementState</strong> – Measurement state that is obtained from combining data from ExDir by filename and from
+PostSQL by finding record with the same filename</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>retval</p>
+</dd>
+</dl>
+</dd></dl>
+
 <p>Managing and finding measurements in a database using PonyORM and a Postgresql
 database</p>
 <span class="target" id="module-ponyfiles.database"></span><dl class="py class">
@@ -259,7 +290,7 @@ and commits it into the database.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="basics_sweeper.html" class="btn btn-neutral float-right" title="Basic concepts" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="basics_sweeper.html" class="btn btn-neutral float-right" title="Basic concepts of the sweeper function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

@@ -32,14 +32,5 @@ The general examples of usage of written functions are:
 
 The description of the implemented classes and functions:
 
-.. automodule::  qubit_calibrations.spectroscopy
-    :members:
 
 
-
-
-.. autoclass:: fitters.spectroscopy_overview.SingleToneSpectroscopyOverviewFitter
-   :members:
-   :inherited-members:
-
-.. automethod:: fitters.spectroscopy_overview.find_resonators
