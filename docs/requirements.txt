@@ -5,3 +5,4 @@ sympy
 scipy
 nbsphinx
 ipykernel
+sphinxcontrib-napoleon
