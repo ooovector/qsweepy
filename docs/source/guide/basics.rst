@@ -17,19 +17,23 @@ Saving\loading meassurements and other data using the exdir format TODO: add lin
 
 Managing and finding measurements in a database using PonyORM and a Postgresql
 database
+
 .. automodule:: ponyfiles.database
+   :members:
 
 Instrument drivers
-.. automodule:: instrument_drivers
 
 Sweep functions & extras
-.. automodule:: sweep.py
+
+.. automodule:: sweep
    :members:
 
 .. automodule:: sweep_extras
+   :members:
 
 Qubit-chip related classes
+
 .. autoclass:: qubit_device.QubitDevice
+   :members:
 
 Qubit measurement instruments setup
-.. automodule:: tunable_coupling_transmons
