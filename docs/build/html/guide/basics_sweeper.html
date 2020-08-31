@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Single tone spectroscopy &mdash; QSweepy 01012014 documentation</title>
+  <title>Basic concepts &mdash; QSweepy 01012014 documentation</title>
   
 
   
@@ -38,8 +38,8 @@
     
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="How to readout and analyze measured data" href="data_reading.html" />
-    <link rel="prev" title="General information" href="general_information.html" /> 
+    <link rel="next" title="General information" href="general_information.html" />
+    <link rel="prev" title="Basic concepts" href="basics_ponyfiles.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -91,9 +91,9 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics_ponyfiles.html">Basic concepts</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basics_sweeper.html">Basic concepts</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Basic concepts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Single tone spectroscopy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="data_reading.html">How to readout and analyze measured data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ipynb/ipynb_examples.html">Here ipynb examples</a></li>
 </ul>
@@ -142,13 +142,13 @@
     
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Single tone spectroscopy</li>
+      <li>Basic concepts</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/guide/singletonesperctroscopy.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/guide/basics_sweeper.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -185,40 +185,15 @@
     text-align: unset;
 }
 </style>
-<div class="section" id="single-tone-spectroscopy">
-<h1>Single tone spectroscopy<a class="headerlink" href="#single-tone-spectroscopy" title="Permalink to this headline">¶</a></h1>
-<p>Here you can find general information about how to do a single tone spectroscopy</p>
-<p>The general examples of usage of written functions are:</p>
-<ol class="arabic simple" start="0">
-<li><p>First of all you should import the library:</p></li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">qubit_calibrations</span> <span class="kn">import</span> <span class="n">spectroscopy</span>
-</pre></div>
-</div>
-<ol class="arabic simple">
-<li><p>If you want to make a sweep over coil voltages you can use it:</p></li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">spectroscopy</span><span class="o">.</span><span class="n">single_tone_spectroscopy</span><span class="p">(</span><span class="n">device</span><span class="p">,</span>
-                               <span class="n">qubit_id</span><span class="p">,</span>
-                               <span class="n">device</span><span class="o">.</span><span class="n">get_qubit_fr</span><span class="p">(</span><span class="n">qubit_id</span><span class="p">),</span>
-                               <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">401</span><span class="p">),</span> <span class="n">hardware</span><span class="o">.</span><span class="n">coil</span><span class="o">.</span><span class="n">set_offset</span><span class="p">,</span> <span class="s1">&#39;Coil Voltage&#39;</span><span class="p">,</span> <span class="s1">&#39;V&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
-<ol class="arabic simple" start="2">
-<li><p>or if you want to make a sweep over single-tone drive power you can use it:</p></li>
-</ol>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">spectroscopy</span><span class="o">.</span><span class="n">single_tone_spectroscopy</span><span class="p">(</span><span class="n">device</span><span class="p">,</span>
-                               <span class="n">qubit_id</span><span class="p">,</span>
-                               <span class="n">device</span><span class="o">.</span><span class="n">get_qubit_fr</span><span class="p">(</span><span class="n">qubit_id</span><span class="p">),</span>
-                               <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">45</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">124</span><span class="p">),</span> <span class="n">hardware</span><span class="o">.</span><span class="n">pna</span><span class="o">.</span><span class="n">set_power</span><span class="p">,</span> <span class="s1">&#39;Power&#39;</span><span class="p">,</span> <span class="s1">&#39;dBm&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>The description of the implemented classes and functions:</p>
-<dl class="py class">
-<dt id="fitters.spectroscopy_overview.SingleToneSpectroscopyOverviewFitter">
-<em class="property">class </em><code class="sig-prename descclassname">fitters.spectroscopy_overview.</code><code class="sig-name descname">SingleToneSpectroscopyOverviewFitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mode</span><span class="o">=</span><span class="default_value">'resonator_tools_notch_port'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#fitters.spectroscopy_overview.SingleToneSpectroscopyOverviewFitter" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="basic-concepts">
+<h1>Basic concepts<a class="headerlink" href="#basic-concepts" title="Permalink to this headline">¶</a></h1>
+<p>QSweepy is a python-based piece of software designed for measurement automation and
+management. It has several key components:</p>
+<p>Basic data structures for measurements and datasets</p>
+<p>Instrument drivers</p>
+<p>Sweep functions &amp; extras</p>
+<p>Qubit-chip related classes</p>
+<p>Qubit measurement instruments setup</p>
 </div>
 
 
@@ -229,10 +204,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="data_reading.html" class="btn btn-neutral float-right" title="How to readout and analyze measured data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="general_information.html" class="btn btn-neutral float-right" title="General information" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="general_information.html" class="btn btn-neutral float-left" title="General information" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="basics_ponyfiles.html" class="btn btn-neutral float-left" title="Basic concepts" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
