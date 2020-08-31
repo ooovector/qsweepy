@@ -12,3 +12,4 @@ pathlib
 ruamel.yaml
 pandas
 plotly
+yaml
