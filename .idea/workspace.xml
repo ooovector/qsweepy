@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="Add SignalCore driver from Gleb">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/source/guide/basics.rst" beforeDir="false" afterPath="$PROJECT_DIR$/docs/source/guide/basics.rst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/source/guide/singletonesperctroscopy.rst" beforeDir="false" afterPath="$PROJECT_DIR$/docs/source/guide/singletonesperctroscopy.rst" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
