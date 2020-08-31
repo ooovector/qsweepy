@@ -1,0 +1,7 @@
+sphinx==3.1.2
+sphinx_rtd_theme
+autodoc
+sympy
+scipy
+nbsphinx
+ipykernel
