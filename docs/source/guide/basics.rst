@@ -6,9 +6,6 @@ management. It has several key components:
 
 Basic data structures for measurements and datasets
 
-.. autoclass:: circuit.Variable
-    :members:
-
 .. automodule:: ponyfiles.data_structures
    :members:
 
