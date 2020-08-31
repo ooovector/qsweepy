@@ -6,3 +6,5 @@ scipy
 nbsphinx
 ipykernel
 sphinxcontrib-napoleon
+pony
+exdir

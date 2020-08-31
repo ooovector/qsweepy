@@ -3,8 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="Add SignalCore driver from Gleb">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/source/guide/basics.rst" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/source/index.rst" beforeDir="false" afterPath="$PROJECT_DIR$/docs/source/index.rst" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -143,9 +141,9 @@
     <option name="LAST_COMMIT_MESSAGE" value="Add SignalCore driver from Gleb" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="465" y="236" key="com.intellij.ide.util.TipDialog" timestamp="1598876402778">
+    <state x="465" y="236" key="com.intellij.ide.util.TipDialog" timestamp="1598879903025">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="465" y="236" key="com.intellij.ide.util.TipDialog/0.0.1536.824@0.0.1536.824" timestamp="1598876402778" />
+    <state x="465" y="236" key="com.intellij.ide.util.TipDialog/0.0.1536.824@0.0.1536.824" timestamp="1598879903025" />
   </component>
 </project>
