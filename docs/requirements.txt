@@ -10,3 +10,5 @@ pony
 exdir
 pathlib
 ruamel.yaml
+pandas
+plotly

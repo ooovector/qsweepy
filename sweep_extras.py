@@ -1,6 +1,6 @@
-from . import sweep
-from . import plotly_plot
-from .fitters.fit_dataset import fit_dataset_1d
+import sweep
+import plotly_plot
+from fitters.fit_dataset import fit_dataset_1d
 from datetime import timedelta
 '''
 Interactive stuff:
