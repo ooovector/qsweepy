@@ -9,7 +9,8 @@ code for superconducting qubits measurements.
    :maxdepth: 1
 
    guide/installation
-   guide/basics
+   guide/basics_ponyfiles
+   guide/basics_sweeper
    guide/general_information
    guide/singletonesperctroscopy
    guide/data_reading
