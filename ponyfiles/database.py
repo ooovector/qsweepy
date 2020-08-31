@@ -1,11 +1,15 @@
 from pony.orm import *
 from .data_structures import *
-from.data_structures import  MeasurementState
+from .data_structures import  MeasurementState
 from datetime import datetime
 from decimal import Decimal
 
 
 class MyDatabase:
+    """
+    This class does smth
+
+    """
     def __init__(self, provider='postgres', user='qsweepy', password='qsweepy',
                  host='localhost', database='qsweepy', port=5432):
         db = Database()

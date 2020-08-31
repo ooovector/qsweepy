@@ -201,21 +201,54 @@ impractical for serialization.</p>
 <dt id="ponyfiles.data_structures.measurer_point_parameters">
 <code class="sig-prename descclassname">ponyfiles.data_structures.</code><code class="sig-name descname">measurer_point_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.data_structures.measurer_point_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructs dictionary of lists containing MeasurementParameter for every parameter</p>
-<dl class="simple">
-<dt>measurer</dt><dd><p>an object that supports get_points(), measure(), get_dtype() and get_opts() methods. e.g. Spectrum_M3i2132</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>measurer</strong> – an object that supports get_points(), measure(), get_dtype() and get_opts() methods. e.g. Spectrum_M3i2132</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>dictionary containing lists of MeasurementParameter instances</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict[str, list[<a class="reference internal" href="#ponyfiles.data_structures.MeasurementParameter" title="ponyfiles.data_structures.MeasurementParameter">MeasurementParameter</a>]]</p>
 </dd>
 </dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
 <dl class="simple">
-<dt>dict[str, list[MeasurementParameter]]</dt><dd><p>dictionary containing lists of MeasurementParameter instances</p>
+<dt><code class="xref py py-func docutils literal notranslate"><span class="pre">sweepy.instrument_drivers.Spectrum_M3i2132</span></code></dt><dd><p>Example for measurer that supports get_points()</p>
 </dd>
 </dl>
-<p>sweepy.instrument_drivers.Spectrum_M3i2132 : Example for measurer that supports get_points()</p>
+</div>
 </dd></dl>
 
 <p>Savingloading meassurements and other data using the exdir format TODO: add link</p>
 <p>Managing and finding measurements in a database using PonyORM and a Postgresql
 database</p>
-<span class="target" id="module-ponyfiles.database"></span><p>Instrument drivers</p>
+<span class="target" id="module-ponyfiles.database"></span><dl class="py class">
+<dt id="ponyfiles.database.MyDatabase">
+<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.database.</code><code class="sig-name descname">MyDatabase</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">provider</span><span class="o">=</span><span class="default_value">'postgres'</span></em>, <em class="sig-param"><span class="n">user</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">password</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">host</span><span class="o">=</span><span class="default_value">'localhost'</span></em>, <em class="sig-param"><span class="n">database</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">port</span><span class="o">=</span><span class="default_value">5432</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.database.MyDatabase" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class does smth</p>
+<dl class="py method">
+<dt id="ponyfiles.database.MyDatabase.create_in_database">
+<code class="sig-name descname">create_in_database</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.database.MyDatabase.create_in_database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates entity instance in program memory space
+and commits it into the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>state</strong> (<em>MeasurementState</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>id</strong> – state database id</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p>Instrument drivers</p>
 <p>Sweep functions &amp; extras</p>
 <p>Qubit-chip related classes</p>
 <p>Qubit measurement instruments setup</p>
