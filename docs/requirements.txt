@@ -8,4 +8,5 @@ ipykernel
 sphinxcontrib-napoleon
 pony
 exdir
-ruamel
+pathlib
+ruamel.yaml
