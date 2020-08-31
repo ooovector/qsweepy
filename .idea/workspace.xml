@@ -2,7 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="98f26322-3663-43c9-a823-c0f8770c3cab" name="Default Changelist" comment="Add SignalCore driver from Gleb">
-      <change beforePath="$PROJECT_DIR$/docs/source/guide/singletonesperctroscopy.rst" beforeDir="false" afterPath="$PROJECT_DIR$/docs/source/guide/singletonesperctroscopy.rst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/doctrees/environment.pickle" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/doctrees/environment.pickle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/doctrees/guide/basics.doctree" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/doctrees/guide/basics.doctree" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/doctrees/guide/singletonesperctroscopy.doctree" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/doctrees/guide/singletonesperctroscopy.doctree" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/_sources/guide/basics.rst.txt" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/_sources/guide/basics.rst.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/_sources/guide/singletonesperctroscopy.rst.txt" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/_sources/guide/singletonesperctroscopy.rst.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/genindex.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/genindex.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/guide/basics.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/guide/basics.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/guide/singletonesperctroscopy.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/guide/singletonesperctroscopy.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/objects.inv" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/objects.inv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/py-modindex.html" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/py-modindex.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/build/html/searchindex.js" beforeDir="false" afterPath="$PROJECT_DIR$/docs/build/html/searchindex.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,11 +56,6 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-  </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="-7" />
-    <option name="width" value="974" />
-    <option name="height" value="1047" />
   </component>
   <component name="ProjectId" id="1PK0B4YmJday7cOYuvFiPZH1omH" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
