@@ -24,7 +24,8 @@ Instrument drivers
 .. automodule:: instrument_drivers
 
 Sweep functions & extras
-.. automodule:: sweep
+.. automodule:: sweep.py
+   :members:
 
 .. automodule:: sweep_extras
 
