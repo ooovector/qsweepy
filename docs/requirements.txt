@@ -14,7 +14,5 @@ pandas
 plotly
 PyYAML
 threaded
-pickle
-typing
 sklearn
 pathlib
