@@ -13,7 +13,6 @@ ruamel.yaml
 pandas
 plotly
 PyYAML
-logging
 threading
 pickle
 typing
