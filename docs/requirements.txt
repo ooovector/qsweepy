@@ -1,0 +1,15 @@
+sphinx==3.1.2
+sphinx_rtd_theme
+autodoc
+sympy
+scipy
+nbsphinx
+ipykernel
+sphinxcontrib-napoleon
+pony
+exdir
+pathlib
+ruamel.yaml
+pandas
+plotly
+PyYAML

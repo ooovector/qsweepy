@@ -1,4 +1,4 @@
-from .ponyfiles import save_exdir
+from ponyfiles import save_exdir
 import numpy as np
 #import webcolors
 from pony.orm import *
