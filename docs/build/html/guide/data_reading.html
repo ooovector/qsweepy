@@ -90,7 +90,8 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basics.html">Basic concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics_ponyfiles.html">Basic concepts of the database for measurements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics_sweeper.html">Basic concepts of the sweeper function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">How to readout and analyze measured data</a></li>
@@ -189,9 +190,9 @@
 <p>Measured data can be uploaded from the saved format by the following way</p>
 <p>from qsweepy.ponyfiles import *</p>
 <p>sample_name = ‘11qubits_021119_2’
-| db = database.MyDatabase(host=’10.20.61.31’)
+| db = database.MyDatabase(host=‘10.20.61.31’)
 | exdir_db_inst = exdir_db.Exdir_db(db=db, sample_name=sample_name)</p>
-<p>m=exdir_db_inst.select_measurement(measurement_type=’two_tone’,metadata={‘num_resonant_qubits’: num_qubits,’resonator_id’:’1’,’ex_qubit’: ‘1’,’pump_power’: ‘-20.0’})</p>
+<p>m=exdir_db_inst.select_measurement(measurement_type=’two_tone’,metadata={‘num_resonant_qubits’: num_qubits,’resonator_id’:‘1’,’ex_qubit’: ‘1’,’pump_power’: ‘-20.0’})</p>
 <p>for coil, voltage in m.metadata.items():</p>
 <div class="line-block">
 <div class="line">m_ref = exdir_db_inst.select_measurement(measurement_type = ‘resonator’, references_this={‘resonator’:m.id})</div>
