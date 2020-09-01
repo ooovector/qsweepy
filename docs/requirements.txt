@@ -13,4 +13,3 @@ ruamel.yaml
 pandas
 plotly
 PyYAML
-traceback
