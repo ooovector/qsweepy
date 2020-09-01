@@ -1,6 +1,6 @@
-from . import data_reduce
+from qsweepy.libraries import data_reduce
 import numpy as np
-from . import readout_classifier
+from qsweepy.libraries import readout_classifier
 
 class single_shot_readout:
 	"""

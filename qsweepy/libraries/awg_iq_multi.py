@@ -5,8 +5,8 @@
 
 import numpy as np
 import logging
-from .save_pkl import *
-from .config import get_config
+from qsweepy.libraries.save_pkl import *
+from qsweepy.libraries.config import get_config
 from matplotlib import pyplot as plt
 #import time
 

@@ -1,7 +1,7 @@
 from qsweepy.instruments import *
 from qsweepy import *
 
-from qsweepy import awg_iq_multi
+from qsweepy.libraries import awg_iq_multi
 
 import numpy as np
 

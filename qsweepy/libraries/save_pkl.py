@@ -3,9 +3,9 @@ import datetime
 import os
 from matplotlib import pyplot as plt
 import pickle
-from .config import get_config
+from qsweepy.libraries.config import get_config
 import numpy as np
-from . import plotting
+from qsweepy.libraries import plotting
 import scipy.io
 import pathlib
 

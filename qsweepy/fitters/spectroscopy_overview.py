@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import find_peaks_cwt
 from scipy.signal import argrelextrema
-from ..qubit_device import QubitDevice
-from ..ponyfiles.data_structures import MeasurementState
+from qsweepy.libraries.qubit_device import QubitDevice
+from qsweepy.ponyfiles.data_structures import MeasurementState
 from typing import List
 
 

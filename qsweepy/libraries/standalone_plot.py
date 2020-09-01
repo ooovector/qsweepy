@@ -2,7 +2,7 @@
 # stuff to run always here such as class/def
 
 import sys
-from qsweepy import plotting
+from qsweepy.libraries import plotting
 import pickle
 import os
 import pathlib

@@ -1,5 +1,5 @@
 from scipy.signal import gaussian
-from . import data_reduce
+from qsweepy.libraries import data_reduce
 import numpy as np
 
 def ex_gauss_hd (amp_x, amp_y, length, sigma, awg_channels, delta):

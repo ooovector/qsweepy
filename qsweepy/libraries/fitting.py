@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from .ponyfiles.data_structures import *
+from qsweepy.ponyfiles.data_structures import *
 
 def resample_x_fit(x):
 	if len(x) < 500:

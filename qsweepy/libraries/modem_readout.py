@@ -2,7 +2,7 @@ from . import sweep
 # from . import save_pkl
 from . import fitting
 import numpy as np
-from qsweepy import data_reduce
+from qsweepy.libraries import data_reduce
 
 import matplotlib.pyplot as plt
 

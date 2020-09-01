@@ -1,8 +1,8 @@
-from . import pulses, awg_iq_multi, modem_readout, awg_channel
-from .instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
+from qsweepy.libraries import pulses, awg_iq_multi, modem_readout, awg_channel
+from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
 
 import copy
-from .ponyfiles.exdir_db import Exdir_db
+from qsweepy.ponyfiles.exdir_db import Exdir_db
 from typing import Mapping, List
 
 

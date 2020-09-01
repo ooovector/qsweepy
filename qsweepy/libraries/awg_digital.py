@@ -1,8 +1,8 @@
 import numpy as np
 import logging
 #from .save_pkl import *
-from .config import get_config
-from .ponyfiles.data_structures import MeasurementState, MeasurementDataset, MeasurementParameter
+from qsweepy.libraries.config import get_config
+from qsweepy.ponyfiles.data_structures import MeasurementState, MeasurementDataset, MeasurementParameter
 
 import traceback
 

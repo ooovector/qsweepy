@@ -1,5 +1,5 @@
 import numpy as np
-from . import pulses
+from qsweepy.libraries import pulses
 
 class joined_readout:
 	def __init__(self, drag_hds):

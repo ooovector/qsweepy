@@ -1,4 +1,4 @@
-from . import sweep
+from qsweepy.libraries import sweep
 import numpy as np
 import matplotlib.pyplot as plt
 
