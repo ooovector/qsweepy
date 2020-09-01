@@ -27,12 +27,12 @@ class Sweeper:
         self.on_start = [(db.create_in_database, tuple()),
                          (save_exdir.save_exdir, (True,)),
                          (db.update_in_database, tuple()),
-                         #(sweep_fit.fit_on_start, (db,))
+                         # (sweep_fit.fit_on_start, (db,))
                          ]
         self.on_update = [(save_exdir.update_exdir, tuple()),
                           (self.print_time, tuple())
                           ]
-        self.on_finish = [#(sweep_fit.fit_on_finish, (db, )),
+        self.on_finish = [# (sweep_fit.fit_on_finish, (db, )),
                           (db.update_in_database,tuple()),
                           (save_exdir.close_exdir, tuple()),
                           (plotly_plot.save_default_plot,(self.db,))]
@@ -84,17 +84,6 @@ class Sweeper:
         :return:
         """
         fitter_callback = (fit_dataset_1d, fitter_arguments)
-        #print ('on_start:', on_start)
-        #print ('fitter_callback:', [fitter_callback])
-        #print ('on_start_fit:', self.on_start_fit)
-
-        #print ('on_update: ', on_update)
-        #print ('self.on_update: ', self.on_update)
-        #print ('self.on_update_fit', self.on_update_fit)
-
-        #print ('on_finish: ', on_finish)
-        #print ('self.on_finish: ', self.on_finish)
-        #print ('self.on_finish_fit', self.on_finish_fit)
         return sweep.sweep(*args,
                            sample_name=self.sample_name,
                            on_start=on_start+self.on_start+[fitter_callback]+self.on_start_fit,

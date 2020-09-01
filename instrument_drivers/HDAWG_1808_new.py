@@ -3,6 +3,7 @@ import time
 import zhinst.utils
 import textwrap
 import timeit
+import traceback
 from qsweepy.instrument import Instrument
 
 from scipy.signal import gaussian
@@ -667,12 +668,13 @@ class Zurich_HDAWG1808():
             vector = (vector << 2 | markers).astype('int16')
 
             #TODO: fix
+            #self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
+            # self.daq.sync()
             try:
-                self   .daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
-                # self.daq.sync()
-                self.daq.vectorWrite('/' + self.device + '/awgs/%d/waveform/data' % sequencer, vector)
+                self.daq.vectorWrite('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
+                    sequencer, self.wave_lengths.index(wave_length)), vector)
             except:
-                pass
+                traceback.print_exc()
             # self.daq.sync()
 
             self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)

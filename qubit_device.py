@@ -3,9 +3,10 @@ from .instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
 
 import copy
 from .ponyfiles.exdir_db import Exdir_db
+from typing import Mapping, List
 
 
-class qubit_device:
+class QubitDevice:
     # explicit variables type declaration
     exdir_db: Exdir_db
     pg: pulses.pulses
@@ -18,7 +19,7 @@ class qubit_device:
 
         self.pg = None
 
-    def set_qubits_from_dict(self, _dict):
+    def set_qubits_from_dict(self, _dict: Mapping):
         try:
             assert set(_dict.keys()) == set(self.get_qubit_list())
         except Exception as e:
@@ -260,7 +261,7 @@ class qubit_device:
 
         See Also
         -------
-        qubit_device.set_qubits_from_dict : the way to load this parameters to the exdir_db system.
+        QubitDevice.set_qubits_from_dict : the way to load this parameters to the exdir_db system.
         """
         readout_db_metadata = self.exdir_db.select_measurement(measurement_type='qubit_readout_channel_list',
                                                  metadata={'qubit_id': qubit_id}).metadata

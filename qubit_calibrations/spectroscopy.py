@@ -87,7 +87,7 @@ def measure_fr(device, qubit_id, fr_guess):
     return result.fit
 
 
-def two_tone_spectroscopy(device, qubit_id, fq_guess, power_excite=None, power_readout=None):
+def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, power_readout=None):
     try:
         device.hardware.set_cw_mode()
         device.hardware.lo1.set_status(1)
@@ -117,6 +117,7 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, power_excite=None, power_r
 
         result = device.sweeper.sweep(device.hardware.pna,
                             (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
+                            *args,
                             measurement_type='qubit_frequency',
                             metadata={'qubit': qubit_id, 'pna_power': device.hardware.pna.get_power()})
     except:

@@ -4,6 +4,7 @@ from .data_structures import MeasurementState
 
 from pony.orm import desc, count
 import datetime
+from typing import List, Mapping
 
 
 class Exdir_db:
@@ -15,13 +16,13 @@ class Exdir_db:
         self.old_prefix = old_prefix
         self.new_prefix = new_prefix
 
-    def save_measurement(self, data):
+    def save_measurement(self, data: MeasurementState):
         """
             Saves measurement state to the exdir_db system.
 
             Parameters
             ----------
-            data : MeasurementState
+            data: MeasurementState
 
             Returns
             -------
@@ -55,7 +56,7 @@ class Exdir_db:
         self.save_measurement(data)
         return data
 
-    def invalidate(self, data_id, reason='anonymous', chain=True):
+    def invalidate(self, data_id: int, reason: str = 'anonymous', chain: bool = True):
         invalidation_time=str(datetime.datetime.now())
         invalidation_chain = {(None, self.db.Data[data_id])}
         invalidation_chain_processed = set()
@@ -76,7 +77,7 @@ class Exdir_db:
         except KeyError:  # everything has been invalidated
             pass
 
-    def replace_file_prefixes(self, filename):
+    def replace_file_prefixes(self, filename: str):
         try:
             assert filename[:len(self.old_prefix)] == self.old_prefix
         except:
@@ -84,9 +85,9 @@ class Exdir_db:
             raise
         return self.new_prefix + filename[len(self.old_prefix):]
 
-    def select_measurement(self, measurement_type, metadata={},
-                           references_this={}, references_that={},
-                           ignore_invalidation=False):
+    def select_measurement(self, measurement_type: str, metadata: Mapping[str, str] = None,
+                           references_this: Mapping[str, int] = None, references_that: Mapping[str, int] = None,
+                           ignore_invalidation: bool = False) -> MeasurementState:
         """
         Load first encountered measurement state from SQL that corresponds to parameters provided.
 
@@ -114,22 +115,21 @@ class Exdir_db:
 
         return save_exdir.load_exdir(filename_converted, db=self.db, filename_db = filename_db)
 
-    def select_measurement_by_id(self, id):
-        print("Exdir_db.select_measurement_by_id: trying to load measurement state by id: ",
-              self.db.Data[id].filename)
+    def select_measurement_by_id(self, id: int):
         filename_db = self.db.Data[id].filename
         filename_converted = self.replace_file_prefixes(filename_db)
         return save_exdir.load_exdir(filename_converted, db=self.db, filename_db = filename_db)
 
-    def select_measurements_db(self, measurement_type: str, metadata={},
-                               references_this={}, references_that={},
-                               ignore_invalidation=False):
+    def select_measurements_db(self, measurement_type: str, metadata: Mapping[str, str] = None,
+                               references_this: Mapping[str, int] = None, references_that: Mapping[str, int] = None,
+                               ignore_invalidation: bool = False):
         """
-        Selecting records from database according to parameters provided
+        PonyORM select clause with where constraints on Data table (which correspond to MeasurementState classes)
 
         Parameters
         ----------
-        measurement_type
+        measurement_type: str
+            where measurement_type == {measurement_type} clauase
         metadata
         references_this
         references_that
@@ -137,10 +137,17 @@ class Exdir_db:
 
         Returns
         -------
-        list[MyDatabase.Data]
+        MyDatabase.Data
             List of MyDatabase.Data instances. Each instance
             represents separate record in Data table of database.
         """
+        if metadata is None:
+            metadata = {}
+        if references_this is None:
+            references_this = {}
+        if references_that is None:
+            references_that = {}
+
         q = self.db.Data.select(lambda d: (d.measurement_type == measurement_type and d.sample_name == self.sample_name))
         if not ignore_invalidation:
             # q2 = q.where(lambda d: 'invalidation' not in d.metadata.name)

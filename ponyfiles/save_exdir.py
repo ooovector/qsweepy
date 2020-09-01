@@ -12,8 +12,10 @@ from collections import OrderedDict
 from .database import MyDatabase
 from .data_structures import MeasurementState
 
+from typing import Iterable
 
-def default_measurement_save_path(state):
+
+def default_measurement_save_path(state: MeasurementState):
     identifiers = OrderedDict()
     identifiers.update({'id': '{:06d}'.format(state.id)})
     if state.measurement_type:
@@ -35,7 +37,7 @@ def default_measurement_save_path(state):
     return fullpath
 
 
-def save_exdir(state, keep_open=False):
+def save_exdir(state: MeasurementState, keep_open: bool = False):
     # parameters = []
     if not state.filename:
         state.filename = default_measurement_save_path(state)
@@ -71,7 +73,7 @@ def save_exdir(state, keep_open=False):
             f.close()
 
 
-def update_exdir(state, indeces):
+def update_exdir(state:MeasurementState, indeces: Iterable[int]):
     for dataset in state.datasets.keys():
         state.exdir.attrs.update(state.metadata)
         try:
@@ -80,7 +82,7 @@ def update_exdir(state, indeces):
             state.datasets[dataset].data_exdir[...] = state.datasets[dataset].data[...]
 
 
-def close_exdir(state):
+def close_exdir(state:MeasurementState):
     if hasattr(state, 'exdir'):
         for dataset in state.datasets.keys():
             try:
@@ -133,7 +135,7 @@ class LazyMeasParFromExdir:
         return str(self)
 
 
-def load_exdir(filename, db=None, filename_db = None, lazy=False):
+def load_exdir(filename: str, db:MyDatabase = None, filename_db: str = None, lazy:bool = False):
     """
     Loads measurement state from ExDir file system and database if the latter is provided.
 

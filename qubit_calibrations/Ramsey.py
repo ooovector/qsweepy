@@ -6,7 +6,7 @@ from . import excitation_pulse
 
 def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None, channel_amplitudes2=None):
     '''
-    :param device qubit_device:
+    :param device QubitDevice:
     '''
     from .readout_pulse import get_uncalibrated_measurer
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id2) # we want to measure qubit 2 because otherwise wtf are we are doing the second pi/2 pulse for

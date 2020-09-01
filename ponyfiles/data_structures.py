@@ -1,5 +1,6 @@
 import numpy as np
 from datetime import datetime
+from typing import List, Mapping
 
 
 class MeasurementParameter:
@@ -62,7 +63,37 @@ def measurer_point_parameters(measurer):
     return point_parameters
 
 
+class MeasurementDataset:
+    parameters: List[MeasurementParameter]
+    def __init__(self, parameters, data):
+        self.parameters = parameters
+        # TODO: rename to parameters_squeezed
+        self.nonunity_parameters = [parameter for parameter in self.parameters if len(parameter.values) > 1]
+        self.indices_updated = []
+        self.data = data
+        try:
+            self.data_squeezed = np.squeeze(self.data)
+        except RuntimeError:
+                self.data_squeezed = self.data.ravel()
+
+    def __getattr__(self, attr_name):
+        if attr_name != 'data':
+            return self.parameters[attr_name]
+        else:
+            return self.data
+
+    def __str__(self):
+        format_str = '''parameters: {}
+data: {}'''
+        return format_str.format('\n'.join(parameter.__str__() for parameter in self.parameters), self.data)
+
+    def __repr__(self):
+        return str(self)
+
+
 class MeasurementState:
+    datasets: Mapping[str, MeasurementDataset]
+
     def __init__(self, *args, **kwargs):
         # copy constructor?
         if len(args) and not len(kwargs):
@@ -99,33 +130,6 @@ class MeasurementState:
 Measured data: \n{datasets}'''
         datasets_str = '\n'.join(['\'{}\': {}'.format(dataset_name, dataset.__str__()) for dataset_name, dataset in self.datasets.items()])
         return format_str.format(start=self.start, started=self.started_sweeps, done=self.done_sweeps, total=self.total_sweeps, datasets=datasets_str)
-
-    def __repr__(self):
-        return str(self)
-
-
-class MeasurementDataset:
-    def __init__(self, parameters, data):
-        self.parameters = parameters
-        # TODO: rename to parameters_squeezed
-        self.nonunity_parameters = [parameter for parameter in self.parameters if len(parameter.values) > 1]
-        self.indices_updated = []
-        self.data = data
-        try:
-            self.data_squeezed = np.squeeze(self.data)
-        except RuntimeError:
-                self.data_squeezed = self.data.ravel()
-
-    def __getattr__(self, attr_name):
-        if attr_name != 'data':
-            return self.parameters[attr_name]
-        else:
-            return self.data
-
-    def __str__(self):
-        format_str = '''parameters: {}
-data: {}'''
-        return format_str.format('\n'.join(parameter.__str__() for parameter in self.parameters), self.data)
 
     def __repr__(self):
         return str(self)
