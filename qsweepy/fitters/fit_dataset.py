@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ponyfiles import data_structures
+from qsweepy.ponyfiles import data_structures
 
 
 def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-1, sweep_parameter_ids=[], allow_unpack_complex=True, use_resample_x_fit=True, mode=None) -> data_structures.MeasurementState:
