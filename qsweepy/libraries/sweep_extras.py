@@ -22,7 +22,7 @@ class Sweeper:
     nice function
     """
     def __init__(self, db, sample_name=None):
-        from qsweepy.ponyfiles import save_exdir
+        import qsweepy.ponyfiles.save_exdir as save_exdir
         self.db = db
         self.default_save_path = ''
         self.sample_name = sample_name
