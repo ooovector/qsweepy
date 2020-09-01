@@ -6,7 +6,7 @@ from .data_structures import *
 
 import os.path
 from pony.orm import get, select
-from config import get_config
+from qsweepy.libraries.config import get_config
 from collections import OrderedDict
 
 from .database import MyDatabase
@@ -38,6 +38,11 @@ def default_measurement_save_path(state: MeasurementState):
 
 
 def save_exdir(state: MeasurementState, keep_open: bool = False):
+    """
+    The main function
+
+    """
+
     # parameters = []
     if not state.filename:
         state.filename = default_measurement_save_path(state)

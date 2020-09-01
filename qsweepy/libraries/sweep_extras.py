@@ -1,6 +1,6 @@
-import sweep
-import plotly_plot
-from fitters.fit_dataset import fit_dataset_1d
+import qsweepy.libraries.sweep as sweep
+import qsweepy.libraries.plotly_plot as plotly_plot
+from ..fitters.fit_dataset import fit_dataset_1d
 from datetime import timedelta
 '''
 Interactive stuff:

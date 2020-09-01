@@ -1,8 +1,5 @@
 from setuptools import setup, find_packages
-from distutils.version import StrictVersion
-from importlib import import_module
-import re
-
+import docs.version
 def readme():
     with open('README.md') as f:
         return f.read()
@@ -13,8 +10,7 @@ def license():
         return f.read()
 
 setup(name='qsweepy',
-      version=1,#fix it
-      use_2to3=False,
+      version=docs.version.__version__,
       author='Ilia Besedin',
       author_email='ilia.besedin@gmail.com',
       maintainer='Ilia Besedin',
@@ -43,6 +39,5 @@ setup(name='qsweepy',
           'lmfit>=0.9.5',
           'scipy>=0.17',
           'h5py>=2.6',
-      ],
-      test_suite=None,
-      zip_safe=False)
+      ]
+      )

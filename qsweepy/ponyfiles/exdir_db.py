@@ -8,6 +8,10 @@ from typing import List, Mapping
 
 
 class Exdir_db:
+    """
+    Exdir class
+
+    """
     def __init__(self, db, sample_name=None, old_prefix='', new_prefix=''):
         self.db = db
         if not sample_name:

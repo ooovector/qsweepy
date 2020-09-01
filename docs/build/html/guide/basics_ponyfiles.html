@@ -190,17 +190,17 @@
 <p>QSweepy is a python-based piece of software designed for measurement automation and
 management. It has several key components:</p>
 <p>Basic data structures for measurements and datasets</p>
-<span class="target" id="module-ponyfiles.data_structures"></span><dl class="py class">
-<dt id="ponyfiles.data_structures.MeasurementParameter">
-<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.data_structures.</code><code class="sig-name descname">MeasurementParameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">param</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.data_structures.MeasurementParameter" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-qsweepy.ponyfiles.data_structures"></span><dl class="py class">
+<dt id="qsweepy.ponyfiles.data_structures.MeasurementParameter">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.data_structures.</code><code class="sig-name descname">MeasurementParameter</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">param</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.data_structures.MeasurementParameter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sweep parameter data structure.
 Data structure has a function (setter), which makes it
 impractical for serialization.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="ponyfiles.data_structures.measurer_point_parameters">
-<code class="sig-prename descclassname">ponyfiles.data_structures.</code><code class="sig-name descname">measurer_point_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.data_structures.measurer_point_parameters" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.ponyfiles.data_structures.measurer_point_parameters">
+<code class="sig-prename descclassname">qsweepy.ponyfiles.data_structures.</code><code class="sig-name descname">measurer_point_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.data_structures.measurer_point_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructs dictionary of lists containing MeasurementParameter for every parameter</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -210,7 +210,7 @@ impractical for serialization.</p>
 <dd class="field-even"><p>dictionary containing lists of MeasurementParameter instances</p>
 </dd>
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>dict[str, list[<a class="reference internal" href="#ponyfiles.data_structures.MeasurementParameter" title="ponyfiles.data_structures.MeasurementParameter">MeasurementParameter</a>]]</p>
+<dd class="field-odd"><p>dict[str, list[<a class="reference internal" href="#qsweepy.ponyfiles.data_structures.MeasurementParameter" title="qsweepy.ponyfiles.data_structures.MeasurementParameter">MeasurementParameter</a>]]</p>
 </dd>
 </dl>
 <div class="admonition seealso">
@@ -223,23 +223,23 @@ impractical for serialization.</p>
 </dd></dl>
 
 <p>Savingloading meassurements and other data using the exdir format TODO: add link</p>
-<span class="target" id="module-ponyfiles.save_exdir"></span><dl class="py class">
-<dt id="ponyfiles.save_exdir.LazyMeasParFromExdir">
-<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.save_exdir.</code><code class="sig-name descname">LazyMeasParFromExdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">exdir_parameter</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.save_exdir.LazyMeasParFromExdir" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-qsweepy.ponyfiles.save_exdir"></span><dl class="py class">
+<dt id="qsweepy.ponyfiles.save_exdir.LazyMeasParFromExdir">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">LazyMeasParFromExdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">exdir_parameter</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.LazyMeasParFromExdir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sweep parameter data structure.
 Data structure has a function (setter), which makes it
 impractical for serialization.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="ponyfiles.save_exdir.load_exdir">
-<code class="sig-prename descclassname">ponyfiles.save_exdir.</code><code class="sig-name descname">load_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">db</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filename_db</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lazy</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.save_exdir.load_exdir" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.ponyfiles.save_exdir.load_exdir">
+<code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">load_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">db</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#qsweepy.ponyfiles.database.MyDatabase" title="qsweepy.ponyfiles.database.MyDatabase">qsweepy.ponyfiles.database.MyDatabase</a></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filename_db</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">lazy</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.load_exdir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loads measurement state from ExDir file system and database if the latter is provided.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>filename</strong> (<em>str</em>) – Absolute path to the exdir file.</p></li>
-<li><p><strong>db</strong> (<a class="reference internal" href="#ponyfiles.database.MyDatabase" title="ponyfiles.database.MyDatabase"><em>MyDatabase</em></a>) – Binded pony database instance.</p></li>
+<li><p><strong>db</strong> (<a class="reference internal" href="#qsweepy.ponyfiles.database.MyDatabase" title="qsweepy.ponyfiles.database.MyDatabase"><em>MyDatabase</em></a>) – Binded pony database instance.</p></li>
 <li><p><strong>lazy</strong> (<em>bool</em>) – If True, function leaves ExDir file open and sets
 retval.exdir to this file.</p></li>
 </ul>
@@ -254,15 +254,21 @@ PostSQL by finding record with the same filename</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt id="qsweepy.ponyfiles.save_exdir.save_exdir">
+<code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">save_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">qsweepy.ponyfiles.data_structures.MeasurementState</span></em>, <em class="sig-param"><span class="n">keep_open</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.save_exdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main function</p>
+</dd></dl>
+
 <p>Managing and finding measurements in a database using PonyORM and a Postgresql
 database</p>
-<span class="target" id="module-ponyfiles.database"></span><dl class="py class">
-<dt id="ponyfiles.database.MyDatabase">
-<em class="property">class </em><code class="sig-prename descclassname">ponyfiles.database.</code><code class="sig-name descname">MyDatabase</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">provider</span><span class="o">=</span><span class="default_value">'postgres'</span></em>, <em class="sig-param"><span class="n">user</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">password</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">host</span><span class="o">=</span><span class="default_value">'localhost'</span></em>, <em class="sig-param"><span class="n">database</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">port</span><span class="o">=</span><span class="default_value">5432</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.database.MyDatabase" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-qsweepy.ponyfiles.database"></span><dl class="py class">
+<dt id="qsweepy.ponyfiles.database.MyDatabase">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.database.</code><code class="sig-name descname">MyDatabase</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">provider</span><span class="o">=</span><span class="default_value">'postgres'</span></em>, <em class="sig-param"><span class="n">user</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">password</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">host</span><span class="o">=</span><span class="default_value">'localhost'</span></em>, <em class="sig-param"><span class="n">database</span><span class="o">=</span><span class="default_value">'qsweepy'</span></em>, <em class="sig-param"><span class="n">port</span><span class="o">=</span><span class="default_value">5432</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.database.MyDatabase" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class does smth</p>
 <dl class="py method">
-<dt id="ponyfiles.database.MyDatabase.create_in_database">
-<code class="sig-name descname">create_in_database</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ponyfiles.database.MyDatabase.create_in_database" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.ponyfiles.database.MyDatabase.create_in_database">
+<code class="sig-name descname">create_in_database</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.database.MyDatabase.create_in_database" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates entity instance in program memory space
 and commits it into the database.</p>
 <dl class="field-list simple">
@@ -274,6 +280,97 @@ and commits it into the database.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p>Something else</p>
+<span class="target" id="module-qsweepy.ponyfiles.exdir_db"></span><dl class="py class">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.exdir_db.</code><code class="sig-name descname">Exdir_db</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">db</span></em>, <em class="sig-param"><span class="n">sample_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">old_prefix</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">new_prefix</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exdir class</p>
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">values</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs MeasurementState instance from values dictionary
+and saves it into exdir_db system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>values</strong> (<em>dict</em>) – dictionary that contains values for MyDatabase.Data etc. that
+fully describe measurement state.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>measurement state constructed</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MeasurementState</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.save_measurement">
+<code class="sig-name descname">save_measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">qsweepy.ponyfiles.data_structures.MeasurementState</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.save_measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves measurement state to the exdir_db system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>MeasurementState</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement">
+<code class="sig-name descname">select_measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurement_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_this</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_that</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_invalidation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; qsweepy.ponyfiles.data_structures.MeasurementState<a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load first encountered measurement state from SQL that corresponds to parameters provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurement_type</strong> – </p></li>
+<li><p><strong>metadata</strong> – </p></li>
+<li><p><strong>references_this</strong> – </p></li>
+<li><p><strong>references_that</strong> – </p></li>
+<li><p><strong>ignore_invalidation</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>MeasurementState</em> – measurement state that contains all datasets and corresponding parameter values</p></li>
+<li><p><em>that corresponds to the parameters provided.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurements_db">
+<code class="sig-name descname">select_measurements_db</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurement_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_this</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_that</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_invalidation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurements_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>PonyORM select clause with where constraints on Data table (which correspond to MeasurementState classes)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurement_type</strong> (<em>str</em>) – where measurement_type == {measurement_type} clauase</p></li>
+<li><p><strong>metadata</strong> – </p></li>
+<li><p><strong>references_this</strong> – </p></li>
+<li><p><strong>references_that</strong> – </p></li>
+<li><p><strong>ignore_invalidation</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of MyDatabase.Data instances. Each instance
+represents separate record in Data table of database.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MyDatabase.Data</p>
 </dd>
 </dl>
 </dd></dl>

@@ -5,3 +5,6 @@ qtlab.log
 qtlab.cfg
 .idea/*
 .idea/
+build
+dist
+*.egg-info
