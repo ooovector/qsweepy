@@ -13,7 +13,7 @@ ruamel.yaml
 pandas
 plotly
 PyYAML
-threading
+threaded
 pickle
 typing
 sklearn
