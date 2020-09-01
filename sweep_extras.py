@@ -1,6 +1,6 @@
-from . import sweep
-from . import plotly_plot
-from .fitters.fit_dataset import fit_dataset_1d
+import sweep
+import plotly_plot
+from fitters.fit_dataset import fit_dataset_1d
 from datetime import timedelta
 '''
 Interactive stuff:
@@ -18,6 +18,9 @@ Hooks for sweep.
 
 
 class Sweeper:
+    """
+    nice function
+    """
     def __init__(self, db, sample_name=None):
         from .ponyfiles import save_exdir
         self.db = db

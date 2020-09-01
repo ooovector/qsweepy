@@ -1,6 +1,6 @@
 import itertools
 import random
-from .ponyfiles.data_structures import *
+from ponyfiles.data_structures import *
 import traceback
 import time
 

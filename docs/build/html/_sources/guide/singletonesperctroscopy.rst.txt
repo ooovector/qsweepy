@@ -9,7 +9,7 @@ The general examples of usage of written functions are:
 
 .. code-block:: python
 
-  from qsweepy.qubit_calibrations import spectroscopy
+  from qubit_calibrations import spectroscopy
 
 1) If you want to make a sweep over coil voltages you can use it:
 
@@ -32,14 +32,5 @@ The general examples of usage of written functions are:
 
 The description of the implemented classes and functions:
 
-.. automodule::  qsweepy.qubit_calibrations.spectroscopy
-    :members:
 
 
-
-
-.. autoclass:: qsweepy.fitters.spectroscopy_overview.SingleToneSpectroscopyOverviewFitter
-   :members:
-   :inherited-members:
-
-.. automethod:: qsweepy.fitters.spectroscopy_overview.find_resonators

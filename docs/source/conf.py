@@ -2,13 +2,19 @@ import sys, os
 import sphinx_rtd_theme
 
 from datetime import datetime
-sys.path.insert(0, os.path.abspath('../../../'))
-print(os.path.abspath('../../../'))
+sys.path.insert(0, os.path.abspath('../../'))
+print("this is the path ",os.path.abspath('../../'))
+print('another path: ',os.listdir(os.path.abspath('../../')))
+
+# print("this is the path ",os.path.abspath('../../../'))
+# print('another path: ',os.listdir(os.path.abspath('../../../')))
+
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'nbsphinx',
-    'sphinx.ext.mathjax'
+    'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon'
               ]
 # autosummary_generate = False
 # autosummary = []

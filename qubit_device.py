@@ -11,11 +11,12 @@ class QubitDevice:
     exdir_db: Exdir_db
     pg: pulses.pulses
 
-    def __init__(self, exdir_db, sweeper, controls=()):
+    def __init__(self, exdir_db, sweeper, hardware = None, controls=()):
         self.exdir_db = exdir_db
         self.ftol = 100
         self.sweeper = sweeper
         self.controls = controls
+        self.hardware = hardware
 
         self.pg = None
 
@@ -405,6 +406,7 @@ class QubitDevice:
         # params: qubits: str or list #
         feature_id = 0
 
+        self.hardware.set_pulsed_mode()
         adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
         adc_reducer.output_raw = raw
         adc_reducer.last_cov = False
@@ -431,6 +433,7 @@ class QubitDevice:
         return adc_reducer, qubit_measurement_dict
 
     def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False):
+        self.hardware.set_pulsed_mode()
         adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
         adc_reducer.output_raw = raw
         adc_reducer.last_cov = False

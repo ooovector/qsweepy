@@ -68,6 +68,7 @@ class modem_readout(data_reduce.data_reduce):
 
     def calibrate_delay(self, ex_channel_name, save=True):
         from scipy.signal import correlate
+        self.hardware.set_pulsed_mode()
         # delay is calibrated on all lines (we probably don't really need that, but whatever)
         # readout_delays = {}
         # for ex_channel_name, ex_channel in self.readout_channels.items():
@@ -163,6 +164,7 @@ class modem_readout(data_reduce.data_reduce):
 
     def calibrate_dc_bg(self):
         # send nothing
+        self.hardware.set_pulsed_mode()
         self.pulse_sequencer.set_seq(self.trigger_daq_seq)
         measurer = data_reduce.data_reduce(self.adc)
         measurer.filters['bg'] = data_reduce.mean_reducer(self.adc, self.src_meas, self.axis_mean)
@@ -174,6 +176,8 @@ class modem_readout(data_reduce.data_reduce):
         self.bg = dc_bg_calibration_measurement.datasets['bg'].data
 
     def calibrate_dc(self, ex_channel_name, amplitude=1.0, shot_noise_time=10, save=True):
+        self.hardware.set_pulsed_mode()
+
         calibrations = {}
         calibrated_filters = {}
         # send I and Q pulses
@@ -198,11 +202,7 @@ class modem_readout(data_reduce.data_reduce):
         calibration_measurement = self.adc.measure()
         meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean) - self.bg)[
                  :len(dac_sequence_adc_time)]
-        # measure response on Q sequence
-        # self.pulse_sequencer.set_seq(seq_Q)
-        # meas_Q = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
-        # solving equation: response(channel, time, complex) * sum(over demodulation_sign){demodulation(time, demodulation_sign, complex)*calibration(demodulation_sign, channel, complex)} = probe(channel, time, real)
-        # In Ax=b form: A(time,demodulation_sign, channel)*x(demodulation_sign, channel)=b(time, channel), (response(channel, time, complex)*demodulation(time, demodulation_sign, complex))*calibration(emodulation_sign, channel, complex)=probe(time, channel)
+
         A_I = (meas_I * np.asarray(
             [demodulation[:len(dac_sequence_adc_time)], np.conj(demodulation[:len(dac_sequence_adc_time)])])).T
         # A_Q = meas_Q*np.asarray([demodulation, np.conj(demodulation)])
@@ -214,77 +214,8 @@ class modem_readout(data_reduce.data_reduce):
         calibrations[ex_channel_name + '+'] = iq_calibration[0]
         calibrations[ex_channel_name + '-'] = iq_calibration[1]
 
-        # feature = demodulation*iq_calibration[0]+np.conj(demodulation)*iq_calibration[1]
-        # print('scalar product of feature and measured:', np.sum(feature[:len(dac_sequence_adc_time)]*meas_I*np.conj(dac_sequence)))
-        # iq_readout_calibrations[ex_channel_name] = {'iq_calibration': iq_calibration,
-        #									   'coherent_background': self.bg,
-        #									   'feature': feature}
-        # calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas, 1-self.axis_mean, self.bg, feature)
-
-        # del calibration_measurement, meas_I, A_I, b_I, seq
         if save:
             self.calibrations.update(calibrations)
             # self.calibrated_filters = calibrated_filters
             self.create_filters(ex_channel_name)
         return calibrations
-
-        # real parts of "calibration" correspond to response to real sources,
-        # imaginary part of "calibration" corresponds to response to imaginary sources.
-
-        # b_Q = dac_sequence*1j
-        # np.dot(dac_sequence_adc_time, meas_I)
-        # np.dot(dac_sequence_adc_time, meas_Q)
-    # adc_reducer = data_reduce.data_reduce(adc)
-    # adc_reducer.filters['Mean Voltage (AC)'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
-    # # adc_reducer.filters['Std Voltage (AC)'] = data_reduce.mean_reducer_noavg(adc, 'Voltage std', 0)
-    # adc_reducer.filters['S21+'] = data_reduce.mean_reducer_freq(adc, 'Voltage', 0, iq_ro.get_if())
-    # adc_reducer.filters['S21-'] = data_reduce.mean_reducer_freq(adc, 'Voltage', 0, -iq_ro.get_if())
-    # adc_downsampler = data_reduce.data_reduce(adc)
-    # adc_downsampler.filters['Voltage'] = data_reduce.downsample_reducer(adc, 'Voltage', 0, iq_ro.get_if(), 4)
-    # # Этот измеритель мы как правило используем когда точек не слишком много и все результаты его жизнедеятельности как правило
-    # # выглядят как ломаные. Чтобы было красиво, давайте лучше сделаем точки (а кривые потом получим фитованые)
-    # adc_reducer.extra_opts['scatter'] = True
-
-    # lo1.set_frequency(lo_freq)
-    # ex_if = lo_freq-qubit_params[qubit_id]['F00-1-01']
-    # iq_ex = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 0, 1, lo_ex)
-    # # iq_ex = awg_iq.awg_iq(awg_tek, awg_tek, 2, 1, lo_ex) calibrated
-    # iq_ro = awg_iq.awg_iq(awg_tek, awg_tek, 2, 3, lo_ro)
-    # iq_ex.carriers['00-1-01'] = awg_iq_multi.carrier(iq_ex)
-    # # iq_ex.carriers['00-1-10'] = awg_iq_multi.carrier(iq_ex)
-    # iq_ex.carriers['01-1-02'] = awg_iq_multi.carrier(iq_ex)
-    # iq_ex.carriers['00-2-02'] = awg_iq_multi.carrier(iq_ex)
-    # iq_ex.carriers['00-1-01'].set_frequency(qubit_params[qubit_id]['F00-1-01'])
-    # # iq_ex.carriers['00-1-10'].set_frequency(qubit_params[qubit_id]['F00-1-10'])
-    # iq_ex.carriers['01-1-02'].set_frequency(qubit_params[qubit_id]['F01-1-02'])
-    # iq_ex.carriers['00-2-02'].set_frequency(qubit_params[qubit_id]['F00-2-02'])
-    # iq_ro.set_if(ro_if)
-    # iq_ro.set_sideband_id(-1)
-    # iq_ro.set_frequency(qubit_params[qubit_id]['Fr'])
-
-    # awg_channels = {'iq_ex_00-1-01':iq_ex.carriers['00-1-01'],
-    # # 'iq_ex_00-1-10':iq_ex.carriers['00-1-10'],
-    # 'iq_ex_01-1-02':iq_ex.carriers['01-1-02'],
-    # 'iq_ex_00-2-02':iq_ex.carriers['00-2-02'],
-    # 'iq_ro':iq_ro,
-    # 'ro_trg':ro_trg}
-
-    # pg = pulses.pulses(awg_channels)
-
-    # def __init__(self, pulse_sequencer, readout_device, **kwargs):
-    # self.pulse_sequencer = pulse_sequencer
-    # self.readout_device = readout_device
-    # # self.params = **kwargs
-
-    # # Rabi freq depends on excitation pulse parameters
-    # # If we want to save to config, we should save in
-    # # ex_pulse_params=>rabi_freq pair
-    # # ex_pulse_params should be a serialization of a pulse params o_0
-
-    # adc_reducer.filters['Std Voltage (AC)'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)
-    # def set_pulse_amplitude(x):
-    # awg_tek.set_nop(awg_tek.get_clock()/rep_rate)
-    # pg.set_seq([pg.p('ro_trg', trg_length, pg.rect, 1), pg.p('iq_ro', ro_dac_length, pg.rect, x)])
-    # awg_tek.run()
-    # measurement = sweep.sweep(adc_reducer, (np.linspace(0, 0.3, 31), set_pulse_amplitude, 'Readout amplitude'), filename='Readout pulse passthrough')
-    # del adc_reducer.filters['Std Voltage (AC)']

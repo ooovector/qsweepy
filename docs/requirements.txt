@@ -5,3 +5,11 @@ sympy
 scipy
 nbsphinx
 ipykernel
+sphinxcontrib-napoleon
+pony
+exdir
+pathlib
+ruamel.yaml
+pandas
+plotly
+PyYAML

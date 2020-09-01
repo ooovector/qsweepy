@@ -6,7 +6,7 @@ from .data_structures import *
 
 import os.path
 from pony.orm import get, select
-from ..config import get_config
+from config import get_config
 from collections import OrderedDict
 
 from .database import MyDatabase
