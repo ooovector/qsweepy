@@ -25,8 +25,6 @@ def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
                                           'bandwidth': bandwidth})
     except:
         raise
-    finally:
-        device.hardware.set_pulsed_mode()
 
 
 def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
@@ -57,8 +55,6 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
                                          'bandwidth': bandwidth})
     except:
         raise
-    finally:
-        device.hardware.set_pulsed_mode()
 
     fitter = resonator_tools.ResonatorToolsFitter(fit_type)
 
@@ -121,8 +117,6 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, power_excite=None, power_r
                             metadata={'qubit': qubit_id, 'pna_power': device.hardware.pna.get_power()})
     except:
         raise
-    finally:
-        device.hardware.set_pulsed_mode()
 
     max_id = np.argmax(np.abs(result.datasets['S-parameter'].data-np.median(result.datasets['S-parameter'].data))**2)
     result.metadata['fq'] = result.datasets['S-parameter'].parameters[0].values[max_id]

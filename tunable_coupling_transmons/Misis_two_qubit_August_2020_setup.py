@@ -104,6 +104,9 @@ class hardware_setup():
         self.hardware_state = 'undefined'
 
     def set_cw_mode(self):
+        if self.hardware_state == 'cw_mode':
+            return
+        self.hardware_state = 'cw_mode'
         self.hdawg.stop()
 
         for channel in range(0, 6):
@@ -117,6 +120,10 @@ class hardware_setup():
         self.hardware_state = 'cw_mode'
 
     def set_pulsed_mode(self):
+        if self.hardware_state == 'pulsed_mode':
+            return
+        self.hardware_state = 'undefined'
+
         self.lo1.set_status(1)  # turn on lo1 output
         self.lo1.set_power(self.pulsed_settings['lo1_power'])
         self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
