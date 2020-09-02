@@ -24,8 +24,9 @@ import types
 import logging
 from time import sleep
 import numpy
+from .abstract_measurer import AbstractMeasurer
 
-class RS_ZNB20(Instrument):
+class RS_ZNB20(Instrument, AbstractMeasurer):
 	'''
 	This is the python driver for the Agilent VNA X Vector Network Analyzer
 

@@ -24,8 +24,10 @@ import types
 import logging
 from time import sleep
 import numpy
+from .abstract_measurer import AbstractMeasurer
 
-class Agilent_N5242A(Instrument):
+
+class Agilent_N5242A(Instrument, AbstractMeasurer):
     '''
     This is the python driver for the Agilent VNA X Vector Network Analyzer
 

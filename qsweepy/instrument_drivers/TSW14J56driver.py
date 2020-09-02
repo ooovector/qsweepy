@@ -17,10 +17,11 @@ import sys
 import zlib
 
 from qsweepy.libraries import config
+from .abstract_measurer import AbstractMeasurer
 
 #sys.path.append('C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40')
 
-class TSW14J56_evm_reducer():
+class TSW14J56_evm_reducer(AbstractMeasurer):
 	def __init__(self, adc):
 		self.adc = adc
 		self.output_raw = True
