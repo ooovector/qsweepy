@@ -1,7 +1,7 @@
 import exdir
-from .ponyfiles.data_structures import *
+from qsweepy.ponyfiles.data_structures import *
 import os.path
-from .ponyfiles.database import MyDatabase
+from qsweepy.ponyfiles.database import MyDatabase
 from pony.orm import get, select
 
 

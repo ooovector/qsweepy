@@ -1,6 +1,6 @@
-import qsweepy.instruments as instruments
+import qsweepy.libraries.instruments as instruments
 import qsweepy
-from qsweepy.awg_channel import awg_channel
+from qsweepy.libraries.awg_channel import awg_channel
 import numpy as np
 
 device_settings = {'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
@@ -199,7 +199,7 @@ class hardware_setup():
         self.uhfqa.set_all_outs()
         self.uhfqa.run()
 
-        self.ro_trg = qsweepy.awg_digital.awg_digital(self.hdawg, 1, delay_tolerance=20e-9)  # triggers readout card
+        self.ro_trg = qsweepy.libraries.awg_digital.awg_digital(self.hdawg, 1, delay_tolerance=20e-9)  # triggers readout card
         # ro_trg.mode = 'set_delay' #M3202A
         # ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
         self.ro_trg.mode = 'waveform'  # AWG5014C
@@ -213,11 +213,11 @@ class hardware_setup():
 
     def setup_iq_channel_connections(self, exdir_db):
         # промежуточные частоты для гетеродинной схемы new:
-        self.iq_devices = {'iq_ex1': qsweepy.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0, 1, self.lo1, exdir_db=exdir_db),
-                           'iq_ex2': qsweepy.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
-                           'iq_ex3': qsweepy.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.lo1, exdir_db=exdir_db),
+        self.iq_devices = {'iq_ex1': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0, 1, self.lo1, exdir_db=exdir_db),
+                           'iq_ex2': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
+                           'iq_ex3': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.lo1, exdir_db=exdir_db),
                            # M3202A
-                           'iq_ro':  qsweepy.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.pna, exdir_db=exdir_db)
+                           'iq_ro':  qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.pna, exdir_db=exdir_db)
                            }  # M3202A
         # iq_pa = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
         self.iq_devices['iq_ex1'].name = 'ex1'
@@ -236,7 +236,7 @@ class hardware_setup():
         self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'coil': qsweepy.awg_channel.awg_channel(self.hdawg, 6)}  # coil control
+        self.fast_controls = {'coil': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']

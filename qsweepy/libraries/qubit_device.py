@@ -142,7 +142,7 @@ class QubitDevice:
                            references={'frequency_controls': self.get_frequency_control_measurement_id(qubit_id=qubit_id, control_values=control_values)})
 
     def get_qubit_fr(self, qubit_id, control_values={}, ignore_control_values=False, recalibrate=True):
-        from .qubit_calibrations import spectroscopy
+        from qsweepy.qubit_calibrations import spectroscopy
         """
         Reads qubit's readout frequency from exdir_db for given control_values. If the
 
