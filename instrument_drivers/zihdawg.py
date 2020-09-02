@@ -10,8 +10,8 @@ from scipy.signal import gaussian
 import numpy as np
 
 
-class Zurich_HDAWG1808():
-    def __init__(self, device_id, config=0, clock=1e9, nop=1000):
+class ZIDevice():
+    def __init__(self, device_id, devtype, config=0, clock=1e9, nop = 1000):
         """
         Parameters
         ----------
@@ -26,7 +26,7 @@ class Zurich_HDAWG1808():
         # Settings
         apilevel_example = 6  # The API level supported by this example.
         (self.daq, self.device, _) = zhinst.utils.create_api_session(device_id, apilevel_example,
-                                                                     required_devtype='HDAWG')
+                                                                     required_devtype=devtype)
         zhinst.utils.api_server_version_check(self.daq)
         self.device_id = device_id
         zhinst.utils.disable_everything(self.daq, self.device)
@@ -44,44 +44,52 @@ class Zurich_HDAWG1808():
         # Configure the HDAWG to use one sequencer with the same waveform on all output channels.
         self.daq.setInt('/{}/system/awg/channelgrouping'.format(self.device), config)
         self.awg_config = config
-        if (self.awg_config == 0): self.num_seq = 4
-        if (self.awg_config == 1): self.num_seq = 2
-        if (self.awg_config == 2): self.num_seq = 1
+        self.devtype = devtype
+        if devtype == 'HDAWG':
+            if (self.awg_config == 0): self.num_seq = 4
+            if (self.awg_config == 1): self.num_seq = 2
+            if (self.awg_config == 2): self.num_seq = 1
+            self.num_channels = 8
+        elif devtype == 'UHF':
+            self.num_seq = 1
+            self.num_channels = 2
+        else:
+            self.num_channels = None
+            raise ValueError('devtype not recognized')
 
         self._clock = clock
-        self._nop = nop
-        # self.nop=1000
+        self._nop=nop
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [200, 600, 2000, 6000, 20000]
+        self.wave_lengths_default = [400, 800, 2000, 6000, 20000]
         self.wave_lengths = tuple(self.wave_lengths_default)
         # self.repetition_period=
 
-        self.amplitudes = np.ones((8))
-        self.modulation = np.zeros((8), dtype=int)
-        self.carrier_osc = np.zeros((8, 4), dtype=int)
-        self.carrier_harm = np.zeros((8, 4), dtype=int)
-        self.carrier_freq = np.zeros((8, 4), dtype=float)
-        self.carrier_phase = np.zeros((8, 4), dtype=float)
+        self.amplitudes = np.ones((self.num_channels, ))
+        self.modulation = np.zeros((self.num_channels, ), dtype=int)
+        self.carrier_osc = np.zeros((self.num_channels, 4), dtype=int)
+        self.carrier_harm = np.zeros((self.num_channels, 4), dtype=int)
+        self.carrier_freq = np.zeros((self.num_channels, 4), dtype=float)
+        self.carrier_phase = np.zeros((self.num_channels, 4), dtype=float)
 
-        self.filter = np.zeros((8))
-        self.offset = np.zeros((8))
-        self.range = np.zeros((8))
+        self.filter = np.zeros((self.num_channels, ))
+        self.offset = np.zeros((self.num_channels, ))
+        self.range = np.zeros((self.num_channels, ))
         self.harm_fucktor = np.zeros((16,), dtype=int)
         self.osc_freq = np.zeros((16,), dtype=float)
 
         # self._waveforms=np.zeros((8,self.nop))
         # self._markers=np.zeros((8))
-        self._waveforms = [None] * 8
+        self._waveforms = [None] * self.num_channels
         self.Predelay = np.zeros((4), dtype=int)
         self.Postdelay = np.zeros((4), dtype=int)
-        self._markers = [None] * 8
+        self._markers = [None] * self.num_channels
         self._values = {}
         self._values['files'] = {}
         # self.marker_delay_I=np.zeros((8,))
 
-        self.marker_out = np.zeros((8,), dtype=int)
+        self.marker_out = np.zeros((self.num_channels,), dtype=int)
         self.Marker_Out_Allowed_Values = {
             '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
             '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
@@ -102,18 +110,18 @@ class Zurich_HDAWG1808():
             '17': "Output is set to high.",
             '18': "Output is set to low",
             }
-        for channel in range(8):
+        for channel in range(self.num_channels):
             self.marker_out[channel] = 0
             self.set_marker_out(channel, 0)
 
-        self.sampling_rate = np.zeros((8,))
-        self.sin_osc_num = np.zeros((8,), dtype=int)  # maybe (8,16)
-        self.sin_phase = np.zeros((8,), dtype=float)
-        self.sin_amplitude = np.zeros((8, 2), dtype=float)
-        self.sin_enable = np.zeros((8, 2), dtype=int)
+        self.sampling_rate = np.zeros((self.num_channels,))
+        self.sin_osc_num = np.zeros((self.num_channels,), dtype=int)  # maybe (8,16)
+        self.sin_phase = np.zeros((self.num_channels,), dtype=float)
+        self.sin_amplitude = np.zeros((self.num_channels,  2), dtype=float)
+        self.sin_enable = np.zeros((self.num_channels,  2), dtype=int)
 
         # Triggers
-        self.trig_input_level = np.zeros((8,), dtype=float)
+        self.trig_input_level = np.zeros((self.num_channels, ), dtype=float)
         self.source_dig_trig_1 = np.zeros((self.num_seq,), dtype=int)  # defolt values 0 = Trigger In1
         self.source_dig_trig_2 = np.zeros((self.num_seq,), dtype=int)  # defolt values 0 = Trigger In1
         self.slope_dig_trig_1 = np.zeros((self.num_seq,), dtype=int)  # defolt values 0 = Level sensitive trigger
@@ -146,16 +154,16 @@ class Zurich_HDAWG1808():
         self.frozen = False
 
         self.current_programs = ['' for i in range(4)]
-        for sequencer_idx in range(4):
+        for sequencer_idx in range(self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer_idx)
             self.send_cur_prog(sequencer_idx)
 
 
     def clear(self):
-        for sequencer_id in range(0, 4):
+        for sequencer_id in range(0, self.num_seq):
             self.send_cur_prog(sequencer_id)
 
-        for waveform_id in range(8):
+        for waveform_id in range(self.num_channels):
             self._waveforms[waveform_id] = np.zeros(self._nop)
 
         self.stop()
@@ -163,6 +171,10 @@ class Zurich_HDAWG1808():
     def set_cur_prog(self, parameters, sequencer_idx):
         definition_fragments = []
         play_fragments = []
+        if self.devtype == 'UHF':
+            digtrigger_fragment = 'waitDigTrigger(1, 1);'
+        else:
+            digtrigger_fragment = 'waitDigTrigger(1);'
 
         for wave_length_id, wave_length in enumerate(self.wave_lengths):
             definition_fragments.append(textwrap.dedent('''
@@ -174,7 +186,7 @@ class Zurich_HDAWG1808():
             play_fragments.append(textwrap.dedent('''
             if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
                 while(true) {{
-                    waitDigTrigger(1);
+                    {digtrigger_fragment}
                     wait(getUserReg({pre_delay_reg}));
                     playWave(w_I_{wave_length},w_Q_{wave_length});
                     waitWave();
@@ -182,16 +194,19 @@ class Zurich_HDAWG1808():
                     waitWave();
                 }}
             }}
-            ''').format(wave_length = wave_length, wave_length_supersamp = wave_length//8, **parameters))
+            ''').format(wave_length = wave_length,
+                        wave_length_supersamp = wave_length//8,
+                        digtrigger_fragment=digtrigger_fragment,
+                        **parameters))
         zero_length_program = textwrap.dedent('''
         if (getUserReg({wave_length_reg}) == 0) {{
             while(true) {{
-                waitDigTrigger(1);
+                {digtrigger_fragment}
                 wait({nsupersamp});
                 waitWave();
             }}
         }}
-        ''').format(**parameters)
+        ''').format(digtrigger_fragment=digtrigger_fragment, **parameters)
         self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)+zero_length_program
 
     def send_cur_prog(self, sequencer):
@@ -269,7 +284,7 @@ class Zurich_HDAWG1808():
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
         self.wave_lengths = tuple(self.wave_lengths_default+[numpts])
-        for sequencer in range(0, 4):
+        for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
 
@@ -288,7 +303,7 @@ class Zurich_HDAWG1808():
     # out channels = physical channels on the front pannel of  the device
     # In this part of the code out_channel is called 'channel'
     def set_all_outs(self):
-        for channel in range(8):
+        for channel in range(self.num_channels):
             self.daq.set([['/' + self.device + '/SIGOUTS/%s/ON' % channel, 1]])
         #self.daq.sync()
 
@@ -354,18 +369,18 @@ class Zurich_HDAWG1808():
 
     def set_trigger_impedance_1e3(self):
         # Sets the trigger impedance to 1 kOhm
-        for trigger_in in range(8):
+        for trigger_in in range(self.num_channels):
             self.daq.set([['/' + self.device + '/triggers/in/%d/IMP50' % trigger_in, 0]])
             self.daq.sync()
 
     def set_trigger_impedance_50(self):
         # Sets the trigger impedance to 50 Ohm
-        for trigger_in in range(8):
+        for trigger_in in range(self.num_channels):
             self.daq.set([['/' + self.device + '/triggers/in/%d/IMP50' % trigger_in, 1]])
             self.daq.sync()
 
     def set_trig_level(self, input_level):
-        for trigger_in in range(8):
+        for trigger_in in range(self.num_channels):
             self.trig_input_level[trigger_in] = input_level
             self.daq.set([['/' + self.device + '/triggers/in/%d/LEVEL' % trigger_in, input_level]])
             self.daq.sync()
@@ -652,10 +667,10 @@ class Zurich_HDAWG1808():
                 post_delay += -self.Predelay[sequencer]
                 self.Predelay[sequencer] = 0
 
-            waveformI_truncated = waveformI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
-            waveformQ_truncated = waveformQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
-            markerI_truncated = markerI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
-            markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length+1]
+            waveformI_truncated = waveformI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            waveformQ_truncated = waveformQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            markerI_truncated = markerI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
 
             #self.Postdelay[sequencer] = post_delay
 
@@ -670,11 +685,11 @@ class Zurich_HDAWG1808():
             #TODO: fix
             #self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
             # self.daq.sync()
-            try:
-                self.daq.vectorWrite('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
+            #try:
+            self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
                     sequencer, self.wave_lengths.index(wave_length)), vector)
-            except:
-                traceback.print_exc()
+            #except:
+            #    traceback.print_exc()
             # self.daq.sync()
 
             self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)
