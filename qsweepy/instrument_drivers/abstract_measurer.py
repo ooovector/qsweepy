@@ -29,6 +29,7 @@ class AbstractMeasurer(ABC):
     def get_dtype(self) -> Mapping[str, type(None)]:
         """
         Returns a dict containing the data type of the measurement result, for example float, coplex or int.
+
         Returns
         -------
         Mapping[str, type(None)]
@@ -38,6 +39,7 @@ class AbstractMeasurer(ABC):
     def get_opts(self) -> Mapping[str, Mapping[str, Any]]:
         """
         Returns an empty dict.
+
         Returns
         -------
         Mapping[str, Mapping[str, Any]]
