@@ -21,3 +21,8 @@ database
 .. automodule:: qsweepy.ponyfiles.database
    :members:
 
+Something else
+
+.. automodule:: qsweepy.ponyfiles.exdir_db
+   :members:
+

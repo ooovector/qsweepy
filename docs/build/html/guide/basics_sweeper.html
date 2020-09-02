@@ -190,9 +190,9 @@
 <p>QSweepy is a python-based piece of software designed for measurement automation and
 management. It has several key components:</p>
 <p>Sweep functions &amp; extras</p>
-<span class="target" id="module-sweep"></span><dl class="py function">
-<dt id="sweep.optimize">
-<code class="sig-prename descclassname">sweep.</code><code class="sig-name descname">optimize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">params</span></em>, <em class="sig-param"><span class="n">initial_simplex</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxfun</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep.optimize" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-qsweepy.libraries.sweep"></span><dl class="py function">
+<dt id="qsweepy.libraries.sweep.optimize">
+<code class="sig-prename descclassname">qsweepy.libraries.sweep.</code><code class="sig-name descname">optimize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">params</span></em>, <em class="sig-param"><span class="n">initial_simplex</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxfun</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.libraries.sweep.optimize" title="Permalink to this definition">¶</a></dt>
 <dd><p>function is used for paramp only | noted on 13.07.2019
 :param target:
 :param params:
@@ -202,8 +202,8 @@ management. It has several key components:</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="sweep.sweep">
-<code class="sig-prename descclassname">sweep.</code><code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">shuffle</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">use_deferred</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">ignore_callback_errors</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">on_update_divider</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep.sweep" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.libraries.sweep.sweep">
+<code class="sig-prename descclassname">qsweepy.libraries.sweep.</code><code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurer</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">parameters</span></em>, <em class="sig-param"><span class="n">shuffle</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">use_deferred</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">ignore_callback_errors</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">on_update_divider</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.libraries.sweep.sweep" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs a n-d parametric sweep.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -227,13 +227,13 @@ management. It has several key components:</p>
 </dl>
 </dd></dl>
 
-<span class="target" id="module-sweep_extras"></span><dl class="py class">
-<dt id="sweep_extras.Sweeper">
-<em class="property">class </em><code class="sig-prename descclassname">sweep_extras.</code><code class="sig-name descname">Sweeper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">db</span></em>, <em class="sig-param"><span class="n">sample_name</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-qsweepy.libraries.sweep_extras"></span><dl class="py class">
+<dt id="qsweepy.libraries.sweep_extras.Sweeper">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.libraries.sweep_extras.</code><code class="sig-name descname">Sweeper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">db</span></em>, <em class="sig-param"><span class="n">sample_name</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.libraries.sweep_extras.Sweeper" title="Permalink to this definition">¶</a></dt>
 <dd><p>nice function</p>
 <dl class="py method">
-<dt id="sweep_extras.Sweeper.sweep">
-<code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper.sweep" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.libraries.sweep_extras.Sweeper.sweep">
+<code class="sig-name descname">sweep</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.libraries.sweep_extras.Sweeper.sweep" title="Permalink to this definition">¶</a></dt>
 <dd><p>hook for n-dimensional measurement
 :param args:
 :param on_start:
@@ -244,8 +244,8 @@ management. It has several key components:</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly">
-<code class="sig-name descname">sweep_fit_dataset_1d_onfly</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">fitter_arguments</span><span class="o">=</span><span class="default_value">()</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly" title="Permalink to this definition">¶</a></dt>
+<dt id="qsweepy.libraries.sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly">
+<code class="sig-name descname">sweep_fit_dataset_1d_onfly</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">on_start</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_update</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">on_finish</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">fitter_arguments</span><span class="o">=</span><span class="default_value">()</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.libraries.sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly" title="Permalink to this definition">¶</a></dt>
 <dd><p>hook for 1d sweep measurement process
 :param args:
 :param on_start:

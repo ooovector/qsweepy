@@ -254,6 +254,12 @@ PostSQL by finding record with the same filename</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt id="qsweepy.ponyfiles.save_exdir.save_exdir">
+<code class="sig-prename descclassname">qsweepy.ponyfiles.save_exdir.</code><code class="sig-name descname">save_exdir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="p">:</span> <span class="n">qsweepy.ponyfiles.data_structures.MeasurementState</span></em>, <em class="sig-param"><span class="n">keep_open</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.save_exdir.save_exdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main function</p>
+</dd></dl>
+
 <p>Managing and finding measurements in a database using PonyORM and a Postgresql
 database</p>
 <span class="target" id="module-qsweepy.ponyfiles.database"></span><dl class="py class">
@@ -274,6 +280,97 @@ and commits it into the database.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p>Something else</p>
+<span class="target" id="module-qsweepy.ponyfiles.exdir_db"></span><dl class="py class">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db">
+<em class="property">class </em><code class="sig-prename descclassname">qsweepy.ponyfiles.exdir_db.</code><code class="sig-name descname">Exdir_db</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">db</span></em>, <em class="sig-param"><span class="n">sample_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">old_prefix</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">new_prefix</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exdir class</p>
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">values</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs MeasurementState instance from values dictionary
+and saves it into exdir_db system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>values</strong> (<em>dict</em>) – dictionary that contains values for MyDatabase.Data etc. that
+fully describe measurement state.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>measurement state constructed</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MeasurementState</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.save_measurement">
+<code class="sig-name descname">save_measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">qsweepy.ponyfiles.data_structures.MeasurementState</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.save_measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves measurement state to the exdir_db system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>MeasurementState</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement">
+<code class="sig-name descname">select_measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurement_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_this</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_that</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_invalidation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; qsweepy.ponyfiles.data_structures.MeasurementState<a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load first encountered measurement state from SQL that corresponds to parameters provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurement_type</strong> – </p></li>
+<li><p><strong>metadata</strong> – </p></li>
+<li><p><strong>references_this</strong> – </p></li>
+<li><p><strong>references_that</strong> – </p></li>
+<li><p><strong>ignore_invalidation</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>MeasurementState</em> – measurement state that contains all datasets and corresponding parameter values</p></li>
+<li><p><em>that corresponds to the parameters provided.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurements_db">
+<code class="sig-name descname">select_measurements_db</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">measurement_type</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_this</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">references_that</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span>str<span class="p">, </span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_invalidation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurements_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>PonyORM select clause with where constraints on Data table (which correspond to MeasurementState classes)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measurement_type</strong> (<em>str</em>) – where measurement_type == {measurement_type} clauase</p></li>
+<li><p><strong>metadata</strong> – </p></li>
+<li><p><strong>references_this</strong> – </p></li>
+<li><p><strong>references_that</strong> – </p></li>
+<li><p><strong>ignore_invalidation</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of MyDatabase.Data instances. Each instance
+represents separate record in Data table of database.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MyDatabase.Data</p>
 </dd>
 </dl>
 </dd></dl>

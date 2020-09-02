@@ -197,6 +197,16 @@
 <div class="line-block">
 <div class="line"><a class="reference external" href="https://github.com/ooovector/qsweepy-plotting">https://github.com/ooovector/qsweepy-plotting</a></div>
 </div>
+<p>To be able to use qsweepy you should do the following:</p>
+<div class="line-block">
+<div class="line">1) Install PostgreSQL <a class="reference external" href="https://www.postgresql.org/download/">https://www.postgresql.org/download/</a></div>
+<div class="line">2) Create a database</div>
+</div>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">create</span> <span class="k">database</span> <span class="n">qsweepy</span><span class="p">;</span>
+<span class="k">CREATE</span> <span class="k">USER</span> <span class="n">qsweepy</span> <span class="k">WITH</span> <span class="n">PASSWORD</span> <span class="s1">&#39;qsweepy&#39;</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">all</span> <span class="k">privileges</span> <span class="k">on</span> <span class="k">database</span> <span class="n">qsweepy</span> <span class="k">to</span> <span class="n">qsweepy</span><span class="p">;</span>
+</pre></div>
+</div>
 </div>
 
 

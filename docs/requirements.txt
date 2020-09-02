@@ -13,3 +13,8 @@ ruamel.yaml
 pandas
 plotly
 PyYAML
+threaded
+sklearn
+pathlib
+ftd2xx
+pyvisa

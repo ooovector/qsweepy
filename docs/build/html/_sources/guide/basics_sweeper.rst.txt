@@ -6,9 +6,9 @@ management. It has several key components:
 
 Sweep functions & extras
 
-.. automodule:: sweep
+.. automodule:: qsweepy.libraries.sweep
    :members:
 
-.. automodule:: sweep_extras
+.. automodule:: qsweepy.libraries.sweep_extras
    :members:
 
