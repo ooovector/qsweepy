@@ -1,4 +1,4 @@
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 import sys
 sys.path.append('C:\Program Files (x86)\Keysight\SD1\Libraries\Python')
 import keysightSD1

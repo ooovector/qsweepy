@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from ctypes import *
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 from qsweepy.instrument_drivers._Spectrum_M3i2132.errors import errors as _spcm_errors
 import qsweepy.instrument_drivers._Spectrum_M3i2132.regs as _spcm_regs
 import pickle

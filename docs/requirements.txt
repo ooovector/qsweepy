@@ -16,3 +16,5 @@ PyYAML
 threaded
 sklearn
 pathlib
+ftd2xx
+pyvisa

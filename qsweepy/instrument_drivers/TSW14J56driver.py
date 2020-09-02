@@ -16,7 +16,7 @@ import time
 import sys
 import zlib
 
-from qsweepy import config
+from qsweepy.libraries import config
 
 #sys.path.append('C:\qtlab_replacement\qsweepy\instrument_drivers\_ADS54J40')
 

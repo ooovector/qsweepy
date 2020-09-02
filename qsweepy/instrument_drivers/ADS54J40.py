@@ -1,6 +1,6 @@
 import numpy as np
 import ftd2xx
-from qsweepy import config as global_config
+from qsweepy.libraries import config as global_config
 
 class ADS54J40():
 	def __init__(self, device_id = 1):

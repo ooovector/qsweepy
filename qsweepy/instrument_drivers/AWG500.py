@@ -3,7 +3,7 @@ import ctypes
 import struct
 import array
 import time
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 import types
 
 BASE_ID      = 64                               # base ID selector for the AWG board

@@ -6,7 +6,7 @@ import logging
 from ctypes import *
 import numpy
 
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 
 # load errors for easier access
 from qsweepy.instrument_drivers._Spectrum_M4i22xx.spcerr import * 

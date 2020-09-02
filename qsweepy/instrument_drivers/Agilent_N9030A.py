@@ -1,4 +1,4 @@
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 import visa
 import types
 import logging

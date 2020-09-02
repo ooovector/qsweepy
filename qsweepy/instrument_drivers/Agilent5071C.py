@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from qsweepy.instrument import Instrument
+from qsweepy.instrument_drivers.instrument import Instrument
 from matplotlib import pyplot as plt
 import visa
 import types
