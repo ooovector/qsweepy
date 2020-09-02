@@ -4,7 +4,7 @@ import zhinst.utils
 import textwrap
 import timeit
 import traceback
-from qsweepy.instrument import Instrument
+#from qsweepy.libraries.instrument import Instrument
 
 from scipy.signal import gaussian
 import numpy as np
