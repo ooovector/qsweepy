@@ -9,7 +9,7 @@ The general examples of usage of written functions are:
 
 .. code-block:: python
 
-  from qubit_calibrations import spectroscopy
+  from qsweepy.qubit_calibrations import spectroscopy
 
 1) If you want to make a sweep over coil voltages you can use it:
 

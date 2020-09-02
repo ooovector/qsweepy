@@ -38,7 +38,7 @@
     
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Here ipynb examples" href="../ipynb/ipynb_examples.html" />
+    <link rel="next" title="Instrument driver guidelines" href="instrument_driver_guides.html" />
     <link rel="prev" title="Single tone spectroscopy" href="singletonesperctroscopy.html" /> 
 </head>
 
@@ -95,6 +95,7 @@
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">How to readout and analyze measured data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="instrument_driver_guides.html">Instrument driver guidelines</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ipynb/ipynb_examples.html">Here ipynb examples</a></li>
 </ul>
 
@@ -190,9 +191,9 @@
 <p>Measured data can be uploaded from the saved format by the following way</p>
 <p>from qsweepy.ponyfiles import *</p>
 <p>sample_name = ‘11qubits_021119_2’
-| db = database.MyDatabase(host=‘10.20.61.31’)
+| db = database.MyDatabase(host=’10.20.61.31’)
 | exdir_db_inst = exdir_db.Exdir_db(db=db, sample_name=sample_name)</p>
-<p>m=exdir_db_inst.select_measurement(measurement_type=’two_tone’,metadata={‘num_resonant_qubits’: num_qubits,’resonator_id’:‘1’,’ex_qubit’: ‘1’,’pump_power’: ‘-20.0’})</p>
+<p>m=exdir_db_inst.select_measurement(measurement_type=’two_tone’,metadata={‘num_resonant_qubits’: num_qubits,’resonator_id’:’1’,’ex_qubit’: ‘1’,’pump_power’: ‘-20.0’})</p>
 <p>for coil, voltage in m.metadata.items():</p>
 <div class="line-block">
 <div class="line">m_ref = exdir_db_inst.select_measurement(measurement_type = ‘resonator’, references_this={‘resonator’:m.id})</div>
@@ -210,7 +211,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../ipynb/ipynb_examples.html" class="btn btn-neutral float-right" title="Here ipynb examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="instrument_driver_guides.html" class="btn btn-neutral float-right" title="Instrument driver guidelines" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="singletonesperctroscopy.html" class="btn btn-neutral float-left" title="Single tone spectroscopy" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

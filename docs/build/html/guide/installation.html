@@ -89,12 +89,16 @@
             
             
               <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="basics_ponyfiles.html">Basic concepts of the database for measurements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics_sweeper.html">Basic concepts of the sweeper function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="data_reading.html">How to readout and analyze measured data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="instrument_driver_guides.html">Instrument driver guidelines</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ipynb/ipynb_examples.html">Here ipynb examples</a></li>
 </ul>
 
@@ -187,6 +191,20 @@
 </style>
 <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>To be able to use qsweepy you need postgresql. You can either use a
+remote database, or install a local server. For local server installation,</p>
+<div class="line-block">
+<div class="line">1) Install PostgreSQL <a class="reference external" href="https://www.postgresql.org/download/">https://www.postgresql.org/download/</a></div>
+<div class="line">2) Create a database and a user using the following SQL commands in the</div>
+</div>
+<p>SQL terminal window</p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">create</span> <span class="k">database</span> <span class="n">qsweepy</span><span class="p">;</span>
+<span class="k">create</span> <span class="k">user</span> <span class="n">qsweepy</span> <span class="k">with</span> <span class="n">password</span> <span class="s1">&#39;qsweepy&#39;</span><span class="p">;</span>
+<span class="k">grant</span> <span class="k">all</span> <span class="k">privileges</span> <span class="k">on</span> <span class="k">database</span> <span class="n">qsweepy</span> <span class="k">to</span> <span class="n">qsweepy</span><span class="p">;</span>
+</pre></div>
+</div>
 <p>These scripts can be downloaded from</p>
 <div class="line-block">
 <div class="line"><a class="reference external" href="https://github.com/ooovector/qtlab_replacement">https://github.com/ooovector/qtlab_replacement</a></div>
@@ -197,15 +215,6 @@
 <div class="line-block">
 <div class="line"><a class="reference external" href="https://github.com/ooovector/qsweepy-plotting">https://github.com/ooovector/qsweepy-plotting</a></div>
 </div>
-<p>To be able to use qsweepy you should do the following:</p>
-<div class="line-block">
-<div class="line">1) Install PostgreSQL <a class="reference external" href="https://www.postgresql.org/download/">https://www.postgresql.org/download/</a></div>
-<div class="line">2) Create a database</div>
-</div>
-<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">create</span> <span class="k">database</span> <span class="n">qsweepy</span><span class="p">;</span>
-<span class="k">CREATE</span> <span class="k">USER</span> <span class="n">qsweepy</span> <span class="k">WITH</span> <span class="n">PASSWORD</span> <span class="s1">&#39;qsweepy&#39;</span><span class="p">;</span>
-<span class="k">grant</span> <span class="k">all</span> <span class="k">privileges</span> <span class="k">on</span> <span class="k">database</span> <span class="n">qsweepy</span> <span class="k">to</span> <span class="n">qsweepy</span><span class="p">;</span>
-</pre></div>
 </div>
 </div>
 

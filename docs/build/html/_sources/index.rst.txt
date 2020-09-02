@@ -14,4 +14,5 @@ code for superconducting qubits measurements.
    guide/general_information
    guide/singletonesperctroscopy
    guide/data_reading
+   guide/instrument_driver_guides
    ipynb/ipynb_examples

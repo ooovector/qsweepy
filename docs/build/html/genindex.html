@@ -93,6 +93,7 @@
 <li class="toctree-l1"><a class="reference internal" href="guide/general_information.html">General information</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide/singletonesperctroscopy.html">Single tone spectroscopy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide/data_reading.html">How to readout and analyze measured data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide/instrument_driver_guides.html">Instrument driver guidelines</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ipynb/ipynb_examples.html">Here ipynb examples</a></li>
 </ul>
 
@@ -161,8 +162,10 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#C"><strong>C</strong></a>
+ <a href="#A"><strong>A</strong></a>
+ | <a href="#C"><strong>C</strong></a>
  | <a href="#E"><strong>E</strong></a>
+ | <a href="#G"><strong>G</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#O"><strong>O</strong></a>
@@ -170,6 +173,14 @@
  | <a href="#S"><strong>S</strong></a>
  
 </div>
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="guide/instrument_driver_guides.html#qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer">AbstractMeasurer (class in qsweepy.instrument_drivers.abstract_measurer)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -182,6 +193,20 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.exdir_db.Exdir_db">Exdir_db (class in qsweepy.ponyfiles.exdir_db)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="guide/instrument_driver_guides.html#qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer.get_dtype">get_dtype() (qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="guide/instrument_driver_guides.html#qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer.get_opts">get_opts() (qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer method)</a>
+</li>
+      <li><a href="guide/instrument_driver_guides.html#qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer.get_points">get_points() (qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -201,6 +226,8 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="guide/instrument_driver_guides.html#qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer.measure">measure() (qsweepy.instrument_drivers.abstract_measurer.AbstractMeasurer method)</a>
+</li>
       <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.data_structures.MeasurementParameter">MeasurementParameter (class in qsweepy.ponyfiles.data_structures)</a>
 </li>
       <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.data_structures.measurer_point_parameters">measurer_point_parameters() (in module qsweepy.ponyfiles.data_structures)</a>
@@ -210,8 +237,6 @@
 
       <ul>
         <li><a href="guide/basics_sweeper.html#module-qsweepy.libraries.sweep">qsweepy.libraries.sweep</a>
-</li>
-        <li><a href="guide/basics_sweeper.html#module-qsweepy.libraries.sweep_extras">qsweepy.libraries.sweep_extras</a>
 </li>
         <li><a href="guide/basics_ponyfiles.html#module-qsweepy.ponyfiles.data_structures">qsweepy.ponyfiles.data_structures</a>
 </li>
@@ -248,21 +273,12 @@
 </li>
       </ul></li>
       <li>
-    qsweepy.libraries.sweep_extras
-
-      <ul>
-        <li><a href="guide/basics_sweeper.html#module-qsweepy.libraries.sweep_extras">module</a>
-</li>
-      </ul></li>
-      <li>
     qsweepy.ponyfiles.data_structures
 
       <ul>
         <li><a href="guide/basics_ponyfiles.html#module-qsweepy.ponyfiles.data_structures">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     qsweepy.ponyfiles.database
 
@@ -270,6 +286,8 @@
         <li><a href="guide/basics_ponyfiles.html#module-qsweepy.ponyfiles.database">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     qsweepy.ponyfiles.exdir_db
 
@@ -296,21 +314,13 @@
 </li>
       <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.exdir_db.Exdir_db.save_measurement">save_measurement() (qsweepy.ponyfiles.exdir_db.Exdir_db method)</a>
 </li>
-      <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement">select_measurement() (qsweepy.ponyfiles.exdir_db.Exdir_db method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurement">select_measurement() (qsweepy.ponyfiles.exdir_db.Exdir_db method)</a>
+</li>
       <li><a href="guide/basics_ponyfiles.html#qsweepy.ponyfiles.exdir_db.Exdir_db.select_measurements_db">select_measurements_db() (qsweepy.ponyfiles.exdir_db.Exdir_db method)</a>
 </li>
       <li><a href="guide/basics_sweeper.html#qsweepy.libraries.sweep.sweep">sweep() (in module qsweepy.libraries.sweep)</a>
-
-      <ul>
-        <li><a href="guide/basics_sweeper.html#qsweepy.libraries.sweep_extras.Sweeper.sweep">(qsweepy.libraries.sweep_extras.Sweeper method)</a>
-</li>
-      </ul></li>
-      <li><a href="guide/basics_sweeper.html#qsweepy.libraries.sweep_extras.Sweeper.sweep_fit_dataset_1d_onfly">sweep_fit_dataset_1d_onfly() (qsweepy.libraries.sweep_extras.Sweeper method)</a>
-</li>
-      <li><a href="guide/basics_sweeper.html#qsweepy.libraries.sweep_extras.Sweeper">Sweeper (class in qsweepy.libraries.sweep_extras)</a>
 </li>
   </ul></td>
 </tr></table>
