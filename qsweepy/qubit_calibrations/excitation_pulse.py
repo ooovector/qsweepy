@@ -1,10 +1,9 @@
-from ..ponyfiles.data_structures import *
-from . import channel_amplitudes
-#from
+from qsweepy.ponyfiles.data_structures import *
+from qsweepy.qubit_calibrations import channel_amplitudes
 import traceback
-from . import Rabi
-from . import gauss_hd
-from .. import pulses
+from qsweepy.qubit_calibrations import Rabi
+from qsweepy.qubit_calibrations import gauss_hd
+from qsweepy.libraries import pulses
 
 
 def get_hadamard(device, qubit_id):

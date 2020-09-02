@@ -1,4 +1,4 @@
-from ..ponyfiles.data_structures import *
+from qsweepy.ponyfiles.data_structures import *
 
 
 class channel_amplitudes(MeasurementState):

@@ -1,4 +1,4 @@
-from ..fitters import fit_dataset, resonator_tools
+from qsweepy.fitters import fit_dataset, resonator_tools
 import numpy as np
 import time
 

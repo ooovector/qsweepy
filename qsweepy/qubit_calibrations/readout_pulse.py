@@ -1,6 +1,6 @@
-from .calibrated_readout import get_calibrated_measurer, readout_fidelity_scan, get_qubit_readout_pulse_from_fidelity_scan
-from ..ponyfiles.data_structures import *
-from .. import data_reduce
+from qsweepy.qubit_calibrations.calibrated_readout import get_calibrated_measurer, readout_fidelity_scan, get_qubit_readout_pulse_from_fidelity_scan
+from qsweepy.ponyfiles.data_structures import *
+from qsweepy.libraries import data_reduce
 import traceback
 
 

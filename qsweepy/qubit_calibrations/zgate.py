@@ -1,6 +1,6 @@
-from . import excitation_pulse
-from . import Ramsey
-from . import channel_amplitudes
+from qsweepy.qubit_calibrations import excitation_pulse
+from qsweepy.qubit_calibrations import Ramsey
+from qsweepy.qubit_calibrations import channel_amplitudes
 
 def zgate_ramsey(device, gate):
     def filler_func(length):

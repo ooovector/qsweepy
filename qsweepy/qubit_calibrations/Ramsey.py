@@ -1,8 +1,8 @@
-from ..fitters.exp_sin import exp_sin_fitter
-from ..fitters.single_period_sin import SinglePeriodSinFitter
-from .channel_amplitudes import channel_amplitudes
+from qsweepy.fitters.exp_sin import exp_sin_fitter
+from qsweepy.fitters.single_period_sin import SinglePeriodSinFitter
+from qsweepy.qubit_calibrations.channel_amplitudes import channel_amplitudes
 import numpy as np
-from . import excitation_pulse
+from qsweepy.qubit_calibrations import excitation_pulse
 
 def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None, channel_amplitudes2=None):
     '''

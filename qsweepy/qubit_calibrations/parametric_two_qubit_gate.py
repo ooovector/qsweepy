@@ -1,13 +1,13 @@
-from ..ponyfiles.data_structures import *
-from . import channel_amplitudes
+from qsweepy.ponyfiles.data_structures import *
+from qsweepy.qubit_calibrations import channel_amplitudes
 import traceback
 #from .import
-from .. import pulses
-from . import excitation_pulse
-from . import Rabi
-from . import channel_amplitudes
-from . import Ramsey
-from . import calibrated_readout
+from qsweepy.libraries import pulses
+from qsweepy.qubit_calibrations import excitation_pulse
+from qsweepy.qubit_calibrations import Rabi
+from qsweepy.qubit_calibrations import channel_amplitudes
+from qsweepy.qubit_calibrations import Ramsey
+from qsweepy.qubit_calibrations import calibrated_readout
 
 
 def iswap_frequency_scan(device, gate, q):

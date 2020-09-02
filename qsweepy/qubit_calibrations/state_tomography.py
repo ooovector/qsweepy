@@ -1,6 +1,6 @@
-from ..multiqubit_tomography import *
-from .calibrated_readout import *
-from . import gauss_hd
+from qsweepy.libraries.multiqubit_tomography import *
+from qsweepy.qubit_calibrations.calibrated_readout import *
+from qsweepy.qubit_calibrations import gauss_hd
 import itertools
 
 

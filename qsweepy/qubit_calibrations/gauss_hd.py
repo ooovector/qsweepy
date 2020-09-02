@@ -1,6 +1,6 @@
-from .excitation_pulse import *
-from .Ramsey import *
-from .channel_amplitudes import channel_amplitudes
+from qsweepy.qubit_calibrations.excitation_pulse import *
+from qsweepy.qubit_calibrations.Ramsey import *
+from qsweepy.qubit_calibrations.channel_amplitudes import channel_amplitudes
 
 #def get_gauss_hd_pulse_sequence(device, channel_amplitudes, sigma, length, amp, alpha):
 #   if tail_length > 0:

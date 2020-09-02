@@ -1,5 +1,5 @@
-from .. import data_reduce
-from ..ponyfiles.data_structures import *
+from qsweepy.libraries import data_reduce
+from qsweepy.ponyfiles.data_structures import *
 
 def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]

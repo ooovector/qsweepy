@@ -1,14 +1,14 @@
-from . import calibrated_readout
-from .. import clifford
-from .. import interleaved_benchmarking
-from . import Ramsey
-from . import excitation_pulse
-from . import channel_amplitudes
-from ..fitters import fit_dataset
-from ..ponyfiles.data_structures import *
-from ..fitters import exp
+from qsweepy.qubit_calibrations import calibrated_readout
+from qsweepy.libraries import clifford
+from qsweepy.libraries import interleaved_benchmarking
+from qsweepy.qubit_calibrations import Ramsey
+from qsweepy.qubit_calibrations import excitation_pulse
+from qsweepy.qubit_calibrations import channel_amplitudes
+from qsweepy.fitters import fit_dataset
+from qsweepy.ponyfiles.data_structures import *
+from qsweepy.fitters import exp
 import numpy as np
-from ..pulses import *
+from qsweepy.libraries.pulses import *
 
 
 def create_flat_dataset(measurement, dataset_name):

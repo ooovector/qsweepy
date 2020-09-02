@@ -1,7 +1,7 @@
-from ..fitters.exp_sin import exp_sin_fitter
-from .channel_amplitudes import channel_amplitudes
+from qsweepy.fitters.exp_sin import exp_sin_fitter
+from qsweepy.qubit_calibrations.channel_amplitudes import channel_amplitudes
 import numpy as np
-from . import excitation_pulse
+from qsweepy.qubit_calibrations import excitation_pulse
 import traceback
 
 

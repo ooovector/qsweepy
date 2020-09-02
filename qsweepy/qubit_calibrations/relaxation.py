@@ -1,4 +1,4 @@
-from . import excitation_pulse
+from qsweepy.qubit_calibrations import excitation_pulse
 import numpy as np
 
 def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
