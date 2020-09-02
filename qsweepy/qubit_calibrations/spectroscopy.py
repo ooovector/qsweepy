@@ -50,7 +50,7 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
         device.hardware.pna.measure()
         result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='resonator_frequency',
-                               metadata={'qubit': qubit_id,
+                               metadata={'qubit_id': qubit_id,
                                          'vna_power': device.hardware.pna.get_power(),
                                          'bandwidth': bandwidth})
     except:
@@ -115,11 +115,13 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, 
                             (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
                             *args,
                             measurement_type='qubit_frequency',
-                            metadata={'qubit': qubit_id, 'pna_power': device.hardware.pna.get_power()})
+                            metadata={'qubit_id': qubit_id, 'pna_power': device.hardware.pna.get_power(),
+                                      'resonator frequency': fr})
     except:
         raise
 
+
     max_id = np.argmax(np.abs(result.datasets['S-parameter'].data-np.median(result.datasets['S-parameter'].data))**2)
-    result.metadata['fq'] = result.datasets['S-parameter'].parameters[0].values[max_id]
+    result.metadata['fq'] = result.datasets['S-parameter'].parameters[0].values[max_id%len(result.datasets['S-parameter'].parameters[0].values)]
 
     return result

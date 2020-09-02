@@ -112,11 +112,21 @@ class hardware_setup():
         self.hardware_state = 'cw_mode'
         self.hdawg.stop()
 
+        global_num_points = int(np.round(
+            self.pulsed_settings['ex_clock'] / self.pulsed_settings['rep_rate'] - self.pulsed_settings[
+                'global_num_points_delta']))
+
         for channel in range(0, 6):
             self.hdawg.set_amplitude(amplitude=0.05, channel=channel)
             self.hdawg.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
             self.hdawg.set_output(output=1, channel=channel)
-            self.hdawg.set_waveform(waveform=[0] * 199600, channel=channel)
+            self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
+
+        for channel in range(0, 2):
+            self.uhfqa.set_amplitude(amplitude=0.05, channel=channel)
+            self.uhfqa.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
+            self.uhfqa.set_output(output=1, channel=channel)
+            self.uhfqa.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
         self.hdawg.set_output(output=1, channel=6)
         self.pna.set_sweep_mode("LIN")
