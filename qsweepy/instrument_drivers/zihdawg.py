@@ -677,15 +677,15 @@ class ZIDevice():
             ch1 = np.asarray(waveformI_truncated * (2 ** 13 - 1), dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
             ch2 = np.asarray(waveformQ_truncated * (2 ** 13 - 1), dtype=np.int16)
             m1 = np.asarray(markerI_truncated, dtype=np.uint16)
-            m2 = 2 * np.asarray(markerQ_truncated, dtype=np.uint16)
-            vector = np.asarray(np.transpose([ch1, ch2]).ravel())
-            markers = np.asarray(np.transpose([m1, m2]).ravel())
-            vector = (vector << 2 | markers).astype('int16')
+            m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
+            #vector = np.asarray(np.transpose([ch1, ch2]).ravel())
+            #markers = np.asarray(np.transpose([m1, m2]).ravel())
+            # too strong
+            #vector = (vector << 2 | markers).astype('int16')
 
-            #TODO: fix
-            #self.daq.setInt('/' + self.device + '/awgs/%d/waveform/index' % sequencer, self.wave_lengths.index(wave_length))
-            # self.daq.sync()
-            #try:
+            #after update
+            vector = zhinst.utils.convert_awg_waveform(wave1=ch1, wave2=ch2, markers=m1+m2*4)
+
             self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
                     sequencer, self.wave_lengths.index(wave_length)), vector)
             #except:
