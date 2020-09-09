@@ -24,6 +24,8 @@ class ziUHF(ZIDevice):
 		# Set parameters required to be returned
 		self.output_raw = True
 		self.output_result = True
+		# Set default result source to be Integration
+		self.result_source = 7
 
 	@property
 	def nsamp(self) -> int:
