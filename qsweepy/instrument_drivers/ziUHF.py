@@ -63,13 +63,21 @@ class ziUHF(ZIDevice):
 		self.daq.setInt('/' + self.device + '/qas/0/result/averages', averages)
 
 	@property
-	def trigger(self) -> int:
+	def trigger_result(self) -> int:
 		# TODO write definition for each trigger type
 		return self.daq.getInt('/' + self.device + '/qas/0/integration/trigger/channel')
 
-	@trigger.setter
-	def trigger(self, trigger):
+	@trigger_result.setter
+	def trigger_result(self, trigger):
 		self.daq.setInt('/' + self.device + '/qas/0/integration/trigger/channel', trigger)
+
+	@property
+	def trigger_monitor(self) -> int:
+		return self.daq.getInt('/' + self.device + '/qas/0/monitor/trigger/channel')
+
+	@trigger_monitor.setter
+	def trigger_monitor(self, trigger):
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/trigger/channel', trigger)
 
 	@property
 	def result_source(self) -> str:
@@ -78,6 +86,22 @@ class ziUHF(ZIDevice):
 	@result_source.setter
 	def result_source(self, result_source):
 		self.daq.setInt('/' + self.device + '/qas/0/result/source', result_source)
+
+	@property
+	def trigger_channel0_dir(self):
+		return self.daq.getInt('/' + self.device + '/triggers/out/0/drive')
+
+	@property
+	def trigger_channel1_dir(self):
+		return self.daq.getInt('/' + self.device + '/triggers/out/1/drive')
+
+	@trigger_channel0_dir.setter
+	def trigger_channel0_dir(self, dir):
+		self.daq.setInt('/' + self.device + '/triggers/out/0/drive', dir)
+
+	@trigger_channel1_dir.setter
+	def trigger_channel1_dir(self, dir):
+		self.daq.setInt('/' + self.device + '/triggers/out/1/drive', dir)
 
 	def get_points(self) -> dict:
 		points = {}
