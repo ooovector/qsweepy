@@ -786,7 +786,7 @@ class ZIDevice():
 
     # Phaseshift for oscillator
     def set_sin_phase(self, sin_num, phase):
-        self.sin_phase[sin_num] = pohase
+        self.sin_phase[sin_num] = phase
         self.daq.set([['/' + self.device + '/SINES/%d/PHASESHIFT' % sin_num, phase]])
         self.daq.sync()
 
