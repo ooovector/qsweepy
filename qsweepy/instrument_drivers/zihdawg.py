@@ -144,6 +144,7 @@ class ZIDevice():
                                      'rep_rate': int(self.rep_rate),
                                      'pre_delay_reg': 0,
                                      'wave_length_reg': 1,
+                                     'rep_num_reg': 2
                                      }
 
         self.awgModule = self.daq.awgModule()
@@ -158,7 +159,6 @@ class ZIDevice():
             self.set_cur_prog(self.initial_param_values, sequencer_idx)
             self.send_cur_prog(sequencer_idx)
 
-
     def clear(self):
         for sequencer_id in range(0, self.num_seq):
             self.send_cur_prog(sequencer_id)
@@ -172,20 +172,23 @@ class ZIDevice():
         definition_fragments = []
         play_fragments = []
         if self.devtype == 'UHF':
-            digtrigger_fragment = 'waitDigTrigger(1, 1);'
+            # TODO add setup-dependent triggers
+            digtrigger_fragment = ('setTrigger(1);'  # Let UHF determine the start point of experiment iteration
+                                   + ('\n' + '\t' * 4) + 'waitDigTrigger(2, 1);'
+                                   + ('\n' + '\t' * 4) + 'setTrigger(0);')
         else:
             digtrigger_fragment = 'waitDigTrigger(1);'
 
         for wave_length_id, wave_length in enumerate(self.wave_lengths):
             definition_fragments.append(textwrap.dedent('''
-            wave w_marker_I_{wave_length} = join(marker(1, 1), marker({wave_length} - 1, 0));
-            wave w_marker_Q_{wave_length} = join(marker(1, 2), marker({wave_length} - 1, 0));
+            wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
+            wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
             wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
             wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
             '''.format(wave_length = wave_length)))
             play_fragments.append(textwrap.dedent('''
             if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-                while(true) {{
+                repeat(getUserReg({rep_num_reg})) {{
                     {digtrigger_fragment}
                     wait(getUserReg({pre_delay_reg}));
                     playWave(w_I_{wave_length},w_Q_{wave_length});
@@ -200,7 +203,7 @@ class ZIDevice():
                         **parameters))
         zero_length_program = textwrap.dedent('''
         if (getUserReg({wave_length_reg}) == 0) {{
-            while(true) {{
+            repeat(getUserReg({rep_num_reg})) {{
                 {digtrigger_fragment}
                 wait({nsupersamp});
                 waitWave();
@@ -251,6 +254,17 @@ class ZIDevice():
         print('Time: ', stop - start)
         # self.daq.setInt('/' + self.device + '/awgs/%d/enable'%index, 1)
         return True
+
+    @property
+    def rep_num(self):
+        return self.daq.getInt('/' + self.device + '/awgs/0/userregs/{}'.format(
+            self.initial_param_values['rep_num_reg']))
+
+    @rep_num.setter
+    def rep_num(self, num):
+        for seq_idx in range(0, self.num_seq):
+            self.daq.setInt('/' + self.device + '/awgs/{}/userregs/{}'.format(
+                seq_idx, self.initial_param_values['rep_num_reg']), num)
 
     def programs(self):
         return set(self.known_programs.keys())
@@ -692,7 +706,7 @@ class ZIDevice():
             #    traceback.print_exc()
             # self.daq.sync()
 
-            self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)
+            self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 1)
             # self.daq.setInt('/' + self.device + '/awgs/%d/enable'%sequencer, 1)
             self.daq.sync()
 

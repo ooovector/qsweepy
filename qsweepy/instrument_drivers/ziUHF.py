@@ -1,6 +1,8 @@
 import numpy as np
 from qsweepy.instrument_drivers.zihdawg import ZIDevice
 
+import time
+
 MAPPINGS = {
     "result_source": {
         0: "Crosstalk",
@@ -16,7 +18,6 @@ MAPPINGS = {
 
 class ziUHF(ZIDevice):
 	def __init__(self, ch_num) -> None:
-		# Used only to get access to class elements appear during __init__() execution
 		super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF')
 		# Set number of different channels for signal demodulation
 		self.ch_num = ch_num
@@ -26,6 +27,7 @@ class ziUHF(ZIDevice):
 		self.output_result = True
 		# Set default result source to be Integration
 		self.result_source = 7
+		self.timeout = 10
 
 	@property
 	def nsamp(self) -> int:
@@ -51,6 +53,7 @@ class ziUHF(ZIDevice):
 
 	@nsegm.setter
 	def nsegm(self, nsegm):
+		self.rep_num = nsegm
 		self.daq.setInt('/' + self.device + '/qas/0/result/length', nsegm)
 
 	@property
@@ -137,21 +140,47 @@ class ziUHF(ZIDevice):
 
 		return dtypes
 
+	def get_status(self):
+		return self.daq.getInt('/' + self.device + '/awgs/0/sequencer/status')
+
 	# Main measurer method TODO write a proper docstring
 	def measure(self) -> dict:
 		result = {}
 
-		self.daq.setInt('/' + self.device + '/qas/0/result/enable', 1)
-		# toggle node value from 0 to 1 for reset
+		# toggle node value from 0 to 1 for result reset
 		self.daq.setInt('/' + self.device + '/qas/0/result/reset', 0)
 		self.daq.setInt('/' + self.device + '/qas/0/result/reset', 1)
+		# and for monitor reset
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/reset', 0)
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/reset', 1)
+		# enable both digitizer regimes
+		self.daq.setInt('/' + self.device + '/qas/0/result/enable', 1)
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/enable', 1)
+
+		# and start the sequencer execution
+		self.run()
+
+		# Sleep to correctly capture initial status TODO mb there is a better way to do it
+		time.sleep(0.5)
+		t1 = time.time()
+
+		while(1):
+			if(self.get_status() == 0):
+				break
+			else:
+				pass
+
+			if(time.time()-t1>self.timeout):
+				print ("Acquisition failed")
+				break
+
+		self.daq.setInt('/' + self.device + '/qas/0/result/enable', 0)
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/enable', 0)
 
 		if self.output_raw:
-			# Enable monitoring if wasn't:
-			self.daq.setInt('/' + self.device + '/qas/0/monitor/enable', 1)
 			# Acquire data from the device:
 			result.update({'Voltage': (self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/0/wave')[0][1][0]['vector'] +
-						1j * self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/0/wave')[0][1][0]['vector'])[:self.nsamp]})
+						1j * self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/1/wave')[0][1][0]['vector'])[:self.nsamp]})
 
 		# Readout result and store it with key depending on result source
 		if self.output_result:
