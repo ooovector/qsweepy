@@ -488,10 +488,11 @@ class ZIDevice():
     # Set markers
     # def set_digital(self, marker, channel):
 
-    # If you whant to use modulation for AWG channel
+    # If you want to use modulation for AWG channel
     # 0 Modulation Off: AWG Output goes directly to Signal Output.
-    # 1 Sine 1: AWG Output is multiplied with Sine Generator signal 0
-    # 2 Sine 2: AWG Output is multiplied with Sine Generator signal 1
+    # 1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0
+    # 2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1
+    # 3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively
     # 5 Advanced: Output modulates corresponding sines from modulation carriers.
 
     def set_modulation(self,  mode, channel):
@@ -506,8 +507,9 @@ class ZIDevice():
     def get_amplitude(self, channel):
         return self.modulation[channel]
         print('0 Modulation Off: AWG Output goes directly to Signal Output.')
-        print('1 Sine 1: AWG Output is multiplied with Sine Generator signal 0')
-        print('2 Sine 2: AWG Output is multiplied with Sine Generator signal 1')
+        print('1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0')
+        print('2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1')
+        print('3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively')
         print('5 Advanced: Output modulates corresponding sines from modulation carriers')
 
     # If you want to use multifrequency modelation, max 4 oscillators
