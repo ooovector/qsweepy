@@ -90,26 +90,57 @@ class ZIDevice():
         # self.marker_delay_I=np.zeros((8,))
 
         self.marker_out = np.zeros((self.num_channels,), dtype=int)
-        self.Marker_Out_Allowed_Values = {
-            '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
-            '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
-            '2': "Trigger output is assigned to AWG Trigger 3, controlled by AWG sequencer commands.",
-            '3': "Trigger output is assigned to AWG Trigger 4, controlled by AWG sequencer commands.",
-            '4': "Output is assigned to Output 1 Marker 1.",
-            '5': "Output is assigned to Output 1 Marker 2.",
-            '6': "Output is assigned to Output 2 Marker 1.",
-            '7': "Output is assigned to Output 2 Marker 2.",
-            '8': "Output is assigned to Trigger Input 1.",
-            '9': "Output is assigned to Trigger Input 2.",
-            '10': "Output is assigned to Trigger Input 3.",
-            '11': "Output is assigned to Trigger Input 4.",
-            '12': "Output is assigned to Trigger Input 5.",
-            '13': "Output is assigned to Trigger Input 6.",
-            '14': "Output is assigned to Trigger Input 7.",
-            '15': "Output is assigned to Trigger Input 8.",
-            '17': "Output is set to high.",
-            '18': "Output is set to low",
-            }
+        if devtype == 'HDAWG':
+            self.Marker_Out_Allowed_Values = {
+                # Select the signal assigned to the marker output
+                '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
+                '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
+                '2': "Trigger output is assigned to AWG Trigger 3, controlled by AWG sequencer commands.",
+                '3': "Trigger output is assigned to AWG Trigger 4, controlled by AWG sequencer commands.",
+                '4': "Output is assigned to Output 1 Marker 1.",
+                '5': "Output is assigned to Output 1 Marker 2.",
+                '6': "Output is assigned to Output 2 Marker 1.",
+                '7': "Output is assigned to Output 2 Marker 2.",
+                '8': "Output is assigned to Trigger Input 1.",
+                '9': "Output is assigned to Trigger Input 2.",
+                '10': "Output is assigned to Trigger Input 3.",
+                '11': "Output is assigned to Trigger Input 4.",
+                '12': "Output is assigned to Trigger Input 5.",
+                '13': "Output is assigned to Trigger Input 6.",
+                '14': "Output is assigned to Trigger Input 7.",
+                '15': "Output is assigned to Trigger Input 8.",
+                '17': "Output is set to high.",
+                '18': "Output is set to low",
+                }
+        elif devtype == 'UHF':
+            self.Marker_Out_Allowed_Values = {
+                # Select the signal assigned to the trigger output
+                '0': 'The output trigger is disabled',
+                '1': 'Oscillator phase of demod 4 (trigger output channel 1) or demod 8 (trigger output channel 2). \
+                Trigger event is output for each zero crossing of the oscillator phase.',
+                '2': 'Scope Trigger',
+                '3': 'Scope/Trigger',
+                '4': 'Scope Armed',
+                '5': 'Scope/Armed',
+                '6': 'Scope Active',
+                '7': 'Scope/Active',
+                '8': 'AWG Marker 1',
+                '9': 'AWG Marker 2',
+                '10': 'AWG Marker 3',
+                '11': 'AWG Marker 4',
+                '20': 'AWG Active',
+                '21': 'AWG Waiting',
+                '22': 'AWG Fetching',
+                '23': 'AWG Playing',
+                '32': 'AWG Trigger 1',
+                '33': 'AWG Trigger 2',
+                '34': 'AWG Trigger 3',
+                '35': 'AWG Trigger 4',
+                '51': 'MDS Clock Out',
+                '52': 'MDS Sync Out',
+                }
+        else:
+            raise ValueError('devtype not recognized')
         for channel in range(self.num_channels):
             self.marker_out[channel] = 0
             self.set_marker_out(channel, 0)
@@ -476,7 +507,7 @@ class ZIDevice():
     # Marker out settings
 
     def set_marker_out(self, source, channel):
-        if source < 19:
+        if str(source) in self.Marker_Out_Allowed_Values.keys():
             exp_setting = [['/%s/triggers/out/%d/source' % (self.device, channel), source]]
             self.daq.set(exp_setting)
             self.daq.sync()
