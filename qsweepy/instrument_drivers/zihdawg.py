@@ -489,28 +489,46 @@ class ZIDevice():
     # def set_digital(self, marker, channel):
 
     # If you want to use modulation for AWG channel
+
+    # for HDAWG:
     # 0 Modulation Off: AWG Output goes directly to Signal Output.
     # 1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0
     # 2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1
     # 3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively
     # 5 Advanced: Output modulates corresponding sines from modulation carriers.
 
+    # for UHFQA:
+    # 0 Plain: AWG Output goes directly to Signal Output
+    # 1 Modulation: AWG Output 1 (2) is multiplied with oscillator signal of demodulator 4(8)
+
     def set_modulation(self,  mode, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
         self.modulation[channel] = mode
-        exp_setting = [['/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, awg_channel, awg_out), mode]]
+        if self.devtype == 'HDAWG':
+            exp_setting = [['/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, awg_channel, awg_out), mode]]
+        elif self.devtype == 'UHF':
+            exp_setting = [['/%s/awgs/%d/outputs/%d/mode' % (self.device, awg_channel, awg_out), mode]]
+        else:
+            exp_setting = None
+            raise ValueError('devtype not recognized')
         self.daq.set(exp_setting)
         self.daq.sync()
 
     def get_amplitude(self, channel):
         return self.modulation[channel]
-        print('0 Modulation Off: AWG Output goes directly to Signal Output.')
-        print('1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0')
-        print('2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1')
-        print('3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively')
-        print('5 Advanced: Output modulates corresponding sines from modulation carriers')
+        if self.devtype == 'HDAWG':
+            print('0 Modulation Off: AWG Output goes directly to Signal Output.')
+            print('1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0')
+            print('2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1')
+            print('3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively')
+            print('5 Advanced: Output modulates corresponding sines from modulation carriers')
+        elif self.devtype == 'UHF':
+            print('0 Plain: AWG Output goes directly to Signal Output.')
+            print('1 Modulation: AWG Output 1 (2) is multiplied with oscillator signal of demodulator 4(8)')
+        else:
+            raise ValueError('devtype not recognized')
 
     # If you want to use multifrequency modelation, max 4 oscillators
     # def set_awg_multifreq(self, channel, osc_num):
