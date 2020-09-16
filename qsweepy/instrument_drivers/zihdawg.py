@@ -328,7 +328,7 @@ class ZIDevice():
             self._waveforms = [None] * 8
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
-        self.wave_lengths = tuple(self.wave_lengths_default+[numpts])
+        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts]))
         for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
@@ -677,7 +677,7 @@ class ZIDevice():
                 if np.sum(np.abs(waveform-self._waveforms[channel]))<1e-5:
                     return
 
-        self._waveforms[channel] = waveform
+        self._waveforms[channel] = waveform_nop
         self.set_sequencer(sequencer)
 
     def set_digital(self, marker, channel):
@@ -692,7 +692,7 @@ class ZIDevice():
                 if np.sum(np.abs(marker-self._markers[channel])) < 1e-5:
                     return
 
-        self._markers[channel] = marker
+        self._markers[channel] = marker_nop
         self.set_sequencer(sequencer)
 
     def set_sequencer(self, sequencer):
