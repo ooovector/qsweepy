@@ -93,11 +93,11 @@ class ziUHF(ZIDevice):
 		self.daq.setInt('/' + self.device + '/qas/0/result/source', result_source)
 
 	@property
-	def trigger_channel0_dir(self):
+	def trigger_channel0_dir(self) -> int:
 		return self.daq.getInt('/' + self.device + '/triggers/out/0/drive')
 
 	@property
-	def trigger_channel1_dir(self):
+	def trigger_channel1_dir(self) -> int:
 		return self.daq.getInt('/' + self.device + '/triggers/out/1/drive')
 
 	@trigger_channel0_dir.setter
@@ -140,7 +140,7 @@ class ziUHF(ZIDevice):
 
 		return dtypes
 
-	def get_status(self):
+	def get_status(self) -> int:
 		return self.daq.getInt('/' + self.device + '/awgs/0/sequencer/status')
 
 	# Main measurer method TODO write a proper docstring
@@ -203,5 +203,29 @@ class ziUHF(ZIDevice):
 		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(channel) + '/real', feature_real)
 		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(channel) + '/imag', feature_imag)
 
+	@property
+	def crosstalk_matrix(self) -> np.ndarray:
+		matrix = np.zeros((10, 10), np.float)
+		for raw in range(10):
+			for column in range(10):
+				matrix[raw][column] = self.daq.getDouble('/' + self.device + '/qas/0/crosstalk/rows/{}/cols/{}'.format(raw, column))
 
+		return matrix
 
+	@crosstalk_matrix.setter
+	def crosstalk_matrix(self, matrix):
+		raws, columns = np.asarray(matrix).shape
+		if raws>10 or columns >10:
+			raise ValueError('Maximum matrix size should be 10x10, while the given is {}x{}'.format(raws, columns))
+		for raw_idx in range(raws):
+			for col_idx in range(columns):
+				self.daq.setDouble('/' + self.device + '/qas/0/crosstalk/rows/{}/cols/{}'.format(raw_idx, col_idx),
+								matrix[raw_idx][col_idx])
+
+	@property
+	def crosstalk_bypass(self) -> bool:
+		return self.daq.getInt('/' + self.device + '/qas/0/crosstalk/bypass') == 1
+
+	@crosstalk_bypass.setter
+	def crosstalk_bypass(self, status):
+		self.daq.setInt('/' + self.device + '/qas/0/crosstalk/bypass', int(status))
