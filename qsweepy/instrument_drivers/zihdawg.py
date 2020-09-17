@@ -91,7 +91,7 @@ class ZIDevice():
 
         self.marker_out = np.zeros((self.num_channels,), dtype=int)
         if devtype == 'HDAWG':
-            self.Marker_Out_Allowed_Values = {
+            self.mk_out_allowed = {
                 # Select the signal assigned to the marker output
                 '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
                 '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
@@ -113,7 +113,7 @@ class ZIDevice():
                 '18': "Output is set to low",
                 }
         elif devtype == 'UHF':
-            self.Marker_Out_Allowed_Values = {
+            self.mk_out_allowed = {
                 # Select the signal assigned to the trigger output
                 '0': 'The output trigger is disabled',
                 '1': 'Oscillator phase of demod 4 (trigger output channel 1) or demod 8 (trigger output channel 2). \
@@ -507,14 +507,14 @@ class ZIDevice():
     # Marker out settings
 
     def set_marker_out(self, source, channel):
-        if str(source) in self.Marker_Out_Allowed_Values.keys():
+        if str(source) in self.mk_out_allowed.keys():
             exp_setting = [['/%s/triggers/out/%d/source' % (self.device, channel), source]]
             self.daq.set(exp_setting)
             self.daq.sync()
-            print(self.Marker_Out_Allowed_Values.get(str(source)))
+            print(self.mk_out_allowed.get(str(source)))
         else:
             print('source=', source, ' is not allowed')
-            print(self.Marker_Out_Allowed_Values.items())
+            print(self.mk_out_allowed.items())
 
     # Set markers
     # def set_digital(self, marker, channel):
@@ -547,8 +547,7 @@ class ZIDevice():
         self.daq.set(exp_setting)
         self.daq.sync()
 
-    def get_amplitude(self, channel):
-        return self.modulation[channel]
+    def get_modulation(self, channel):
         if self.devtype == 'HDAWG':
             print('0 Modulation Off: AWG Output goes directly to Signal Output.')
             print('1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0')
@@ -558,6 +557,12 @@ class ZIDevice():
         elif self.devtype == 'UHF':
             print('0 Plain: AWG Output goes directly to Signal Output.')
             print('1 Modulation: AWG Output 1 (2) is multiplied with oscillator signal of demodulator 4(8)')
+        else:
+            raise ValueError('devtype not recognized')
+        if self.devtype == 'HDAWG':
+            return self.daq.getInt('/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, channel // 2, channel % 2))
+        elif self.devtype == 'UHF':
+            return self.daq.getInt('/%s/awgs/0/outputs/%d/mode' % (self.device, channel % 2))
         else:
             raise ValueError('devtype not recognized')
 
