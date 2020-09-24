@@ -1,4 +1,6 @@
 import numpy as np
+import textwrap
+
 from qsweepy.instrument_drivers.zihdawg import ZIDevice
 
 import time
@@ -29,6 +31,18 @@ class ziUHF(ZIDevice):
 		self.result_source = 7
 		self.timeout = 10
 
+	def set_adc_nop(self, nop):
+		self.nsamp = nop
+
+	def get_adc_nop(self):
+		return self.nsamp
+
+	def set_adc_nums(self, nums):
+		self.nsegm = nums
+
+	def get_adc_nums(self):
+		return self.nsegm
+
 	@property
 	def nsamp(self) -> int:
 		'''
@@ -53,8 +67,8 @@ class ziUHF(ZIDevice):
 
 	@nsegm.setter
 	def nsegm(self, nsegm):
-		self.rep_num = nsegm
 		self.daq.setInt('/' + self.device + '/qas/0/result/length', nsegm)
+		self.daq.setInt('/' + self.device + '/awgs/0/userregs/2', nsegm)
 
 	@property
 	def averages(self) -> int:
@@ -171,7 +185,7 @@ class ziUHF(ZIDevice):
 				pass
 
 			if(time.time()-t1>self.timeout):
-				print ("Acquisition failed")
+				print ("Acquisition failed with status {}".format(self.get_status()))
 				break
 
 		self.daq.setInt('/' + self.device + '/qas/0/result/enable', 0)
@@ -229,3 +243,45 @@ class ziUHF(ZIDevice):
 	@crosstalk_bypass.setter
 	def crosstalk_bypass(self, status):
 		self.daq.setInt('/' + self.device + '/qas/0/crosstalk/bypass', int(status))
+
+	# UHFQA has it's own seqeunce 
+	def set_cur_prog(self, parameters, sequencer_idx):
+		definition_fragments = []
+		play_fragments = []
+
+		for wave_length_id, wave_length in enumerate(self.wave_lengths):
+			definition_fragments.append(textwrap.dedent('''
+			wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
+			wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
+			wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
+			wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
+			'''.format(wave_length=wave_length)))
+			play_fragments.append(textwrap.dedent('''
+			if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+				repeat(getUserReg({rep_num_reg})) {{
+					setTrigger(1);
+					waitDigTrigger(2, 1);
+					setTrigger(AWG_INTEGRATION_ARM);
+					wait(getUserReg({pre_delay_reg}));
+					playWave(w_I_{wave_length},w_Q_{wave_length});
+					setTrigger(AWG_MONITOR_TRIGGER + AWG_INTEGRATION_ARM + AWG_INTEGRATION_TRIGGER);
+					setTrigger(AWG_INTEGRATION_ARM);
+					waitWave();
+					wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+				}}
+			}}
+			''').format(wave_length=wave_length,
+						wave_length_supersamp=wave_length // 8,
+						rep_num_reg=3,
+						**parameters))
+		zero_length_program = textwrap.dedent('''
+		if (getUserReg({wave_length_reg}) == 0) {{
+			repeat(getUserReg({rep_num_reg})) {{
+				setTrigger(1);
+				waitDigTrigger(2, 1);
+				setTrigger(AWG_INTEGRATION_ARM);
+				wait({nsupersamp});
+			}}
+		}}
+		''').format(rep_num_reg=3, **parameters)
+		self.current_programs[0] = ''.join(definition_fragments + play_fragments) + zero_length_program
