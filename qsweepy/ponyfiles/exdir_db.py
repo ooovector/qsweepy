@@ -82,12 +82,18 @@ class Exdir_db:
             pass
 
     def replace_file_prefixes(self, filename: str):
-        try:
-            assert filename[:len(self.old_prefix)] == self.old_prefix
-        except:
-            print ('Expected prefix: ', self.old_prefix, ' got prefix: ', filename[:len(self.old_prefix)])
-            raise
-        return self.new_prefix + filename[len(self.old_prefix):]
+        if (filename[:len(new_prefix)] == new_prefix):
+            edited_filename = filename
+        else:
+            edited_filename = new_prefix + filename[len(old_prefix):]
+        return edited_filename
+
+    # try:
+    #     assert filename[:len(self.old_prefix)] == self.old_prefix
+    # except:
+    #     print ('Expected prefix: ', self.old_prefix, ' got prefix: ', filename[:len(self.old_prefix)])
+    #     raise
+    # return self.new_prefix + filename[len(self.old_prefix):]
 
     def select_measurement(self, measurement_type: str, metadata: Mapping[str, str] = None,
                            references_this: Mapping[str, int] = None, references_that: Mapping[str, int] = None,
