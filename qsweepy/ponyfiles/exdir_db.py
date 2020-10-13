@@ -82,10 +82,10 @@ class Exdir_db:
             pass
 
     def replace_file_prefixes(self, filename: str):
-        if (filename[:len(new_prefix)] == new_prefix):
+        if (filename[:len(self.new_prefix)] == self.new_prefix):
             edited_filename = filename
         else:
-            edited_filename = new_prefix + filename[len(old_prefix):]
+            edited_filename = self.new_prefix + filename[len(self.old_prefix):]
         return edited_filename
 
     # try:
