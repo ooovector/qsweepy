@@ -241,8 +241,8 @@ class ZIDevice():
         self._waveforms[sequencer * 2 + 1] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 0] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
-        self._markers[sequencer * 2 + 0][0] = 1
-        self._markers[sequencer * 2 + 1][0] = 1
+        self._markers[sequencer * 2 + 0][0:10] = 1
+        self._markers[sequencer * 2 + 1][0:10] = 1
 
         if (sequencer > (self.num_seq - 1)):
             print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer, self.awg_config, (self.num_seq - 1)))
@@ -746,7 +746,9 @@ class ZIDevice():
             self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 1)
             self.daq.sync()
 
-            print ('first_point: ', first_point,
+            print (
+               'device:', self.device,
+               'first_point: ', first_point,
                'last_point: ', last_point,
                'waveformI length', waveformI.shape,
                'waveformQ length', waveformQ.shape,
@@ -762,6 +764,7 @@ class ZIDevice():
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
                 sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
                         int(self.Predelay[sequencer]//8))
+
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
@@ -769,8 +772,6 @@ class ZIDevice():
 
     def get_waveform(self, channel):
         return self._waveforms[channel]
-
-
 
     # self.set_output(channel=channel1, output=1)
     # self.set_output(channel=channel2, output=1)
