@@ -339,7 +339,6 @@ class QubitDevice:
                 self.awg_channels[carrier_name] = awg_channel.awg_channel_carrier(control,frequency = None)
             #pass
 
-
         self.awg_channels.update(extra_channels)
         self.pg = pulses.pulses(self.awg_channels)
         self.update_pulsed_frequencies()
@@ -376,21 +375,31 @@ class QubitDevice:
                 d.do_calibration(d.sa)
 
     def setup_modem_readout(self, hardware):
-        hardware.adc.set_nums(int(self.get_sample_global('delay_calibration_nums')))
-        hardware.adc.set_nop(int(self.get_sample_global('delay_calibration_nop')))
+        hardware.adc.set_adc_nums(int(self.get_sample_global('delay_calibration_nums')))
+        hardware.adc.set_adc_nop(int(self.get_sample_global('delay_calibration_nop')))
 
         self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
 
-        self.modem = modem_readout.modem_readout(self.pg, hardware.adc, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
+        self.modem = modem_readout.modem_readout(self.pg, hardware, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
         self.modem.sequence_length = int(self.get_sample_global('delay_calibration_sequence_length'))
         self.modem.readout_channels = self.readout_channels
-        self.modem.adc_device = hardware.adc_device
+
+        self.modem.adc_device = hardware.adc
+
+        if hasattr(self.modem.adc_device, 'sync_mode'):
+            if not self.modem.adc_device.sync_mode:
+                print('ADC device is turned to sync mode')
+                self.modem.adc_device.sync_mode = True
+                self.modem.adc_device.set_cur_prog(self.modem.adc_device.initial_param_values, 0)
+                self.modem.adc_device.send_cur_prog(0)
+            else:
+                pass
 
         self.modem_delay_calibration_channel = [channel_name for channel_name in self.modem.readout_channels.keys()][0]
         self.ro_trg = hardware.ro_trg
 
         readout_trigger_delay = self.ro_trg.get_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
-        print ('Got delay calibration:', readout_trigger_delay)
+        print('Got delay calibration:', readout_trigger_delay)
         try:
             self.ro_trg.validate_modem_delay_calibration(self.modem, self.modem_delay_calibration_channel)
         except Exception as e:
@@ -407,14 +416,14 @@ class QubitDevice:
         feature_id = 0
 
         self.hardware.set_pulsed_mode()
-        adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-        adc_reducer.output_raw = raw
-        adc_reducer.last_cov = False
-        adc_reducer.avg_cov = True
-        adc_reducer.resultnumber = False
+        #adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+        #adc_reducer.output_raw = raw
+        #adc_reducer.last_cov = False
+        #adc_reducer.avg_cov = True
+        #adc_reducer.resultnumber = False
 
-        adc_reducer.avg_cov_mode = 'iq'
-
+        #adc_reducer.avg_cov_mode = 'iq'
+        adc_reducer = self.hardware.adc
         qubit_measurement_dict = {}
 
         if type(qubits) is str:
@@ -426,7 +435,7 @@ class QubitDevice:
             calibration = self.modem.iq_readout_calibrations[readout_channel_name]
 
             print(qubit_id, len(calibration['feature']))
-            qubit_measurement_dict[qubit_id] = 'avg_cov'+str(feature_id)
+            qubit_measurement_dict[qubit_id] = adc_reducer.result_source + str(feature_id)
 
             adc_reducer.set_feature_iq(feature_id=feature_id, feature=calibration['feature'])
             feature_id += 1
