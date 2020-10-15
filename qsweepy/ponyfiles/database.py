@@ -129,13 +129,14 @@ class MyDatabase:
 
         d.comment = state.comment
         d.measurement_type = state.measurement_type
-        d.sample_name = state.sample_name
+        # d.sample_name = state.sample_name
         d.type_revision = state.type_revision
         d.incomplete = state.total_sweeps != state.done_sweeps
         d.measurement_time = state.measurement_time
         d.start = state.start
         d.stop = state.stop
         d.filename = state.filename
+        d.invalid = state.invalid
 
         for k, v in state.metadata.items():
             if k not in d.metadata.name:

@@ -115,7 +115,7 @@ class MeasurementState:
         self.references = {}
         self.measurement_type = 'anonymous_measurement'
         self.type_revision = '0'
-        # TODO: invalidation synchronization with db!!!
+        self.invalid = False
         self.metadata = {}
         self.total_sweeps = 0
         self.request_stop_acq = False

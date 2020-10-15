@@ -463,3 +463,24 @@ class QubitDevice:
                 adc_reducer.disable_feature(feature_id=feature_id)
                 feature_id += 1
         return adc_reducer
+
+    def invalid_calib(self, invalid: bool, calib_type: str, awg_ch: str):
+        """
+        Change validation of calibration type on channel from self.awg_channels
+
+        invalid: True or False
+        calib_type: 'iq_rf_calibration' or 'iq_dc_calibration'
+        awg_ch: 'iq_ex1_q1', 'iq_ro_q1', 'iq_ex2_q2', 'iq_ex2_q2_12', 'iq_ro_q2', 'iq_ex3_q3', 'iq_ex3_q3_12', 'iq_ro_q3', etc
+
+        """
+        if calib_type == 'iq_rf_calibration':
+            calib = self.exdir_db.select_measurement(measurement_type=calib_type,
+                                                     metadata=self.awg_channels[awg_ch].parent.rf_calibration_identifier(self.awg_channels[awg_ch]),\
+                                                     ignore_invalidation = True)
+        else:
+            calib = self.exdir_db.select_measurement(measurement_type=calib_type,
+                                                     metadata=self.awg_channels[awg_ch].parent.dc_calibration_identifier(),\
+                                                     ignore_invalidation = True)
+        calib.invalid = invalid
+        self.exdir_db.db.update_in_database(calib)
+        return calib.id
