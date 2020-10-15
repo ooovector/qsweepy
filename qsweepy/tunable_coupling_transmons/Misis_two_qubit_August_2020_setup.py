@@ -3,11 +3,12 @@ import qsweepy
 from qsweepy.libraries.awg_channel import awg_channel
 import numpy as np
 
-device_settings = {'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
+device_settings = {#'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
+                    'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
                    #'lo1_address': 'TCPIP0::10.20.61.59::inst0::INSTR',
                    #'lo1_timeout': 5000,
-                   'rf_switch_address': '10.20.61.224',
-                   'use_rf_switch': False,
+                   'rf_switch_address': '10.20.61.91',
+                   'use_rf_switch': True,
                    'pxi_chassis_id': 0,
                    'hdawg_address': 'hdawg-dev8108',
                    'uhfqa_address': 'uhf-dev2491',
@@ -17,7 +18,7 @@ device_settings = {'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
                    'adc_trig_width': 2,  # 80 ns trigger length
                    }
 
-cw_settings = {'mixer_thru':0.3}
+cw_settings = {'mixer_thru':0.5}
 
 pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
@@ -36,8 +37,8 @@ pulsed_settings = {'lo1_power': 18,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 1.2,
                    'hdawg_ch7_amplitude': 1.2,
-                   'uhfqa_ch0_amplitude': 0.8,
-                   'uhfqa_ch1_amplitude': 0.8,
+                   'uhfqa_ch0_amplitude': 0.7,
+                   'uhfqa_ch1_amplitude': 0.7,
                    'lo1_freq': 3.70e9,
                    'pna_freq': 6.06e9,
                    #'calibrate_delay_nop': 65536,
@@ -47,6 +48,7 @@ pulsed_settings = {'lo1_power': 18,
                    'modem_dc_calibration_amplitude': 1.0,
                    'adc_nop': 1024,
                    'adc_nums': 10000,  ## Do we need control over this? Probably, but not now... WUT THE FUCK MAN
+                   'adc_default_delay': 550,
                    }
 
 
@@ -72,7 +74,7 @@ class hardware_setup():
 
     def open_devices(self):
         # RF switch for making sure we know what sample we are measuring
-        self.pna = instruments.AgilentE5071C('pna', address=self.device_settings['vna_address'])
+        self.pna = instruments.RS_ZVB20('pna', address=self.device_settings['vna_address'])
         #self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
@@ -84,12 +86,13 @@ class hardware_setup():
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
         self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG')
-        self.uhfqa = instruments.ZIDevice(self.device_settings['uhfqa_address'], devtype='UHF')
+        self.uhfqa = instruments.ziUHF(ch_num=3)
+        #self.uhfqa = instruments.ZIDevice(self.device_settings['uhfqa_address'], devtype='UHF')
         self.coil_device = self.hdawg
         self.coil = awg_channel(self.hdawg, 6)  # coil control
-        '''
-        self.sa = Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
 
+        self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
+        '''
         
 
         self.adc_device = TSW14J56_evm()
@@ -103,6 +106,7 @@ class hardware_setup():
         self.adc_device.set_trig_src_period(self.device_settings['adc_trig_rep_period'])  # 10 kHz period rate
         self.adc_device.set_trig_src_width(self.device_settings['adc_trig_width'])  # 80 ns trigger length
         '''
+        self.adc = self.uhfqa
 
         self.hardware_state = 'undefined'
 
@@ -179,11 +183,18 @@ class hardware_setup():
 
         self.hdawg.set_trigger_impedance_1e3()
         self.hdawg.set_dig_trig1_source([0, 0, 0, 0])
-        self.hdawg.set_dig_trig1_slope([1, 1, 1, 1])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
+        self.hdawg.set_dig_trig1_slope([0, 0, 0, 0])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
                                                       # 2 - Falling edge trigger, 3 - Rising or falling edge trigger
-        self.hdawg.set_dig_trig1_source([0, 0, 0, 0])
-        self.hdawg.set_dig_trig2_slope([1, 1, 1, 1])
+        self.hdawg.set_dig_trig2_source([0, 0, 0, 0])
+        self.hdawg.set_dig_trig2_slope([0, 0, 0, 0])
         self.hdawg.set_trig_level(0.6)
+
+        self.uhfqa.trigger_channel0_dir = 1
+        self.uhfqa.trigger_channel1_dir = 0
+
+        self.uhfqa.set_dig_trig1_source([4])
+        self.uhfqa.set_dig_trig2_source([1])
+        self.uhfqa.default_delay = pulsed_settings['adc_default_delay']
 
         for sequencer in range(4):
             self.hdawg.send_cur_prog(sequencer=sequencer)
@@ -191,8 +202,8 @@ class hardware_setup():
             self.hdawg.set_marker_out(channel=np.int(2 * sequencer + 1),
                                       source=7)  # set marker 2 to awg mark out 2 for sequencer
         self.uhfqa.send_cur_prog(sequencer=0)
-        self.uhfqa.set_marker_out(channel=0, source=4)  # set marker 1 to awg mark out 1 for sequencer
-        self.uhfqa.set_marker_out(channel=1, source=7)  # set marker 2 to awg mark out 2 for sequencer
+        self.uhfqa.set_marker_out(channel=0, source=32)  # set marker 1 to awg mark out 1 for sequencer
+        self.uhfqa.set_marker_out(channel=1, source=33)  # set marker 2 to awg mark out 2 for sequencer
         for channel in range(8):
             self.hdawg.set_amplitude(channel=channel, amplitude=self.pulsed_settings['hdawg_ch%d_amplitude'%channel])
             self.hdawg.set_offset(channel=channel, offset=0 * 1.0)
@@ -202,17 +213,19 @@ class hardware_setup():
         self.hdawg.run()
 
         for channel in range(2):
-            self.uhfqa.set_amplitude(channel=channel, amplitude=self.pulsed_settings['hdawg_ch%d_amplitude'%channel])
+            self.uhfqa.set_amplitude(channel=channel, amplitude=self.pulsed_settings['uhfqa_ch%d_amplitude'%channel])
             self.uhfqa.set_offset(channel=channel, offset=0 * 1.0)
-            self.uhfqa.set_digital(channel=channel, marker=[0]*(global_num_points_ro))
+            self.uhfqa.set_digital(channel=channel, marker=[0]*(global_num_points))
             self.uhfqa.daq.set([['/{}/sigouts/{}/range'.format(self.uhfqa.device, channel), 1]])
         self.uhfqa.set_all_outs()
         self.uhfqa.run()
 
-        self.ro_trg = qsweepy.libraries.awg_digital.awg_digital(self.hdawg, 1, delay_tolerance=20e-9)  # triggers readout card
+        self.ro_trg = qsweepy.libraries.awg_digital.awg_digital(self.hdawg, 0, delay_tolerance=20e-9)  # triggers readout card
+        self.ro_trg.adc = self.adc
+        self.ro_trg.mode = 'internal_delay'
         # ro_trg.mode = 'set_delay' #M3202A
         # ro_trg.delay_setter = lambda x: adc.set_trigger_delay(int(x*adc.get_clock()/iq_ex.get_clock()-readout_trigger_delay)) #M3202A
-        self.ro_trg.mode = 'waveform'  # AWG5014C
+        # self.ro_trg.mode = 'waveform'  # AWG5014C
 
 
         self.hardware_state = 'pulsed_mode'
@@ -227,7 +240,7 @@ class hardware_setup():
                            'iq_ex2': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
                            'iq_ex3': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.lo1, exdir_db=exdir_db),
                            # M3202A
-                           'iq_ro':  qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.pna, exdir_db=exdir_db)
+                           'iq_ro':  qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.uhfqa, self.uhfqa, 0, 1, self.pna, exdir_db=exdir_db)
                            }  # M3202A
         # iq_pa = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
         self.iq_devices['iq_ex1'].name = 'ex1'
@@ -243,6 +256,7 @@ class hardware_setup():
         self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.set_switch_if_not_set(4, channel=1)
 
         self.iq_devices['iq_ex1'].sa = self.sa
+        self.iq_devices['iq_ex2'].sa = self.sa
         self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
