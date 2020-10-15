@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 import textwrap
 
 from qsweepy.instrument_drivers.zihdawg import ZIDevice
@@ -20,6 +21,7 @@ MAPPINGS = {
 
 class ziUHF(ZIDevice):
 	def __init__(self, ch_num) -> None:
+		self.sync_mode = False  # True only during mixers calibration
 		super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF')
 		# Set number of different channels for signal demodulation
 		self.ch_num = ch_num
@@ -30,6 +32,8 @@ class ziUHF(ZIDevice):
 		# Set default result source to be Integration
 		self.result_source = 7
 		self.timeout = 10
+		self.internal_average = True
+		self.default_delay_reg = 9
 
 	def set_adc_nop(self, nop):
 		self.nsamp = nop
@@ -42,6 +46,9 @@ class ziUHF(ZIDevice):
 
 	def get_adc_nums(self):
 		return self.nsegm
+
+	def get_clock(self):
+		return self.daq.getDouble('/' + self.device + '/clockbase')
 
 	@property
 	def nsamp(self) -> int:
@@ -67,19 +74,14 @@ class ziUHF(ZIDevice):
 
 	@nsegm.setter
 	def nsegm(self, nsegm):
-		self.daq.setInt('/' + self.device + '/qas/0/result/length', nsegm)
+		if nsegm > int(2**15):
+			logging.warning('Number of segments is higher then the maximum possible number of trace averages')
+		# First tell QA to integrate nsegm traces
+		self.daq.setInt('/' + self.device + '/qas/0/result/averages', nsegm)
+		# Then make monitor average raw trace nsegm times
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/averages', nsegm)
+		# Set the repetition user register to nsegm
 		self.daq.setInt('/' + self.device + '/awgs/0/userregs/2', nsegm)
-
-	@property
-	def averages(self) -> int:
-		'''
-		Amount of each repetition averages
-		'''
-		return self.daq.getInt('/' + self.device + '/qas/0/result/averages')
-
-	@averages.setter
-	def averages(self, averages):
-		self.daq.setInt('/' + self.device + '/qas/0/result/averages', averages)
 
 	@property
 	def trigger_result(self) -> int:
@@ -122,10 +124,31 @@ class ziUHF(ZIDevice):
 	def trigger_channel1_dir(self, dir):
 		self.daq.setInt('/' + self.device + '/triggers/out/1/drive', dir)
 
+	@property
+	def delay(self):
+		delay_samp = self.daq.getInt('/' + self.device + '/qas/0/delay')
+		return delay_samp / self.get_clock()
+
+	@delay.setter
+	def delay(self, delay):
+		delay_samp = delay * self.get_clock()
+		if delay_samp > 1020 or delay_samp < 0:
+			logging.warning('Delay can not be bigger than {} or negative'.format(1020 / self.get_clock()))
+		self.daq.setInt('/' + self.device + '/qas/0/delay', int(np.abs(delay_samp)))
+
+	@property
+	def default_delay(self):
+		# Since the digitizing window length is limited define an additional delay, which will be user in the sequencer
+		return self.daq.getInt('/' + self.device + '/awgs/0/userregs/{}'.format(self.default_delay_reg))
+
+	@default_delay.setter
+	def default_delay(self, delay):
+		self.daq.setInt('/' + self.device + '/awgs/0/userregs/{}'.format(self.default_delay_reg), delay)
+
 	def get_points(self) -> dict:
 		points = {}
 		if self.output_raw:
-			points.update({'Voltage': [('Sample', np.arange(self.nsegm), ''),
+			points.update({'Voltage': [('Sample', np.arange(self.nsegm), ''),  # UHFQA stores only the averaged trace
 						('Time', np.arange(self.nsamp)/self.get_clock(), 's')]})
 		if self.output_result:
 			points.update({self.result_source + str(channel): [] for channel in range(self.ch_num)})
@@ -141,15 +164,15 @@ class ziUHF(ZIDevice):
 
 		return opts
 
-	def get_type(self) -> dict:
+	def get_dtype(self) -> dict:
 		dtypes = {}
 		if self.output_raw:
 			dtypes.update({'Voltage': complex})
 		if self.output_result:
 			# Not sure if it's right to do it this way
-			dtypes.update({self.result_source + str(channel): type(
-				self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector']
-			)
+			# it isn't
+			dtypes.update({self.result_source + str(channel):
+				self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector'].dtype
 			for channel in range(self.ch_num)})
 
 		return dtypes
@@ -159,6 +182,9 @@ class ziUHF(ZIDevice):
 
 	# Main measurer method TODO write a proper docstring
 	def measure(self) -> dict:
+		# Just in case
+		self.stop()
+
 		result = {}
 
 		# toggle node value from 0 to 1 for result reset
@@ -204,7 +230,7 @@ class ziUHF(ZIDevice):
 
 		return result
 
-	def set_feature_iq(self, channel, feature_real, feature_imag) -> None:
+	def set_feature_iq(self, feature_id, feature) -> None:
 		'''
 		Use API to upload the demodulation weights
 		:param channel: number of channel used to demodulate
@@ -213,9 +239,10 @@ class ziUHF(ZIDevice):
 		# Had to separate due to strange ZI setVector method issue
 		# Should be defined separately
 		'''
-
-		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(channel) + '/real', feature_real)
-		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(channel) + '/imag', feature_imag)
+		feature_real = np.ascontiguousarray(np.real(feature))
+		feature_imag = np.ascontiguousarray(np.imag(feature))
+		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/real', feature_real)
+		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/imag', feature_imag)
 
 	@property
 	def crosstalk_matrix(self) -> np.ndarray:
@@ -244,10 +271,11 @@ class ziUHF(ZIDevice):
 	def crosstalk_bypass(self, status):
 		self.daq.setInt('/' + self.device + '/qas/0/crosstalk/bypass', int(status))
 
-	# UHFQA has it's own seqeunce 
+	# UHFQA has it's own seqeunce
 	def set_cur_prog(self, parameters, sequencer_idx):
 		definition_fragments = []
-		play_fragments = []
+		play_fragments_sync = []
+		play_fragments_async = []
 
 		for wave_length_id, wave_length in enumerate(self.wave_lengths):
 			definition_fragments.append(textwrap.dedent('''
@@ -256,14 +284,15 @@ class ziUHF(ZIDevice):
 			wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
 			wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
 			'''.format(wave_length=wave_length)))
-			play_fragments.append(textwrap.dedent('''
+			play_fragments_sync.append(textwrap.dedent('''
 			if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-				repeat(getUserReg({rep_num_reg})) {{
+				repeat(getUserReg(2)) {{
 					setTrigger(1);
 					waitDigTrigger(2, 1);
 					setTrigger(AWG_INTEGRATION_ARM);
 					wait(getUserReg({pre_delay_reg}));
 					playWave(w_I_{wave_length},w_Q_{wave_length});
+					wait(getUserReg(9));
 					setTrigger(AWG_MONITOR_TRIGGER + AWG_INTEGRATION_ARM + AWG_INTEGRATION_TRIGGER);
 					setTrigger(AWG_INTEGRATION_ARM);
 					waitWave();
@@ -272,16 +301,34 @@ class ziUHF(ZIDevice):
 			}}
 			''').format(wave_length=wave_length,
 						wave_length_supersamp=wave_length // 8,
-						rep_num_reg=3,
 						**parameters))
+
+			play_fragments_async.append(textwrap.dedent('''
+			if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+				while(true) {{
+					setTrigger(1);
+					wait(getUserReg({pre_delay_reg}));
+					playWave(w_I_{wave_length},w_Q_{wave_length});
+					waitWave();
+					wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+				}}
+			}}
+			''').format(wave_length=wave_length,
+						wave_length_supersamp=wave_length // 8,
+						**parameters))
+
 		zero_length_program = textwrap.dedent('''
 		if (getUserReg({wave_length_reg}) == 0) {{
-			repeat(getUserReg({rep_num_reg})) {{
+			 {repetition_fragment} {{
 				setTrigger(1);
-				waitDigTrigger(2, 1);
+				{trigger_fragment}
 				setTrigger(AWG_INTEGRATION_ARM);
 				wait({nsupersamp});
+				waitWave();
 			}}
 		}}
-		''').format(rep_num_reg=3, **parameters)
+		''').format(repetition_fragment='repeat(getUserReg(2))' if self.sync_mode else 'while(true)',
+					trigger_fragment='waitDigTrigger(2,1);' if self.sync_mode else '',
+					**parameters)
+		play_fragments = play_fragments_sync if self.sync_mode else play_fragments_async
 		self.current_programs[0] = ''.join(definition_fragments + play_fragments) + zero_length_program
