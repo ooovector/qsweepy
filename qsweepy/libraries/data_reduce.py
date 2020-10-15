@@ -142,8 +142,12 @@ def std_reducer_noavg(source, src_meas, axis, noavg_axis):
 		return new_axes
 	def filter_func(x):
 		avg_dim = [len(a[1]) for a in source.get_points()[src_meas].copy()]
-		avg_dim[noavg_axis] = 1
-		return np.std(x[src_meas]-np.reshape(np.mean(x[src_meas], axis=noavg_axis), avg_dim), axis=axis)
+		if hasattr(source, 'internal_average'):
+			if source.internal_average:
+				return np.zeros(avg_dim[1])
+		else:
+			avg_dim[noavg_axis] = 1
+			return np.std(x[src_meas]-np.reshape(np.mean(x[src_meas], axis=noavg_axis), avg_dim), axis=axis)
 	filter = {'filter': filter_func,
 			  'get_points': get_points,
 			  'get_dtype': (lambda : float),
@@ -155,12 +159,19 @@ def mean_reducer_noavg(source, src_meas, axis):
 		new_axes = source.get_points()[src_meas].copy()
 		del new_axes [axis]
 		return new_axes
-	filter = {'filter': lambda x:np.mean(x[src_meas], axis=axis)-np.mean(x[src_meas]),
+	def filter_func(x):
+		avg_dim = [len(a[1]) for a in source.get_points()[src_meas].copy()]
+		if hasattr(source, 'internal_average'):
+			if source.internal_average:
+				return x[src_meas] - np.mean(x[src_meas], axis=0)
+		else:
+			return np.mean(x[src_meas], axis=axis) - np.mean(x[src_meas])
+	filter = {'filter': filter_func,
 			  'get_points': get_points,
 			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
-	
+
 def mean_reducer_freq(source, src_meas, axis_mean, freq):
 	axis_dm = None
 	for axis_id, axis in enumerate(source.get_points()[src_meas]):
