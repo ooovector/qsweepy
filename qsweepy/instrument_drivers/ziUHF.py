@@ -47,6 +47,12 @@ class ziUHF(ZIDevice):
 	def get_adc_nums(self):
 		return self.nsegm
 
+	def get_nums(self):
+		return self.get_adc_nums()
+
+	def set_nums(self, nums):
+		self.set_adc_nums(nums)
+
 	def get_clock(self):
 		return self.daq.getDouble('/' + self.device + '/clockbase')
 
@@ -135,7 +141,7 @@ class ziUHF(ZIDevice):
 		if delay_samp > 1020 or delay_samp < 0:
 			logging.warning('Delay can not be bigger than {} or negative'.format(1020 / self.get_clock()))
 		self.daq.setInt('/' + self.device + '/qas/0/delay', int(np.abs(delay_samp)))
-
+	'''
 	@property
 	def default_delay(self):
 		# Since the digitizing window length is limited define an additional delay, which will be user in the sequencer
@@ -144,7 +150,7 @@ class ziUHF(ZIDevice):
 	@default_delay.setter
 	def default_delay(self, delay):
 		self.daq.setInt('/' + self.device + '/awgs/0/userregs/{}'.format(self.default_delay_reg), delay)
-
+	'''
 	def get_points(self) -> dict:
 		points = {}
 		if self.output_raw:
@@ -239,6 +245,7 @@ class ziUHF(ZIDevice):
 		# Had to separate due to strange ZI setVector method issue
 		# Should be defined separately
 		'''
+		feature = feature[:self.nsamp]/np.max(np.abs(feature[:self.nsamp]))
 		feature_real = np.ascontiguousarray(np.real(feature))
 		feature_imag = np.ascontiguousarray(np.imag(feature))
 		self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/real', feature_real)
@@ -274,61 +281,62 @@ class ziUHF(ZIDevice):
 	# UHFQA has it's own seqeunce
 	def set_cur_prog(self, parameters, sequencer_idx):
 		definition_fragments = []
-		play_fragments_sync = []
-		play_fragments_async = []
+		play_fragments = []
+
+		if self.sync_mode:
+			repetition_fragment = 'repeat(getUserReg(2))'
+			#pre_wave_fragment = '''waitDigTrigger(2, 1);
+			pre_wave_fragment = '''wait(2);
+			setTrigger(AWG_INTEGRATION_ARM);
+			'''
+			post_wave_fragment = '''wait(getUserReg(9));
+			setTrigger(AWG_MONITOR_TRIGGER + AWG_INTEGRATION_ARM + AWG_INTEGRATION_TRIGGER);			
+			setTrigger(AWG_INTEGRATION_ARM);'''
+		else:
+			repetition_fragment = 'while(true)'
+			pre_wave_fragment = ''
+			post_wave_fragment = ''
 
 		for wave_length_id, wave_length in enumerate(self.wave_lengths):
-			definition_fragments.append(textwrap.dedent('''
-			wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
-			wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
-			wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
-			wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
-			'''.format(wave_length=wave_length)))
-			play_fragments_sync.append(textwrap.dedent('''
-			if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-				repeat(getUserReg(2)) {{
-					setTrigger(1);
-					waitDigTrigger(2, 1);
-					setTrigger(AWG_INTEGRATION_ARM);
-					wait(getUserReg({pre_delay_reg}));
-					playWave(w_I_{wave_length},w_Q_{wave_length});
-					wait(getUserReg(9));
-					setTrigger(AWG_MONITOR_TRIGGER + AWG_INTEGRATION_ARM + AWG_INTEGRATION_TRIGGER);
-					setTrigger(AWG_INTEGRATION_ARM);
-					waitWave();
-					wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+			if wave_length != 0:
+				definition_fragments.append(textwrap.dedent('''
+				wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
+				wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
+				wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
+				wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
+				'''.format(wave_length=wave_length)))
+				play_fragments.append(textwrap.dedent('''
+				if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+					{repetition_fragment} {{
+						setTrigger(1);
+						{pre_wave_fragment}
+						wait(getUserReg({pre_delay_reg}));
+						playWave(w_I_{wave_length},w_Q_{wave_length});
+						{post_wave_fragment}
+						waitWave();
+						wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+					}}
 				}}
-			}}
-			''').format(wave_length=wave_length,
-						wave_length_supersamp=wave_length // 8,
-						**parameters))
-
-			play_fragments_async.append(textwrap.dedent('''
-			if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-				while(true) {{
-					setTrigger(1);
-					wait(getUserReg({pre_delay_reg}));
-					playWave(w_I_{wave_length},w_Q_{wave_length});
-					waitWave();
-					wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+				''').format(repetition_fragment=repetition_fragment,
+							pre_wave_fragment=pre_wave_fragment,
+							post_wave_fragment=post_wave_fragment,
+							wave_length=wave_length,
+							wave_length_supersamp=wave_length // 8,
+							**parameters))
+			else:
+				f = textwrap.dedent('''
+				if (getUserReg({wave_length_reg}) == 0) {{
+					{repetition_fragment} {{
+						setTrigger(1);
+						{pre_wave_fragment}
+						{post_wave_fragment}
+						wait({nsupersamp});
+						waitWave();
+					}}
 				}}
-			}}
-			''').format(wave_length=wave_length,
-						wave_length_supersamp=wave_length // 8,
-						**parameters))
-
-		zero_length_program = textwrap.dedent('''
-		if (getUserReg({wave_length_reg}) == 0) {{
-			 {repetition_fragment} {{
-				setTrigger(1);
-				{trigger_fragment}
-				setTrigger(AWG_INTEGRATION_ARM);
-				wait({nsupersamp});
-				waitWave();
-			}}
-		}}
-		''').format(repetition_fragment='repeat(getUserReg(2))' if self.sync_mode else 'while(true)',
-					trigger_fragment='waitDigTrigger(2,1);' if self.sync_mode else '',
-					**parameters)
-		play_fragments = play_fragments_sync if self.sync_mode else play_fragments_async
-		self.current_programs[0] = ''.join(definition_fragments + play_fragments) + zero_length_program
+				''').format(repetition_fragment=repetition_fragment,
+							pre_wave_fragment=pre_wave_fragment,
+							post_wave_fragment=post_wave_fragment,
+							**parameters)
+				play_fragments.append(f)
+		self.current_programs[0] = ''.join(definition_fragments + play_fragments)

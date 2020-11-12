@@ -92,14 +92,12 @@ class modem_readout(data_reduce.data_reduce):
         # demodulate
         demodulation = self.demodulation(ex_channel, sign=True)
         # depending on how the cables are plugged in, measure
-        xc1 = correlate(adc_sequence * np.conj(demodulation), dac_sequence_adc_time, mode='full')  # HUYAGIC is here
-        xc2 = correlate(adc_sequence * np.conj(demodulation), dac_sequence_adc_time, mode='full')  # magic is here
-        xc3 = correlate(np.conj(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
-        xc4 = correlate(np.conj(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
-        abs_xc = np.abs(xc1) + np.abs(xc2) + np.abs(xc3) + np.abs(xc4)
+        xc1 = correlate(np.real(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # HUYAGIC is here
+        xc2 = correlate(np.imag(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
+        abs_xc = np.abs(xc1) + np.abs(xc2)
         # maximum correlation:
         readout_delay = -(np.argmax(abs_xc) - len(
-            dac_sequence_adc_time)) / self.adc.get_clock()  # get delay time in absolute units
+            dac_sequence_adc_time) - 50) / self.adc.get_clock()  # get delay time in absolute units
         # plt.plot(xc1)
         # plt.plot(xc2)
         # plt.plot(xc3)

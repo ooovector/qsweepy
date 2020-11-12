@@ -30,7 +30,7 @@ def build_param_names(params):
     list_of_strs = []
     for param_name, param_value in sorted(params.items()):
         if type(param_value) != str:  # if value is numeric (not str)
-            list_of_strs = '{0}-{1:6.4g}'.format(param_name, param_value)
+            list_of_strs.append('{0}-{1:6.4g}'.format(param_name, param_value))
         else:
             param_name + '-' + param_value
     return '-'.join(list_of_strs)
@@ -241,7 +241,8 @@ class Awg_iq_multi:
         if not self.frozen:
             self.awg_I.set_offset(np.real(self.calib_dc()['dc']), channel=self.awg_ch_I)
             self.awg_I.set_offset(np.imag(self.calib_dc()['dc']), channel=self.awg_ch_Q)
-            self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+            self.waveform = waveform_I + 1j * waveform_Q
+            self.__set_waveform_IQ_cmplx(self.waveform)
 
         return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
@@ -298,7 +299,8 @@ class Awg_iq_multi:
             waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope
             self.awg_Q.set_offset(np.imag(dc), channel=self.awg_ch_Q)
 
-        self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+        self.waveform = waveform_I+1j*waveform_Q
+        self.__set_waveform_IQ_cmplx(self.waveform)
         return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
     def dc_cname(self):

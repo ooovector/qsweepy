@@ -156,7 +156,7 @@ class RS_ZVB20(Instrument):
 		self.clear()
 		#self.select_measurement(1)
 		
-		self.get_all()
+		#self.get_all()
 	
 	def get_all(self):
 		params = {}

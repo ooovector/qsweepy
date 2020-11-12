@@ -381,6 +381,7 @@ class QubitDevice:
         self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
 
         self.modem = modem_readout.modem_readout(self.pg, hardware, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
+        self.modem.save=True
         self.modem.sequence_length = int(self.get_sample_global('delay_calibration_sequence_length'))
         self.modem.readout_channels = self.readout_channels
 

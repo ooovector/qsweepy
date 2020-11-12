@@ -62,7 +62,7 @@ class ZIDevice():
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [400, 800, 2000, 6000, 20000]
+        self.wave_lengths_default = [0, 400, 800, 2000, 6000, 20000]
         self.wave_lengths = tuple(self.wave_lengths_default)
         # self.repetition_period=
 
@@ -203,36 +203,38 @@ class ZIDevice():
         play_fragments = []
 
         for wave_length_id, wave_length in enumerate(self.wave_lengths):
-            definition_fragments.append(textwrap.dedent('''
-            wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
-            wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
-            wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
-            wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
-            '''.format(wave_length = wave_length)))
-            play_fragments.append(textwrap.dedent('''
-            if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-                while(true) {{
-                    waitDigTrigger(1);
-                    wait(getUserReg({pre_delay_reg}));
-                    playWave(w_I_{wave_length},w_Q_{wave_length});
-                    waitWave();
-                    wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
-                    // waitWave();
+            if wave_length != 0:
+                definition_fragments.append(textwrap.dedent('''
+                wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
+                wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
+                wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
+                wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
+                '''.format(wave_length = wave_length)))
+                play_fragments.append(textwrap.dedent('''
+                if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+                    while(true) {{
+                        waitDigTrigger(1);
+                        wait(getUserReg({pre_delay_reg}));
+                        playWave(w_I_{wave_length},w_Q_{wave_length});
+                        waitWave();
+                        // wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+                        // waitWave();
+                    }}
                 }}
-            }}
-            ''').format(wave_length = wave_length,
-                        wave_length_supersamp = wave_length//8,
-                        **parameters))
-        zero_length_program = textwrap.dedent('''
-        if (getUserReg({wave_length_reg}) == 0) {{
-            while(true) {{
-                waitDigTrigger(1);
-                wait({nsupersamp});
-                // waitWave();
-            }}
-        }}
-        ''').format(**parameters)
-        self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)+zero_length_program
+                ''').format(wave_length = wave_length,
+                            wave_length_supersamp = wave_length//8,
+                            **parameters))
+            else:
+                play_fragments.append(textwrap.dedent('''
+                if (getUserReg({wave_length_reg}) == 0) {{
+                    while(true) {{
+                        waitDigTrigger(1);
+                        wait({nsupersamp});
+                        // waitWave();
+                    }}
+                }}
+                ''').format(**parameters))
+        self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)
 
     def send_cur_prog(self, sequencer):
         awg_program = self.current_programs[sequencer]
@@ -241,8 +243,9 @@ class ZIDevice():
         self._waveforms[sequencer * 2 + 1] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 0] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
-        self._markers[sequencer * 2 + 0][0:10] = 1
-        self._markers[sequencer * 2 + 1][0:10] = 1
+        if self.devtype == 'HDAWG':
+            self._markers[sequencer * 2 + 0][0:10] = 1
+            self._markers[sequencer * 2 + 1][0:10] = 1
 
         if (sequencer > (self.num_seq - 1)):
             print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer, self.awg_config, (self.num_seq - 1)))
@@ -308,7 +311,7 @@ class ZIDevice():
             self._waveforms = [None] * 8
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
-        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts]))
+        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts-20000]))
         for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
@@ -723,9 +726,12 @@ class ZIDevice():
             markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
 
             #self.Postdelay[sequencer] = post_delay
-
-            ch1 = np.asarray(waveformI_truncated * (2 ** 13 - 1), dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
-            ch2 = np.asarray(waveformQ_truncated * (2 ** 13 - 1), dtype=np.int16)
+            if self.devtype == 'UHF':
+                factor = 2**15-1
+            else:
+                factor = 2**15-1
+            ch1 = np.asarray(waveformI_truncated * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
+            ch2 = np.asarray(waveformQ_truncated * factor, dtype=np.int16)
             m1 = np.asarray(markerI_truncated, dtype=np.uint16)
             m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
             #vector = np.asarray(np.transpose([ch1, ch2]).ravel())
@@ -736,13 +742,19 @@ class ZIDevice():
             #after update
             vector = zhinst.utils.convert_awg_waveform(wave1=ch1, wave2=ch2, markers=m1+m2*4)
 
-            self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
-                    sequencer, self.wave_lengths.index(wave_length)), vector)
+            self.last_vector = vector
+
+            if wave_length != 0:
+                self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
+                    sequencer, self.wave_lengths.index(wave_length)-1), vector)
+
             #except:
             #    traceback.print_exc()
             # self.daq.sync()
 
-            # self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 1)
+            if self.devtype == 'UHF':
+                self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 1)
+
             self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 1)
             self.daq.sync()
 
@@ -761,6 +773,14 @@ class ZIDevice():
                'pre_delay_reg', int(self.Predelay[sequencer]//8),
             )
 
+            # for UHF readout trigger
+            if self.devtype == 'UHF':
+                waveform_offset = (first_point - self.Predelay[sequencer])//8
+                self.daq.setInt('/{device}/awgs/0/userregs/{default_delay_reg}'.format(device=self.device,
+                                                                      default_delay_reg=self.default_delay_reg),
+                                waveform_offset )
+                pass
+
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
                 sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
                         int(self.Predelay[sequencer]//8))
@@ -768,6 +788,8 @@ class ZIDevice():
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
+
+
         time.sleep(0.3)
 
     def get_waveform(self, channel):

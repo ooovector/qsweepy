@@ -13,7 +13,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition)
         measurement_name = 'iq'+qubit_id
         qubit_id = [qubit_id]
-        exp_sin_fitter_mode = 'sync'
+        exp_sin_fitter_mode = 'unsync'
     else: # otherwise use calibrated measurer
         readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
         measurement_name = 'resultnumbers'
@@ -70,7 +70,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
 
 def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, transition='01', measurement_type='Rabi_rect', pre_pulses=tuple(),
-                       repeats=1, tail_length = 0, additional_metadata={}, expected_frequency=None):
+                       repeats=1, tail_length = 0, readout_delay=0, additional_metadata={}, expected_frequency=None):
     # check if we have fitted Rabi measurements on this qubit-channel combo
     #Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
     #Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
@@ -93,7 +93,8 @@ def Rabi_rect_adaptive(device, qubit_id, channel_amplitudes, transition='01', me
     while not (good_fit or np.max(lengths)>max_scan_length):
         measurement = Rabi_rect(device, qubit_id, channel_amplitudes, transition=transition, lengths=lengths,
                                 measurement_type=measurement_type, pre_pulses=pre_pulses, repeats=1,
-                                tail_length=tail_length, additional_metadata=additional_metadata)
+                                tail_length=tail_length, readout_delay=readout_delay,
+                                additional_metadata=additional_metadata)
         fit_results = measurement.fit.metadata
         if int(fit_results['frequency_goodness_test']):
             return measurement

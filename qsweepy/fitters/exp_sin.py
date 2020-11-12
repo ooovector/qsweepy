@@ -70,14 +70,14 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         #estimating asymptotics
         if mode == 'sync':
             inf = np.sqrt(np.sum(np.abs(ft[:,0])**2)/np.sum(A**2))
-            p0 = [phase, fR, T, inf] + A.tolist()
+            p0 = [phase, fR, T, inf] + np.asarray(A).tolist()
             parameters_flat = lambda parameters: [parameters['phi'], parameters['f'], parameters['T'],
                                                   parameters['inf']] + parameters['A'].tolist()
         elif mode == 'unsync':
             inf = np.real(ft[:,0]/ft[:,fR_id])
-            p0 = [phase, fR, T] + inf.tolist() + A.tolist()
+            p0 = [phase, fR, T] + np.asarray(inf).tolist() + np.asarray(A).tolist()
             parameters_flat = lambda parameters: [parameters['phi'], parameters['f'], parameters['T']] + \
-                                                  parameters['inf'].tolist() + parameters['A'].tolist()
+                                                  np.asarray(parameters['inf']).tolist() + np.asarray(parameters['A']).tolist()
 
         #fitting with leastsq
 
@@ -99,7 +99,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
             MSE_rel = MSE_rel_calculator(parameters_new)
             parameters = parameters_new
         else:
-            parameters_old = {k: np.asarray(v)[0] if k != 'A' else v for k,v in parameters_old.items()}
+            parameters_old = {k: np.asarray(v)[0] if (k != 'A' and k != 'inf') else v for k,v in parameters_old.items()}
             MSE_rel_old = MSE_rel_calculator(parameters_old)
             parameters = parameters_old if MSE_rel_new > MSE_rel_old else parameters_new
             MSE_rel = MSE_rel_old if MSE_rel_new > MSE_rel_old else MSE_rel_new

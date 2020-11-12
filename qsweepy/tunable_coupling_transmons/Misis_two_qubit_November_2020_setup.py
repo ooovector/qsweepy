@@ -4,10 +4,10 @@ from qsweepy.libraries.awg_channel import awg_channel
 import numpy as np
 
 device_settings = {#'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
-                    'vna_address': 'TCPIP0::10.20.61.68::inst0::INSTR',
+                   'vna_address': 'TCPIP0::10.20.61.48::inst0::INSTR',
                    #'lo1_address': 'TCPIP0::10.20.61.59::inst0::INSTR',
                    #'lo1_timeout': 5000,
-                   'rf_switch_address': '10.20.61.68',
+                   'rf_switch_address': '10.20.61.91',
                    'use_rf_switch': True,
                    'pxi_chassis_id': 0,
                    'hdawg_address': 'hdawg-dev8108',
@@ -22,9 +22,9 @@ cw_settings = {'mixer_thru':0.5}
 
 pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
-                   'ex_clock': 1800e6,  # 1 GHz - clocks of some devices
+                   'ex_clock': 2400e6,  # 1 GHz - clocks of some devices
                    'ro_clock': 1800e6,
-                   'rep_rate': 10e3,  # 10 kHz - pulse sequence repetition rate
+                   'rep_rate': 20e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
@@ -40,7 +40,7 @@ pulsed_settings = {'lo1_power': 18,
                    'uhfqa_ch0_amplitude': 0.7,
                    'uhfqa_ch1_amplitude': 0.7,
                    'lo1_freq': 3.70e9,
-                   'pna_freq': 6.06e9,
+                   'pna_freq': 7.0e9,
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
@@ -48,7 +48,7 @@ pulsed_settings = {'lo1_power': 18,
                    'modem_dc_calibration_amplitude': 1.0,
                    'adc_nop': 1024,
                    'adc_nums': 10000,  ## Do we need control over this? Probably, but not now... WUT THE FUCK MAN
-                   'adc_default_delay': 550,
+                   #'adc_default_delay': 550,
                    }
 
 
@@ -58,23 +58,26 @@ class hardware_setup():
         self.pulsed_settings = pulsed_settings
         self.cw_settings = cw_settings
         self.hardware_state = 'undefined'
+        self.sa = None
 
         self.pna = None
         self.lo1 = None
         self.rf_switch = None
-        self.sa = None
         self.coil_device = None
         self.hdawg = None
         self.adc_device = None
         self.adc = None
 
         self.ro_trg = None
-        self.coil = None
+        self.qz1 = None
+        self.cz = None
+        self.qz2 = None
         self.iq_devices = None
 
     def open_devices(self):
         # RF switch for making sure we know what sample we are measuring
-        self.pna = instruments.RS_ZVB20('pna', address=self.device_settings['vna_address'])
+        #self.pna = instruments.RS_ZVB20('pna', address=self.device_settings['vna_address'])
+        self.pna = instruments.Agilent_N5242A('pna', address=self.device_settings['vna_address'])
         #self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
@@ -87,9 +90,40 @@ class hardware_setup():
 
         self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG')
         self.uhfqa = instruments.ziUHF(ch_num=3)
+        self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/ac', 1)
+        self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/ac', 1)
+        self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/imp50', 1)
+        self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/imp50', 1)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/0/range', 0.1)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/1/range', 0.1)
+
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/0/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/1/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/2/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/3/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/4/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/5/range', 0.8)
+        self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/6/range', 0.8)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/0/direct', 1)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/1/direct', 1)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/2/direct', 1)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/3/direct', 1)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/4/direct', 1)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/5/direct', 1)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/6/direct', 1)
+
         #self.uhfqa = instruments.ZIDevice(self.device_settings['uhfqa_address'], devtype='UHF')
         self.coil_device = self.hdawg
-        self.coil = awg_channel(self.hdawg, 6)  # coil control
+
+        self.q1x = awg_channel(self.hdawg, 4)
+        self.q2x = awg_channel(self.hdawg, 5)
+        self.q3x = awg_channel(self.hdawg, 6)
+
+        self.qz3 = awg_channel(self.hdawg, 0)  # coil control
+        self.qz2 = awg_channel(self.hdawg, 1)  # coil control
+        self.cz = awg_channel(self.hdawg, 2)  # coil control
+        self.qz1 = awg_channel(self.hdawg, 3)  # coil control
+
 
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
         '''
@@ -110,7 +144,7 @@ class hardware_setup():
 
         self.hardware_state = 'undefined'
 
-    def set_cw_mode(self):
+    def set_cw_mode(self, channels_off=None):
         if self.hardware_state == 'cw_mode':
             return
         self.hardware_state = 'cw_mode'
@@ -120,11 +154,11 @@ class hardware_setup():
             self.pulsed_settings['ex_clock'] / self.pulsed_settings['rep_rate'] - self.pulsed_settings[
                 'global_num_points_delta']))
 
-        for channel in range(0, 6):
-            self.hdawg.set_amplitude(amplitude=0.05, channel=channel)
-            self.hdawg.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
-            self.hdawg.set_output(output=1, channel=channel)
-            self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
+#        for channel in range(0, 4):
+#            self.hdawg.set_amplitude(amplitude=0.05, channel=channel)
+#            self.hdawg.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
+#            self.hdawg.set_output(output=1, channel=channel)
+#            self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
         for channel in range(0, 2):
             self.uhfqa.set_amplitude(amplitude=0.05, channel=channel)
@@ -132,7 +166,17 @@ class hardware_setup():
             self.uhfqa.set_output(output=1, channel=channel)
             self.uhfqa.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
+        self.hdawg.set_output(output=1, channel=0)
+        self.hdawg.set_output(output=1, channel=2)
+        self.hdawg.set_output(output=1, channel=3)
+        self.hdawg.set_output(output=1, channel=4)
+        self.hdawg.set_output(output=1, channel=5)
         self.hdawg.set_output(output=1, channel=6)
+        self.hdawg.set_output(output=1, channel=7)
+        if channels_off is not None:
+            for channel_off in channels_off:
+                self.hdawg.set_output(output=0, channel=channel_off)
+
         self.pna.set_sweep_mode("LIN")
         self.hardware_state = 'cw_mode'
 
@@ -149,7 +193,8 @@ class hardware_setup():
         #self.pna.write("OUTP ON")
         self.pna.write("SOUR1:POW1:MODE ON")
         self.pna.write("SOUR1:POW2:MODE OFF")
-        #self.pna.set_sweep_mode("CW")
+        #self.pna.set_sweep_mode("CW") # privet RS ZVB20
+        #self.pna.set_trigger_source("ON")
         self.pna.set_frequency(self.pulsed_settings['pna_freq'])
 
         self.hdawg.stop()
@@ -166,7 +211,7 @@ class hardware_setup():
             self.pulsed_settings['ex_clock'] / self.pulsed_settings['rep_rate'] - self.pulsed_settings[
                 'global_num_points_delta']))
         global_num_points_ro = int(np.round(
-            self.pulsed_settings['ex_clock'] / self.pulsed_settings['rep_rate'] - self.pulsed_settings[
+            self.pulsed_settings['ro_clock'] / self.pulsed_settings['rep_rate'] - self.pulsed_settings[
                 'global_num_points_delta']))
 
         # global_num_points = 20000
@@ -194,7 +239,7 @@ class hardware_setup():
 
         self.uhfqa.set_dig_trig1_source([4])
         self.uhfqa.set_dig_trig2_source([1])
-        self.uhfqa.default_delay = pulsed_settings['adc_default_delay']
+        #self.uhfqa.default_delay = pulsed_settings['adc_default_delay']
 
         for sequencer in range(4):
             self.hdawg.send_cur_prog(sequencer=sequencer)
@@ -220,7 +265,7 @@ class hardware_setup():
         self.uhfqa.set_all_outs()
         self.uhfqa.run()
 
-        self.ro_trg = qsweepy.libraries.awg_digital.awg_digital(self.hdawg, 0, delay_tolerance=20e-9)  # triggers readout card
+        self.ro_trg = qsweepy.libraries.awg_digital.awg_digital(self.hdawg, 0, delay_tolerance=50e-9)  # triggers readout card
         self.ro_trg.adc = self.adc
         self.ro_trg.mode = 'internal_delay'
         # ro_trg.mode = 'set_delay' #M3202A
@@ -236,31 +281,39 @@ class hardware_setup():
 
     def setup_iq_channel_connections(self, exdir_db):
         # промежуточные частоты для гетеродинной схемы new:
-        self.iq_devices = {'iq_ex1': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0, 1, self.lo1, exdir_db=exdir_db),
-                           'iq_ex2': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
-                           'iq_ex3': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.lo1, exdir_db=exdir_db),
+        self.iq_devices = {#'iq_ex1': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 0, 1, self.lo1, exdir_db=exdir_db),
+                           #'iq_ex2': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 2, 3, self.lo1, exdir_db=exdir_db), #M3202A
+                           #'iq_ex3': qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.hdawg, self.hdawg, 4, 5, self.lo1, exdir_db=exdir_db),
                            # M3202A
                            'iq_ro':  qsweepy.libraries.awg_iq_multi.Awg_iq_multi(self.uhfqa, self.uhfqa, 0, 1, self.pna, exdir_db=exdir_db)
                            }  # M3202A
         # iq_pa = awg_iq_multi.Awg_iq_multi(awg_tek, awg_tek, 3, 4, lo_ro) #M3202A
-        self.iq_devices['iq_ex1'].name = 'ex1'
-        self.iq_devices['iq_ex2'].name = 'ex2'
-        self.iq_devices['iq_ex3'].name = 'ex3'
+        #self.iq_devices['iq_ex1'].name = 'ex1'
+        #self.iq_devices['iq_ex2'].name = 'ex2'
+        #self.iq_devices['iq_ex3'].name = 'ex3'
         # iq_pa.name='pa'
         self.iq_devices['iq_ro'].name = 'ro'
 
-        self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.set_switch_if_not_set(1, channel=1)
-        self.iq_devices['iq_ex2'].calibration_switch_setter = lambda: self.set_switch_if_not_set(2, channel=1)
+        #self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.set_switch_if_not_set(1, channel=1)
+        #self.iq_devices['iq_ex2'].calibration_switch_setter = lambda: self.set_switch_if_not_set(2, channel=1)
         # iq_ex2.calibration_switch_setter = lambda: self.rf_switch.do_set_switch(2, channel=1) if not self.rf_switch.do_get_switch(channel=1)==2 else None
-        self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.set_switch_if_not_set(3, channel=1)
+        # self.iq_devices['iq_ex3'].calibration_switch_setter = lambda: self.set_switch_if_not_set(3, channel=1)
         self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.set_switch_if_not_set(4, channel=1)
 
-        self.iq_devices['iq_ex1'].sa = self.sa
-        self.iq_devices['iq_ex2'].sa = self.sa
-        self.iq_devices['iq_ex3'].sa = self.sa
+        #self.iq_devices['iq_ex1'].sa = self.sa
+        #self.iq_devices['iq_ex2'].sa = self.sa
+        # self.iq_devices['iq_ex3'].sa = self.sa
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'coil': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6)}  # coil control
+        self.fast_controls = {
+                              'q1x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 4),
+                              'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
+                              'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
+
+                              'qz3': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
+                              'qz2': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
+                              'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
+                              'qz1': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']
