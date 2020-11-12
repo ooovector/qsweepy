@@ -4,6 +4,7 @@ import zhinst.utils
 import textwrap
 import timeit
 import traceback
+import logging
 #from qsweepy.libraries.instrument import Instrument
 
 from scipy.signal import gaussian
@@ -87,6 +88,7 @@ class ZIDevice():
         self._markers = [None] * self.num_channels
         self._values = {}
         self._values['files'] = {}
+        self._offsets = [None] * self.num_channels
         # self.marker_delay_I=np.zeros((8,))
 
         self.marker_out = np.zeros((self.num_channels,), dtype=int)
@@ -195,6 +197,7 @@ class ZIDevice():
 
         for waveform_id in range(self.num_channels):
             self._waveforms[waveform_id] = np.zeros(self._nop)
+            self._offsets[waveform_id] = 0
 
         self.stop()
 
@@ -243,6 +246,8 @@ class ZIDevice():
         self._waveforms[sequencer * 2 + 1] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 0] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
+        self._offsets[sequencer * 2 + 0] = 0
+        self._offsets[sequencer * 2 + 1] = 0
         if self.devtype == 'HDAWG':
             self._markers[sequencer * 2 + 0][0:10] = 1
             self._markers[sequencer * 2 + 1][0:10] = 1
@@ -309,6 +314,7 @@ class ZIDevice():
         if self._nop != numpts:
             self._nop = numpts
             self._waveforms = [None] * 8
+            self._offsets = [None] * self.num_channels
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
         self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts-20000]))
@@ -683,6 +689,16 @@ class ZIDevice():
         self._markers[channel] = marker_nop
         self.set_sequencer(sequencer)
 
+    def set_offset_digital(self, offset, channel):
+        sequencer = channel // 2
+
+        if self._offsets[channel] is not None:
+            if np.abs(offset - self._offsets[channel]) < 1e-5:
+                return
+
+        self._offsets[channel] = offset
+        self.set_sequencer(sequencer)
+
     def set_sequencer(self, sequencer):
         if self.frozen:
             self.sequencers_updated[sequencer] = True
@@ -693,6 +709,8 @@ class ZIDevice():
         waveformQ = self._waveforms[sequencer * 2 + 1]
         markerI = self._markers[sequencer * 2 + 0]
         markerQ = self._markers[sequencer * 2 + 1]
+        offsetI = self._offsets[sequencer * 2 + 0]
+        offsetQ = self._offsets[sequencer * 2 + 1]
 
         nonzero_sig = np.abs(waveformI)+np.abs(waveformQ)+np.abs(markerI)+np.abs(markerQ) > 1e-5
         nonzero = np.nonzero(nonzero_sig)[0]
@@ -726,12 +744,13 @@ class ZIDevice():
             markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
 
             #self.Postdelay[sequencer] = post_delay
-            if self.devtype == 'UHF':
-                factor = 2**15-1
-            else:
-                factor = 2**15-1
-            ch1 = np.asarray(waveformI_truncated * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
-            ch2 = np.asarray(waveformQ_truncated * factor, dtype=np.int16)
+
+            if any((waveformI_truncated + offsetI) > 1) or any ((waveformQ_truncated + offsetQ) > 1):
+                logging.warning('Some of the values got overflowed')
+
+            factor = 2 ** 15 - 1
+            ch1 = np.asarray((waveformI_truncated + offsetI) * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
+            ch2 = np.asarray((waveformI_truncated + offsetQ) * factor, dtype=np.int16)
             m1 = np.asarray(markerI_truncated, dtype=np.uint16)
             m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
             #vector = np.asarray(np.transpose([ch1, ch2]).ravel())
@@ -788,8 +807,6 @@ class ZIDevice():
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
-
-
         time.sleep(0.3)
 
     def get_waveform(self, channel):
