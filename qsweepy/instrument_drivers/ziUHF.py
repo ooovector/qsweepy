@@ -55,6 +55,12 @@ class ziUHF(ZIDevice):
 	def get_nums(self):
 		return self.nsegm if self.internal_avg else self.nres
 
+	def set_adc_nums(self, nums):
+		self.set_nums(nums)
+
+	def get_adc_nums(self):
+		return self.get_nums()
+
 
 	def config_iterations(self, nsegm, nres):
 		'''
