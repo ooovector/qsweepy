@@ -30,7 +30,7 @@ def build_param_names(params):
     list_of_strs = []
     for param_name, param_value in sorted(params.items()):
         if type(param_value) != str:  # if value is numeric (not str)
-            list_of_strs = '{0}-{1:6.4g}'.format(param_name, param_value)
+            list_of_strs.append('{0}-{1:6.4g}'.format(param_name, param_value))
         else:
             param_name + '-' + param_value
     return '-'.join(list_of_strs)
@@ -204,6 +204,7 @@ class Awg_iq_multi:
         self.awg_I.run()
         if self.awg_I != self.awg_Q:
             self.awg_Q.run()
+
     #time.sleep(0.1)
     #import matplotlib.pyplot as plt
     #plt.plot(waveform_I)
@@ -227,9 +228,9 @@ class Awg_iq_multi:
         waveform_I = np.zeros(len(t), dtype=np.complex)
         waveform_Q = np.zeros(len(t), dtype=np.complex)
         if not self.use_offset_I:
-            waveform_I+=np.real(self.calib_dc()['dc'])
+            waveform_I += np.real(self.calib_dc()['dc'])
         if not self.use_offset_Q:
-            waveform_Q+=np.imag(self.calib_dc()['dc'])
+            waveform_Q += np.imag(self.calib_dc()['dc'])
         for carrier_id, carrier in self.carriers.items():
             if not carrier.status:
                 continue
@@ -240,7 +241,8 @@ class Awg_iq_multi:
         if not self.frozen:
             self.awg_I.set_offset(np.real(self.calib_dc()['dc']), channel=self.awg_ch_I)
             self.awg_I.set_offset(np.imag(self.calib_dc()['dc']), channel=self.awg_ch_Q)
-            self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+            self.waveform = waveform_I + 1j * waveform_Q
+            self.__set_waveform_IQ_cmplx(self.waveform)
 
         return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
@@ -297,7 +299,8 @@ class Awg_iq_multi:
             waveform_Q = np.imag(Q*np.exp(2*np.pi*1j*t*_if))*envelope
             self.awg_Q.set_offset(np.imag(dc), channel=self.awg_ch_Q)
 
-        self.__set_waveform_IQ_cmplx(waveform_I+1j*waveform_Q)
+        self.waveform = waveform_I+1j*waveform_Q
+        self.__set_waveform_IQ_cmplx(self.waveform)
         return np.max([np.max(np.abs(waveform_I)), np.max(np.abs(waveform_Q))])
 
     def dc_cname(self):
@@ -312,8 +315,11 @@ class Awg_iq_multi:
         When invoked with a spectrum analyzer instance as an argument it perform and save the calibration with the current
         frequencies.
         """
+        print('Calibrate DC for device {} channels {}, {} \n'.format(self.awg_I.device, self.awg_ch_I, self.awg_ch_Q))
         self.get_dc_calibration(sa)
         for carrier_name, carrier in self.carriers.items():
+            print('Calibrate RF for device {} channels {}, {}, if={} \n'.format(self.awg_I.device, self.awg_ch_I,
+                                                                                self.awg_ch_Q, carrier._if))
             self.get_rf_calibration(carrier=carrier, sa=sa)
 
     def get_dc_calibration(self, sa=None):

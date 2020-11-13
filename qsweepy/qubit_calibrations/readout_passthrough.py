@@ -4,8 +4,8 @@ from qsweepy.ponyfiles.data_structures import *
 def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
 	adc, mnames =  device.setup_adc_reducer_iq(qubit_id, raw=True)
-	adc.set_nop(int(device.get_sample_global('readout_adc_points')))
-	adc.set_nums(int(device.get_sample_global('uncalibrated_readout_nums')))
+	adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
+	adc.set_adc_nums(int(device.get_sample_global('uncalibrated_readout_nums')))
 	mean_sample = data_reduce.data_reduce(adc)
 	mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
 	mean_sample.filters['Std_Voltage_AC'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)
@@ -15,7 +15,7 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 		device.pg.set_seq(device.trigger_readout_seq+[device.pg.p(readout_channel, length, device.pg.rect, amplitude)])
 
 	# refers to Awg_iq_multi calibrations
-	metadata = {'channel': readout_channel, 'qubit_id':qubit_id, 'averages': device.modem.adc.get_nums(), 'length': length}
+	metadata = {'channel': readout_channel, 'qubit_id':qubit_id, 'averages': device.modem.adc.get_adc_nums(), 'length': length}
 	references = {'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
 	if hasattr(device.awg_channels[readout_channel], 'get_calibration_measurement'):
 		references['channel_calibration'] = device.awg_channels[readout_channel].get_calibration_measurement()

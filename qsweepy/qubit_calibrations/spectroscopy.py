@@ -1,4 +1,4 @@
-from qsweepy.fitters import fit_dataset, resonator_tools
+from qsweepy.fitters import fit_dataset, resonator_tools, spectroscopy_overview
 import numpy as np
 import time
 
@@ -19,15 +19,29 @@ def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
         #device.hardware.pna.measure()
         #time.sleep(device.hardware.pna.get_sweep_time()*0.001)
         device.hardware.pna.measure()
-        device.sweeper.sweep(device.hardware.pna, *args,
+        result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='single_tone_spectroscopy_overview',
                                metadata={ 'vna_power': device.hardware.pna.get_power(),
                                           'bandwidth': bandwidth})
+
+        fitter = spectroscopy_overview.SingleToneSpectroscopyOverviewFitter()
+
+        fit_dataset.fit_dataset_1d(
+            source_measurement=result,
+            dataset_name='S-parameter',
+            fitter=fitter,
+            time_parameter_id=-1,
+            sweep_parameter_ids=np.arange(len(args)),
+            allow_unpack_complex=False,
+            use_resample_x_fit=False)
+
+        device.exdir_db.save_measurement(result.fit)
+
     except:
         raise
 
 
-def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
+def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, **kwargs):
     print ('fr_guess: ', fr_guess)
     try:
         device.hardware.set_cw_mode()
@@ -48,11 +62,14 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args):
         device.hardware.pna.measure()
         time.sleep(device.hardware.pna.get_sweep_time()*0.001)
         device.hardware.pna.measure()
+
+        metadata = {'qubit_id': qubit_id,
+                    'vna_power': device.hardware.pna.get_power(),
+                    'bandwidth': bandwidth}
+        metadata.update(kwargs)
         result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='resonator_frequency',
-                               metadata={'qubit_id': qubit_id,
-                                         'vna_power': device.hardware.pna.get_power(),
-                                         'bandwidth': bandwidth})
+                               metadata=metadata)
     except:
         raise
 
@@ -83,18 +100,21 @@ def measure_fr(device, qubit_id, fr_guess):
     return result.fit
 
 
-def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, power_readout=None):
+def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, power_readout=None, span=None, nop=None, bandwidth=None, **kwargs):
     try:
         device.hardware.set_cw_mode()
         device.hardware.lo1.set_status(1)
 
-        span = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_span'))
+        if span is None:
+            span = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_span'))
         if power_excite is None:
             power_excite = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_excite_power'))
         if power_readout is None:
             power_readout = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_readout_power'))
-        nop = int(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_nop'))
-        bandwidth = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_bandwidth'))
+        if nop is None:
+            nop = int(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_nop'))
+        if bandwidth is None:
+            bandwidth = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_bandwidth'))
         fr = float(device.get_qubit_fr(qubit_id=qubit_id))
 
 
@@ -111,12 +131,14 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, 
         device.hardware.pna.measure()
         frequencies = np.linspace(fq_guess-span/2, fq_guess+span/2, nop)
 
+        metadata = {'qubit_id': qubit_id, 'pna_power': device.hardware.pna.get_power(),
+                                      'resonator_frequency': fr}
+        metadata.update(kwargs)
         result = device.sweeper.sweep(device.hardware.pna,
-                            (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
                             *args,
+                            (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
                             measurement_type='qubit_frequency',
-                            metadata={'qubit_id': qubit_id, 'pna_power': device.hardware.pna.get_power(),
-                                      'resonator frequency': fr})
+                            metadata=metadata)
     except:
         raise
 

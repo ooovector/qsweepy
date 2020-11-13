@@ -6,6 +6,8 @@ MAXDESCRIPTORSIZE = 9
 
 
 class SignalCore_5502a():
+    def __init__(self):
+        self._frequency = 1e9
 
     def search(self):
 
@@ -42,6 +44,7 @@ class SignalCore_5502a():
             raise RuntimeError(msg)
 
     def set_frequency(self, freq):
+        self._frequency = freq
         setFreq = self._lib.sc5502a_SetFrequency(self._handle, c_ulonglong(int(freq)))
         if setFreq:
             msg = 'Failed to set frequency on the instrument with handle {}'.format(self._handle)
@@ -56,6 +59,7 @@ class SignalCore_5502a():
     def set_parameters(self, parameters_dict):
 
         if "frequency" in parameters_dict.keys():
+            self._frequency = parameters_dict["frequency"]
             setFreq = self._lib.sc5502a_SetFrequency(self._handle, c_ulonglong(int(parameters_dict["frequency"])))
             if setFreq:
                 msg = 'Failed to set frequency on the instrument with handle {}'.format(self._handle)
@@ -106,3 +110,6 @@ class SignalCore_5502a():
                                             val,
                                             c_uint8(0),
                                             c_uint8(0))
+
+    def get_frequency(self):
+        return self._frequency

@@ -29,7 +29,7 @@ def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
         amplitude = additional_noise_appears
     else:
         calibration_type = 'maximum'
-        amplitude = 1.0
+        amplitude = np.max(passthrough_measurement.datasets['S21'].parameters[0].values)
         #raise Exception('Compession_1db and additional_noise_appears not found on passthourgh scan!')
     readout_channel = passthrough_measurement.metadata['channel']
     length = float(passthrough_measurement.metadata['length'])
@@ -144,11 +144,11 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
     qubit_id = qubit_readout_pulse.metadata['qubit_id']
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
     adc, mnames =  device.setup_adc_reducer_iq(qubit_id, raw=True)
-    adc.set_nop(int(device.get_sample_global('readout_adc_points')))
+    adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
 
     if not nums:
         nums = int(device.get_qubit_constant(name='uncalibrated_readout_nums', qubit_id=qubit_id))
-        adc.set_nums(nums)
+        adc.set_adc_nums(nums)
 
     mean_sample = data_reduce.data_reduce(adc)
     mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
@@ -193,11 +193,11 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01'):
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
     adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=False)
-    adc_reducer.set_nop(int(device.get_sample_global('readout_adc_points')))
+    adc_reducer.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     measurer = data_reduce.data_reduce(adc_reducer)
     measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],
-                                                        background_calibration.datasets['S21'].data, adc_reducer.get_nums())
+                                                        background_calibration.datasets['S21'].data, adc_reducer.get_adc_nums())
     # measurer.references = {'readout_background_calibration': background_calibration.id}
     nums = int(device.get_qubit_constant(name='uncalibrated_readout_nums', qubit_id=qubit_id))
-    adc_reducer.set_nums(nums)
+    adc_reducer.set_adc_nums(nums)
     return qubit_readout_pulse_, measurer

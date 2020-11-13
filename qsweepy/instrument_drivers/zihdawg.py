@@ -4,6 +4,7 @@ import zhinst.utils
 import textwrap
 import timeit
 import traceback
+import logging
 #from qsweepy.libraries.instrument import Instrument
 
 from scipy.signal import gaussian
@@ -62,7 +63,7 @@ class ZIDevice():
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [400, 800, 2000, 6000, 20000]
+        self.wave_lengths_default = [0, 400, 800, 2000, 6000, 20000]
         self.wave_lengths = tuple(self.wave_lengths_default)
         # self.repetition_period=
 
@@ -87,29 +88,61 @@ class ZIDevice():
         self._markers = [None] * self.num_channels
         self._values = {}
         self._values['files'] = {}
+        self._offsets = [None] * self.num_channels
         # self.marker_delay_I=np.zeros((8,))
 
         self.marker_out = np.zeros((self.num_channels,), dtype=int)
-        self.Marker_Out_Allowed_Values = {
-            '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
-            '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
-            '2': "Trigger output is assigned to AWG Trigger 3, controlled by AWG sequencer commands.",
-            '3': "Trigger output is assigned to AWG Trigger 4, controlled by AWG sequencer commands.",
-            '4': "Output is assigned to Output 1 Marker 1.",
-            '5': "Output is assigned to Output 1 Marker 2.",
-            '6': "Output is assigned to Output 2 Marker 1.",
-            '7': "Output is assigned to Output 2 Marker 2.",
-            '8': "Output is assigned to Trigger Input 1.",
-            '9': "Output is assigned to Trigger Input 2.",
-            '10': "Output is assigned to Trigger Input 3.",
-            '11': "Output is assigned to Trigger Input 4.",
-            '12': "Output is assigned to Trigger Input 5.",
-            '13': "Output is assigned to Trigger Input 6.",
-            '14': "Output is assigned to Trigger Input 7.",
-            '15': "Output is assigned to Trigger Input 8.",
-            '17': "Output is set to high.",
-            '18': "Output is set to low",
-            }
+        if devtype == 'HDAWG':
+            self.mk_out_allowed = {
+                # Select the signal assigned to the marker output
+                '0': "Trigger output is assigned to AWG Trigger 1, controlled by AWG sequencer commands.",
+                '1': "Trigger output is assigned to AWG Trigger 2, controlled by AWG sequencer commands.",
+                '2': "Trigger output is assigned to AWG Trigger 3, controlled by AWG sequencer commands.",
+                '3': "Trigger output is assigned to AWG Trigger 4, controlled by AWG sequencer commands.",
+                '4': "Output is assigned to Output 1 Marker 1.",
+                '5': "Output is assigned to Output 1 Marker 2.",
+                '6': "Output is assigned to Output 2 Marker 1.",
+                '7': "Output is assigned to Output 2 Marker 2.",
+                '8': "Output is assigned to Trigger Input 1.",
+                '9': "Output is assigned to Trigger Input 2.",
+                '10': "Output is assigned to Trigger Input 3.",
+                '11': "Output is assigned to Trigger Input 4.",
+                '12': "Output is assigned to Trigger Input 5.",
+                '13': "Output is assigned to Trigger Input 6.",
+                '14': "Output is assigned to Trigger Input 7.",
+                '15': "Output is assigned to Trigger Input 8.",
+                '17': "Output is set to high.",
+                '18': "Output is set to low",
+                }
+        elif devtype == 'UHF':
+            self.mk_out_allowed = {
+                # Select the signal assigned to the trigger output
+                '0': 'The output trigger is disabled',
+                '1': 'Oscillator phase of demod 4 (trigger output channel 1) or demod 8 (trigger output channel 2). \
+                Trigger event is output for each zero crossing of the oscillator phase.',
+                '2': 'Scope Trigger',
+                '3': 'Scope/Trigger',
+                '4': 'Scope Armed',
+                '5': 'Scope/Armed',
+                '6': 'Scope Active',
+                '7': 'Scope/Active',
+                '8': 'AWG Marker 1',
+                '9': 'AWG Marker 2',
+                '10': 'AWG Marker 3',
+                '11': 'AWG Marker 4',
+                '20': 'AWG Active',
+                '21': 'AWG Waiting',
+                '22': 'AWG Fetching',
+                '23': 'AWG Playing',
+                '32': 'AWG Trigger 1',
+                '33': 'AWG Trigger 2',
+                '34': 'AWG Trigger 3',
+                '35': 'AWG Trigger 4',
+                '51': 'MDS Clock Out',
+                '52': 'MDS Sync Out',
+                }
+        else:
+            raise ValueError('devtype not recognized')
         for channel in range(self.num_channels):
             self.marker_out[channel] = 0
             self.set_marker_out(channel, 0)
@@ -143,7 +176,7 @@ class ZIDevice():
                                      'marker_length_Q': 1000,
                                      'rep_rate': int(self.rep_rate),
                                      'pre_delay_reg': 0,
-                                     'wave_length_reg': 1,
+                                     'wave_length_reg': 1
                                      }
 
         self.awgModule = self.daq.awgModule()
@@ -158,56 +191,53 @@ class ZIDevice():
             self.set_cur_prog(self.initial_param_values, sequencer_idx)
             self.send_cur_prog(sequencer_idx)
 
-
     def clear(self):
         for sequencer_id in range(0, self.num_seq):
             self.send_cur_prog(sequencer_id)
 
         for waveform_id in range(self.num_channels):
             self._waveforms[waveform_id] = np.zeros(self._nop)
+            self._offsets[waveform_id] = 0
 
         self.stop()
 
     def set_cur_prog(self, parameters, sequencer_idx):
         definition_fragments = []
         play_fragments = []
-        if self.devtype == 'UHF':
-            digtrigger_fragment = 'waitDigTrigger(1, 1);'
-        else:
-            digtrigger_fragment = 'waitDigTrigger(1);'
 
         for wave_length_id, wave_length in enumerate(self.wave_lengths):
-            definition_fragments.append(textwrap.dedent('''
-            wave w_marker_I_{wave_length} = join(marker(1, 1), marker({wave_length} - 1, 0));
-            wave w_marker_Q_{wave_length} = join(marker(1, 2), marker({wave_length} - 1, 0));
-            wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
-            wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
-            '''.format(wave_length = wave_length)))
-            play_fragments.append(textwrap.dedent('''
-            if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
-                while(true) {{
-                    {digtrigger_fragment}
-                    wait(getUserReg({pre_delay_reg}));
-                    playWave(w_I_{wave_length},w_Q_{wave_length});
-                    waitWave();
-                    wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
-                    waitWave();
+            if wave_length != 0:
+                definition_fragments.append(textwrap.dedent('''
+                wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
+                wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
+                wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
+                wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
+                '''.format(wave_length = wave_length)))
+                play_fragments.append(textwrap.dedent('''
+                if (getUserReg({wave_length_reg}) == {wave_length_supersamp}) {{
+                    while(true) {{
+                        waitDigTrigger(1);
+                        wait(getUserReg({pre_delay_reg}));
+                        playWave(w_I_{wave_length},w_Q_{wave_length});
+                        waitWave();
+                        // wait({nsupersamp}-getUserReg({pre_delay_reg})-getUserReg({wave_length_reg}));
+                        // waitWave();
+                    }}
                 }}
-            }}
-            ''').format(wave_length = wave_length,
-                        wave_length_supersamp = wave_length//8,
-                        digtrigger_fragment=digtrigger_fragment,
-                        **parameters))
-        zero_length_program = textwrap.dedent('''
-        if (getUserReg({wave_length_reg}) == 0) {{
-            while(true) {{
-                {digtrigger_fragment}
-                wait({nsupersamp});
-                waitWave();
-            }}
-        }}
-        ''').format(digtrigger_fragment=digtrigger_fragment, **parameters)
-        self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)+zero_length_program
+                ''').format(wave_length = wave_length,
+                            wave_length_supersamp = wave_length//8,
+                            **parameters))
+            else:
+                play_fragments.append(textwrap.dedent('''
+                if (getUserReg({wave_length_reg}) == 0) {{
+                    while(true) {{
+                        waitDigTrigger(1);
+                        wait({nsupersamp});
+                        // waitWave();
+                    }}
+                }}
+                ''').format(**parameters))
+        self.current_programs[sequencer_idx] = ''.join(definition_fragments+play_fragments)
 
     def send_cur_prog(self, sequencer):
         awg_program = self.current_programs[sequencer]
@@ -216,8 +246,11 @@ class ZIDevice():
         self._waveforms[sequencer * 2 + 1] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 0] = np.zeros(self.get_nop())
         self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
-        self._markers[sequencer * 2 + 0][0] = 1
-        self._markers[sequencer * 2 + 1][0] = 1
+        self._offsets[sequencer * 2 + 0] = 0
+        self._offsets[sequencer * 2 + 1] = 0
+        if self.devtype == 'HDAWG':
+            self._markers[sequencer * 2 + 0][0:10] = 1
+            self._markers[sequencer * 2 + 1][0:10] = 1
 
         if (sequencer > (self.num_seq - 1)):
             print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer, self.awg_config, (self.num_seq - 1)))
@@ -281,9 +314,10 @@ class ZIDevice():
         if self._nop != numpts:
             self._nop = numpts
             self._waveforms = [None] * 8
+            self._offsets = [None] * self.num_channels
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
-        self.wave_lengths = tuple(self.wave_lengths_default+[numpts])
+        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts-20000]))
         for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
@@ -462,39 +496,64 @@ class ZIDevice():
     # Marker out settings
 
     def set_marker_out(self, source, channel):
-        if source < 19:
+        if str(source) in self.mk_out_allowed.keys():
             exp_setting = [['/%s/triggers/out/%d/source' % (self.device, channel), source]]
             self.daq.set(exp_setting)
             self.daq.sync()
-            print(self.Marker_Out_Allowed_Values.get(str(source)))
+            print(self.mk_out_allowed.get(str(source)))
         else:
             print('source=', source, ' is not allowed')
-            print(self.Marker_Out_Allowed_Values.items())
+            print(self.mk_out_allowed.items())
 
     # Set markers
     # def set_digital(self, marker, channel):
 
-    # If you whant to use modulation for AWG channel
+    # If you want to use modulation for AWG channel
+
+    # for HDAWG:
     # 0 Modulation Off: AWG Output goes directly to Signal Output.
-    # 1 Sine 1: AWG Output is multiplied with Sine Generator signal 0
-    # 2 Sine 2: AWG Output is multiplied with Sine Generator signal 1
+    # 1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0
+    # 2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1
+    # 3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively
     # 5 Advanced: Output modulates corresponding sines from modulation carriers.
+
+    # for UHFQA:
+    # 0 Plain: AWG Output goes directly to Signal Output
+    # 1 Modulation: AWG Output 1 (2) is multiplied with oscillator signal of demodulator 4(8)
 
     def set_modulation(self,  mode, channel):
         self.stop()
         awg_channel = channel // 2
         awg_out = channel % 2
         self.modulation[channel] = mode
-        exp_setting = [['/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, awg_channel, awg_out), mode]]
+        if self.devtype == 'HDAWG':
+            exp_setting = [['/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, awg_channel, awg_out), mode]]
+        elif self.devtype == 'UHF':
+            exp_setting = [['/%s/awgs/%d/outputs/%d/mode' % (self.device, awg_channel, awg_out), mode]]
+        else:
+            exp_setting = None
+            raise ValueError('devtype not recognized')
         self.daq.set(exp_setting)
         self.daq.sync()
 
-    def get_amplitude(self, channel):
-        return self.modulation[channel]
-        print('0 Modulation Off: AWG Output goes directly to Signal Output.')
-        print('1 Sine 1: AWG Output is multiplied with Sine Generator signal 0')
-        print('2 Sine 2: AWG Output is multiplied with Sine Generator signal 1')
-        print('5 Advanced: Output modulates corresponding sines from modulation carriers')
+    def get_modulation(self, channel):
+        if self.devtype == 'HDAWG':
+            print('0 Modulation Off: AWG Output goes directly to Signal Output.')
+            print('1 Sine 11: AWG Outputs 0 and 1 are both multiplied with Sine Generator signal 0')
+            print('2 Sine 22: AWG Output 0 and 1 are both multiplied with Sine Generator signal 1')
+            print('3 Sine 21: AWG Outputs 0 and 1 are multiplied with Sine Generator signal 1 and 0, respectively')
+            print('5 Advanced: Output modulates corresponding sines from modulation carriers')
+        elif self.devtype == 'UHF':
+            print('0 Plain: AWG Output goes directly to Signal Output.')
+            print('1 Modulation: AWG Output 1 (2) is multiplied with oscillator signal of demodulator 4(8)')
+        else:
+            raise ValueError('devtype not recognized')
+        if self.devtype == 'HDAWG':
+            return self.daq.getInt('/%s/awgs/%d/outputs/%d/modulation/mode' % (self.device, channel // 2, channel % 2))
+        elif self.devtype == 'UHF':
+            return self.daq.getInt('/%s/awgs/0/outputs/%d/mode' % (self.device, channel % 2))
+        else:
+            raise ValueError('devtype not recognized')
 
     # If you want to use multifrequency modelation, max 4 oscillators
     # def set_awg_multifreq(self, channel, osc_num):
@@ -612,7 +671,7 @@ class ZIDevice():
                 if np.sum(np.abs(waveform-self._waveforms[channel]))<1e-5:
                     return
 
-        self._waveforms[channel] = waveform
+        self._waveforms[channel] = waveform_nop
         self.set_sequencer(sequencer)
 
     def set_digital(self, marker, channel):
@@ -627,7 +686,17 @@ class ZIDevice():
                 if np.sum(np.abs(marker-self._markers[channel])) < 1e-5:
                     return
 
-        self._markers[channel] = marker
+        self._markers[channel] = marker_nop
+        self.set_sequencer(sequencer)
+
+    def set_offset_digital(self, offset, channel):
+        sequencer = channel // 2
+
+        if self._offsets[channel] is not None:
+            if np.abs(offset - self._offsets[channel]) < 1e-5:
+                return
+
+        self._offsets[channel] = offset
         self.set_sequencer(sequencer)
 
     def set_sequencer(self, sequencer):
@@ -640,6 +709,8 @@ class ZIDevice():
         waveformQ = self._waveforms[sequencer * 2 + 1]
         markerI = self._markers[sequencer * 2 + 0]
         markerQ = self._markers[sequencer * 2 + 1]
+        offsetI = self._offsets[sequencer * 2 + 0]
+        offsetQ = self._offsets[sequencer * 2 + 1]
 
         nonzero_sig = np.abs(waveformI)+np.abs(waveformQ)+np.abs(markerI)+np.abs(markerQ) > 1e-5
         nonzero = np.nonzero(nonzero_sig)[0]
@@ -674,8 +745,12 @@ class ZIDevice():
 
             #self.Postdelay[sequencer] = post_delay
 
-            ch1 = np.asarray(waveformI_truncated * (2 ** 13 - 1), dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
-            ch2 = np.asarray(waveformQ_truncated * (2 ** 13 - 1), dtype=np.int16)
+            if any((waveformI_truncated + offsetI) > 1) or any ((waveformQ_truncated + offsetQ) > 1):
+                logging.warning('Some of the values got overflowed')
+
+            factor = 2 ** 15 - 1
+            ch1 = np.asarray((waveformI_truncated + offsetI) * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
+            ch2 = np.asarray((waveformI_truncated + offsetQ) * factor, dtype=np.int16)
             m1 = np.asarray(markerI_truncated, dtype=np.uint16)
             m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
             #vector = np.asarray(np.transpose([ch1, ch2]).ravel())
@@ -686,17 +761,25 @@ class ZIDevice():
             #after update
             vector = zhinst.utils.convert_awg_waveform(wave1=ch1, wave2=ch2, markers=m1+m2*4)
 
-            self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
-                    sequencer, self.wave_lengths.index(wave_length)), vector)
+            self.last_vector = vector
+
+            if wave_length != 0:
+                self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
+                    sequencer, self.wave_lengths.index(wave_length)-1), vector)
+
             #except:
             #    traceback.print_exc()
             # self.daq.sync()
 
-            self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 0)
-            # self.daq.setInt('/' + self.device + '/awgs/%d/enable'%sequencer, 1)
+            if self.devtype == 'UHF':
+                self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 1)
+
+            self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 1)
             self.daq.sync()
 
-            print ('first_point: ', first_point,
+            print (
+               'device:', self.device,
+               'first_point: ', first_point,
                'last_point: ', last_point,
                'waveformI length', waveformI.shape,
                'waveformQ length', waveformQ.shape,
@@ -709,9 +792,18 @@ class ZIDevice():
                'pre_delay_reg', int(self.Predelay[sequencer]//8),
             )
 
+            # for UHF readout trigger
+            if self.devtype == 'UHF':
+                waveform_offset = (first_point - self.Predelay[sequencer])//8
+                self.daq.setInt('/{device}/awgs/0/userregs/{default_delay_reg}'.format(device=self.device,
+                                                                      default_delay_reg=self.default_delay_reg),
+                                waveform_offset )
+                pass
+
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
                 sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
                         int(self.Predelay[sequencer]//8))
+
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
@@ -719,8 +811,6 @@ class ZIDevice():
 
     def get_waveform(self, channel):
         return self._waveforms[channel]
-
-
 
     # self.set_output(channel=channel1, output=1)
     # self.set_output(channel=channel2, output=1)
@@ -772,7 +862,7 @@ class ZIDevice():
 
     # Phaseshift for oscillator
     def set_sin_phase(self, sin_num, phase):
-        self.sin_phase[sin_num] = pohase
+        self.sin_phase[sin_num] = phase
         self.daq.set([['/' + self.device + '/SINES/%d/PHASESHIFT' % sin_num, phase]])
         self.daq.sync()
 

@@ -24,10 +24,9 @@ import types
 import logging
 from time import sleep
 import numpy
-from .abstract_measurer import AbstractMeasurer
 
 
-class Agilent_N5242A(Instrument, AbstractMeasurer):
+class Agilent_N5242A(Instrument):
     '''
     This is the python driver for the Agilent VNA X Vector Network Analyzer
 
@@ -331,10 +330,12 @@ class Agilent_N5242A(Instrument, AbstractMeasurer):
         #Set bit in ESR when operation complete
 
         self.write("*OPC")
-        self.write("*OPC?")
+        #self.write("*OPC?")
         #Wait until ready and let plots to handle events (mouse drag and so on)
+        #print(self.ask("*ESR?"))
         while int(self.ask("*ESR?"))==0:
             sleep(0.002)
+
 
         self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
         #data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single)

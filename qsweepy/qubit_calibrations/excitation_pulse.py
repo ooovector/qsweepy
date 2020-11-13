@@ -215,13 +215,15 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
     for attempt_id in range(2):
         #fit = Rabi_measurements(device,
         #	qubit_id=qubit_id, frequency=device.get_qubit_fq(qubit_id), frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
-        fits = device.exdir_db.db.db.select(Rabi_measurements_query(qubit_id=qubit_id,
+        query = Rabi_measurements_query(qubit_id=qubit_id,
             transition=transition,
             frequency=device.get_qubit_fq(qubit_id),
             frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'),
             frequency_controls = device.get_frequency_control_measurement_id(qubit_id=qubit_id),
             channel_amplitudes_override=channel_amplitudes_override.id if hasattr (channel_amplitudes_override, 'id') else channel_amplitudes_override,
-            sample_name = device.exdir_db.sample_name))
+            sample_name = device.exdir_db.sample_name)
+        fits = device.exdir_db.db.db.select(query)
+        print ( query)
         print ('good Rabi fits:', fits)
         for Rabi_fit_id in fits:
             try:
@@ -247,7 +249,8 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
             raise ValueError('No excitation pulses found, recalibrate is set to False, so fail')
 
 
-def Rabi_measurements_query (qubit_id, transition, frequency, frequency_tolerance, frequency_controls,sample_name, channel_amplitudes_override=None):
+def Rabi_measurements_query (qubit_id, transition, frequency, frequency_tolerance,
+                             frequency_controls,sample_name, channel_amplitudes_override=None, channel_calibration=False):
     '''
     Perfectly ugly query for retrieving Rabi oscillation measurements corresponding to a qubit, and, possibly, a 'channel'
     '''
@@ -256,18 +259,35 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
     else:
         channel_amplitudes_clause = ''
 
+    if channel_calibration:
+        channel_calibration_clause = '''
+        INNER JOIN reference channel_calibration_reference ON
+            channel_calibration_reference.ref_type='channel_calibration' AND
+            channel_calibration_reference.this = channel.data_id
+    
+        INNER JOIN data channel_calibration ON
+            channel_calibration.id = channel_calibration_reference.that
+    
+        INNER JOIN metadata channel_calibration_frequency ON
+            channel_calibration_frequency.data_id = channel_calibration.id AND
+            channel_calibration_frequency.name = 'frequency' --AND
+            --ABS(CAST (channel_calibration_frequency.value AS DECIMAL) - {frequency}) < {frequency_tolerance}
+    '''
+    else:
+        channel_calibration_clause = ''
+
     query = '''SELECT fit_id FROM (
     SELECT
         channel_amplitudes.id channel_amplitudes_id,
         fit.id fit_id,
          LEAST(CAST(num_periods_scan.value AS DECIMAL),
-               CASE WHEN num_periods_decay.value='inf' THEN 3 ELSE CAST(num_periods_decay.value AS DECIMAL) END)	 score,
+               CASE WHEN num_periods_decay.value='inf' THEN 3 ELSE CAST(num_periods_decay.value AS DECIMAL) END)	 score
     --fit.id,
     --Rabi_freq.value as f,
     --num_periods_decay.value,
     --num_periods_scan.value,
-    MIN(CAST (channel_calibration_frequency.value AS DECIMAL)) min_freq,
-    MAX(CAST (channel_calibration_frequency.value AS DECIMAL)) max_freq
+    --MIN(CAST (channel_calibration_frequency.value AS DECIMAL)) min_freq,
+    --MAX(CAST (channel_calibration_frequency.value AS DECIMAL)) max_freq
 
     --MAX(fit.id) fit_id
 
@@ -315,18 +335,7 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
 
     INNER JOIN metadata channel ON
         channel.data_id = channel_amplitudes.id
-
-    INNER JOIN reference channel_calibration_reference ON
-        channel_calibration_reference.ref_type='channel_calibration' AND
-        channel_calibration_reference.this = channel.data_id
-
-    INNER JOIN data channel_calibration ON
-        channel_calibration.id = channel_calibration_reference.that
-
-    INNER JOIN metadata channel_calibration_frequency ON
-        channel_calibration_frequency.data_id = channel_calibration.id AND
-        channel_calibration_frequency.name = 'frequency' --AND
-        --ABS(CAST (channel_calibration_frequency.value AS DECIMAL) - {frequency}) < {frequency_tolerance}
+    {channel_calibration_clause}
 
     INNER JOIN metadata Rabi_freq ON
         Rabi_freq.data_id = fit.id AND
@@ -353,9 +362,9 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
              LEAST(CAST(num_periods_scan.value AS DECIMAL),
                    CASE WHEN num_periods_decay.value='inf' THEN 3 ELSE CAST(num_periods_decay.value AS DECIMAL) END)
 
-    HAVING
-        ABS(MIN(CAST (channel_calibration_frequency.value AS DECIMAL))- {frequency})<{frequency_tolerance}
-        AND ABS(MAX(CAST (channel_calibration_frequency.value AS DECIMAL))- {frequency})<{frequency_tolerance}
+    --HAVING
+    --    ABS(MIN(CAST (channel_calibration_frequency.value AS DECIMAL))- {frequency})<{frequency_tolerance}
+    --    AND ABS(MAX(CAST (channel_calibration_frequency.value AS DECIMAL))- {frequency})<{frequency_tolerance}
 
     ORDER BY
          LEAST(CAST(num_periods_scan.value AS DECIMAL),
@@ -369,4 +378,5 @@ def Rabi_measurements_query (qubit_id, transition, frequency, frequency_toleranc
         frequency_tolerance = frequency_tolerance,
         channel_amplitudes_clause = channel_amplitudes_clause,
         frequency_controls = frequency_controls,
-                        sample_name=sample_name)
+        sample_name=sample_name,
+        channel_calibration_clause=channel_calibration_clause)

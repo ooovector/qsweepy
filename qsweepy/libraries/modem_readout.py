@@ -21,10 +21,11 @@ class modem_readout(data_reduce.data_reduce):
     # trigger sequence:
     # pg.p('ro_trg', trg_length, pg.rect, 1),
 
-    def __init__(self, pulse_sequencer, adc, trigger_daq_seq, src_meas='Voltage', axis_mean=0, trigger_delay=0,
+    def __init__(self, pulse_sequencer, hardware, trigger_daq_seq, src_meas='Voltage', axis_mean=0, trigger_delay=0,
                  exdir_db=None):
         self.pulse_sequencer = pulse_sequencer
-        self.adc = adc
+        self.hardware = hardware
+        self.adc = hardware.adc
         self.src_meas = src_meas
         self.axis_mean = axis_mean
         self.trigger_daq_seq = trigger_daq_seq
@@ -38,7 +39,7 @@ class modem_readout(data_reduce.data_reduce):
         self.iq_readout_calibrations = {}
         self.calibrated_filters = {}
         self.calibration_measurements = {}
-        super().__init__(adc)  # modem_readout is a
+        super().__init__(hardware.adc)  # modem_readout is a
 
     # random pulse sequence for wideband calibration of everything
     # shot noise with characterisitic timescale 30 time slots should be like 640K of RAM from microsoft
@@ -82,18 +83,21 @@ class modem_readout(data_reduce.data_reduce):
                                    self.pulse_sequencer.awg, dac_sequence)]
         self.pulse_sequencer.set_seq(seq)
         # readout
-        adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
+        meas_result = self.adc.measure()[self.src_meas]
+        if meas_result.ndim == 1:  # in case of UHFQA data is already averaged on hardware
+            adc_sequence = meas_result
+        else:
+            adc_sequence = np.mean(meas_result, axis=self.axis_mean)
+        # adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
         # demodulate
         demodulation = self.demodulation(ex_channel, sign=True)
         # depending on how the cables are plugged in, measure
-        xc1 = correlate(adc_sequence * np.conj(demodulation), dac_sequence_adc_time, mode='full')  # HUYAGIC is here
-        xc2 = correlate(adc_sequence * np.conj(demodulation), dac_sequence_adc_time, mode='full')  # magic is here
-        xc3 = correlate(np.conj(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
-        xc4 = correlate(np.conj(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
-        abs_xc = np.abs(xc1) + np.abs(xc2) + np.abs(xc3) + np.abs(xc4)
+        xc1 = correlate(np.real(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # HUYAGIC is here
+        xc2 = correlate(np.imag(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
+        abs_xc = np.abs(xc1) + np.abs(xc2)
         # maximum correlation:
         readout_delay = -(np.argmax(abs_xc) - len(
-            dac_sequence_adc_time)) / self.adc.get_clock()  # get delay time in absolute units
+            dac_sequence_adc_time) - 50) / self.adc.get_clock()  # get delay time in absolute units
         # plt.plot(xc1)
         # plt.plot(xc2)
         # plt.plot(xc3)

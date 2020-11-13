@@ -11,9 +11,10 @@ class awg_digital:
         self.awg = awg
         self.channel = channel
         self.frozen = False
-        self.delay = 0
+        self.delay = 0  # this value is supposed to be an integer amount of clock cycles!!!
         self.measured_delay = None
         self.delay_tolerance = delay_tolerance
+        self.adc = None
 
     def get_nop(self):
         return self.awg.get_nop()
@@ -40,6 +41,23 @@ class awg_digital:
             delay_tock = np.where(waveform)[0][0]
             delay = int(np.ceil(delay_tock));
             self.delay_setter(delay)
+        if self.mode == 'internal_delay':
+            if self.delay > 1020:
+                #logging.warning('delay set to be 1020 adc-cycles instead of {} (can not be bigger)'.format(self.delay))
+                raise ValueError('Calibrated delay larger than 1020')
+                #self.delay = 1020
+            elif self.delay < 0:
+                raise ValueError('Delay cannot be negative')
+                #if np.abs(self.delay) > 1020:
+                #    logging.warning('delay set to be {} instead of {} (can not be negative or bigger then 1020)'.format(
+                #        1020, self.delay))
+                #    self.delay = 1020
+                #else:
+                #    logging.warning('delay set to be {} instead of {} (can not be negative)'.format(np.abs(self.delay),
+                #                                                                                    self.delay))
+                #    self.delay = np.abs(self.delay)
+            self.awg.set_digital(waveform, channel=self.channel)
+            self.adc.delay = self.delay / self.adc.get_clock()
 
     def freeze(self):
         self.frozen = True
@@ -162,6 +180,5 @@ class awg_digital:
             print(str(e), type(e))
             self.modem_delay_calibrate(modem, ex_channel_name)
                 # save calibration to database
-
 
         return self.measured_delay

@@ -24,9 +24,8 @@ import types
 import logging
 from time import sleep
 import numpy
-from .abstract_measurer import AbstractMeasurer
 
-class RS_ZNB20(Instrument, AbstractMeasurer):
+class RS_ZVB20(Instrument):
 	'''
 	This is the python driver for the Agilent VNA X Vector Network Analyzer
 
@@ -49,7 +48,8 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 
 		self._address = address
 		self._visainstrument = visa.ResourceManager().open_resource(self._address)# no term_chars for GPIB!!!!!
-		
+		#Trace data format
+		self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP')
 		self._zerospan = False
 		self._freqpoints = 0
 		self._ci = channel_index 
@@ -187,25 +187,16 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 	
 	def pre_sweep(self):
 		#self.init()
-		self.set_trigger_source("ON")
+		self.set_trigger_source("OFF")
 		self.write("*ESE 1")
 		self.set_average_mode("POIN")
 	
 	def post_sweep(self):
-		self.set_trigger_source("OFF")
+		self.set_trigger_source("ON")
 	
 	def init(self):
 		self._visainstrument.write("INIT:IMM")
-		#if self._zerospan:
-		#  self._visainstrument.write('INIT1;*wai')
-		#else:
-		#  if self.get_average():
-		#	for i in range(self.get_averages()):			
-		#	  self._visainstrument.write('INIT1;*wai')
-		#  else:
-		#	  self._visainstrument.write('INIT1;*wai')
 			  
-
 	def ask(self, cmd):
 	#I want just ask it motherfucka!
 		return self._visainstrument.ask(cmd)
@@ -213,36 +204,10 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 	def write(self, cmd):
 	#I want just write it motherfucka!
 		return self._visainstrument.write(cmd)	
-	'''
-	def set_S21(self, select='S21'):
-		
-		#calls the defined S21 setting
-		
-		self._visainstrument.write("DISP:WIND:TRAC:DEL")
-		self._visainstrument.write("DISP:WIND:TRAC:FEED 'my_ch1_{0}'".format(select))
-		self._visainstrument.write("CALC:PAR:SEL 'my_ch1_{0}'".format(select))
-		#self._visainstrument.write("CALC:PAR:SEL 'my_ch1_{0}'".format(select))
-
-	def define_S21(self, select='S21'):
-		
-		#defines the S21 measurement in the PNA X
-		
-		resp = self._visainstrument.ask('CALC:PAR:CAT?').strip('"')
-		names = resp.split(',')
-		for i in range(0, len(names), 2):
-			if names[i]=='my_ch1_{0}'.format(select):
-				return
-				
-		self._visainstrument.write( "CALCulate:PARameter:EXT 'my_ch1_{0}','{0}'".format(select))
-	'''	
+	
 	def clear(self):
 		self._visainstrument.write("*CLS")
-	'''
-	def select_measurement(self,Mnum):
-		#Select Mnum = 1 after default preset
-		self._visainstrument.write("CALC:PAR:MNUM {:d}".format(Mnum) )
-		self._visainstrument.ask("*OPC?")
-	'''
+	
 	def set_measurement(self,Mtype):
 		#Mtype = "S11"|"S21"|"S22"|"S12"
 		#Select measurement before doing this
@@ -313,6 +278,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		return datareal+1j*dataimag
 		
 	def get_tracedata(self, format = 'AmpPha'):
+		
 		'''
 		Get the data of the current trace
 
@@ -322,50 +288,41 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		Output:
 			'AmpPha':_ Amplitude and Phase
 		'''
-		#Clear status, initiate measurement
-		self.write("*CLS")
-		self.init()
-		#Set bit in ESR when operation complete
+		if self.get_average():
+			n_aver = int(self._visainstrument.query("AVER:COUN?"))
+			self.write('AVERage:CLEar')
+		else:
+			n_aver = 1
+		for i in range(n_aver):
+			#Clear status, initiate measurement
+			self.write("*CLS;INIT:IMM;*OPC")
+			#Check first bit im ESR (operation complete)
+			while not( int(self._visainstrument.query("*ESR?") ) & 1 ) :
+				sleep(0.002)
 		
-		self.write("*OPC")
 		#Wait until ready and let plots to handle events (mouse drag and so on)
-		while int(self.ask("*ESR?"))==0:
-			sleep(0.002)
-			
-		self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP;')
-		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
-		#data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
-		#data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)	  
-		#test
+		
 		data = self._visainstrument.query_binary_values("CALCulate:DATA? SDATA", datatype=u'f') 
 		data_size = numpy.size(data)
 		datareal = numpy.array(data[0:data_size:2])
 		dataimag = numpy.array(data[1:data_size:2])
 		
-		#print datareal,dataimag,len(datareal),len(dataimag)
 		if format.upper() == 'REALIMAG':
 			if self._zerospan:
 				return numpy.mean(datareal), numpy.mean(dataimag)
-			else:
+			else: 
 				return datareal, dataimag
 		elif format.upper() == 'AMPPHA':
 			if self._zerospan:
-				datareal = numpy.mean(datareal)
-				dataimag = numpy.mean(dataimag)
-				dataamp = numpy.sqrt(datareal*datareal+dataimag*dataimag)
-				datapha = numpy.arctan(dataimag/datareal)
+				data_complex = numpy.mean(datareal) + 1.j*numpy.mean(dataimag)
+				dataamp = numpy.abs( data_complex )
+				datapha = numpy.angle(data_complex)
 				return dataamp, datapha
 			else:
-				dataamp = numpy.sqrt(datareal*datareal+dataimag*dataimag)
-				datapha = numpy.arctan2(dataimag,datareal)
-				#Unwrap
-			for i in range(0, len(datapha)-1 ):
-				if datapha[i+1]-datapha[i] >= numpy.pi:
-					datapha[i+1] = datapha[i+1] - 2.*numpy.pi
-				elif datapha[i+1]-datapha[i] <= -numpy.pi:
-					datapha[i+1] = datapha[i+1] + 2.*numpy.pi
-				
-			return dataamp, datapha
+				data_complex = datareal + 1.j*dataimag
+				dataamp = numpy.abs( data_complex )
+				datapha = numpy.unwrap( numpy.angle(data_complex) )
+				return dataamp, datapha
 		else:
 			raise ValueError('get_tracedata(): Format must be AmpPha or RealImag') 
 	  
@@ -373,6 +330,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		"""
 		Get the time needed for one sweep
 		
+	
 		Returns:
 			out: float
 				time in ms
@@ -380,7 +338,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		#if self.get_average_mode() != "POIN":
 		#	return self.get_averages()*float(self._visainstrument.ask(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
 		#else:
-		return float(self._visainstrument.ask(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
+		return float(self._visainstrument.query(':SENS%i:SWE:TIME?' %(self._ci)))
 	###
 	# SET and GET functions
 	###
@@ -406,7 +364,6 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		else:
 		  self._visainstrument.write(':SENS%i:SWE:POIN %i' %(self._ci,nop))
 		  self._nop = nop
-		  self.get_freqpoints() #Update List of frequency points  
 		
 	def do_get_nop(self):
 		'''
@@ -426,32 +383,34 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 	
 	def do_set_average_mode(self, mode):
 		'''
-		type = poin | swe
+		Set averaging mode
+		Input:
+			mode (string) AUTO | FLATten | REDuse | MOVing
 		'''
-		self._visainstrument.write("SENS:AVER:MODE "+mode)
+		if mode.upper() in [ "AUTO" ,"FLAT" , "RED" , "MOV", "FLATTEN" , "REDUCE" , "MOVING"  ]:
+			self._visainstrument.write("SENS:AVER:MODE "+mode)
+		else:
+			ValueError('set_average_mode(mode): mode must be AUTO | FLATten | REDuse | MOVing')
 
 	def do_get_average_mode(self):
 		return self._visainstrument.ask('SENS:AVER:MODE?')	   
 
 	def do_set_average(self, status):
 		'''
-		Set status of Average
+		Set averaging status
 
 		Input:
-			status (string) : 'on' or 'off'
+			status (bool)
 
 		Output:
 			None
 		'''
 		logging.debug(__name__ + ' : setting Average to "%s"' % (status))
 		if status:
-			status = 'ON'
-			self._visainstrument.write('SENS%i:AVER:STAT %s' % (self._ci,status))
-		elif status == False:
-			status = 'OFF'
-			self._visainstrument.write('SENS%i:AVER:STAT %s' % (self._ci,status))
+			self._visainstrument.write('SENS%i:AVER:STAT %s' % (self._ci,"ON"))
 		else:
-			raise ValueError('set_Average(): can only set on or off')			   
+			self._visainstrument.write('SENS%i:AVER:STAT %s' % (self._ci,"OFF"))
+			   
 	def do_get_average(self):
 		'''
 		Get status of Average
@@ -460,7 +419,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 			None
 
 		Output:
-			Status of Averaging ('on' or 'off) (string)
+			Status of Averaging (bool)
 		'''
 		logging.debug(__name__ + ' : getting average status')
 		return bool(int(self._visainstrument.ask('SENS%i:AVER:STAT?' %(self._ci))))
@@ -475,11 +434,11 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		Output:
 			None
 		'''
-		if self._zerospan == False:
+		if self._zerospan:
+			self._visainstrument.write('SWE:POIN %.1f' % (self._ci,av))
+		else:
 			logging.debug(__name__ + ' : setting Number of averages to %i ' % (av))
 			self._visainstrument.write('SENS%i:AVER:COUN %i' % (self._ci,av))
-		else:
-			self._visainstrument.write('SWE:POIN %.1f' % (self._ci,av))
 			
 	def do_get_averages(self):
 		'''
@@ -659,7 +618,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 			span (float) : Start Frequency in Hz
 		'''
 		logging.debug(__name__ + ' : getting start frequency')
-		self._start = float(self._visainstrument.ask('SENS%i:FREQ:STAR?' % (self._ci)))
+		self._start = float(self._visainstrument.ask('SENS%i:FREQ:START?' % (self._ci)))
 		return  self._start
 
 	def do_set_stopfreq(self,val):
@@ -772,7 +731,7 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 		Set Trigger Mode
 
 		Input:
-			source (string) : AUTO | MANual | IMM)
+			source (string) : ON | OFF
 
 		Output:
 			None
@@ -790,21 +749,22 @@ class RS_ZNB20(Instrument, AbstractMeasurer):
 			None
 
 		Output:
-			source (string) : AUTO | MANual | EXTernal | REMote
+			source (string) : ON|OFF
 		'''
 		logging.debug(__name__ + ' : getting trigger source')
-		return self._visainstrument.ask('TRIG:SOUR?')		
+		return self._visainstrument.ask('INIT:CONT?')		
 		
 
 	def do_set_sweep_mode(self, mode):
 		logging.debug(__name__ + ' : setting sweep mode to "%s"' % mode)
-		if mode.upper() in ["LIN", "LOG", "POW", "CW", "SEGM", "PHASE"]:
-			self._visainstrument.write('SENS:SWE:TYPE %s' % mode.upper())
+		
+		if mode.upper() in ["LIN", "LOG", "POW", "CW", "POINT", "SEGM", "PULS"]:
+			self._visainstrument.write('SENS{:d}:SWE:TYPE {:s}'.format(self._ci, mode.upper()) )
 		else:
 			raise ValueError('set_sweep_mode(mode): mode must be LIN | LOG | POW | CW | SEGM | PHASE')	
 	
 	def do_get_sweep_mode(self):
-		return self._visainstrument.ask('SENS:SWE:TYPE?')
+		return self._visainstrument.ask('SENS{:d}:SWE:TYPE?'.format(self._ci))
 	
 	def do_set_channel_index(self,val):
 		'''

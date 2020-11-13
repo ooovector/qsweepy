@@ -79,16 +79,16 @@ def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalib
 
     readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True)
     nums = int(device.get_sample_global(name='calibrated_readout_nums'))
-    readout_device.set_nums(nums)
-    readout_device.set_nop(int(device.get_sample_global('readout_adc_points')))
+    readout_device.set_adc_nums(nums)
+    readout_device.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     return qubit_readout_pulse, readout_device  # , features, thresholds
 
 
 def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ignore_other_qubits=None):
     adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
     nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
-    old_nums = adc.get_nums()
-    adc.set_nop(int(device.get_sample_global('readout_adc_points')))
+    old_nums = adc.get_adc_nums()
+    adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     if ignore_other_qubits is None:
         ignore_other_qubits = bool(device.get_qubit_constant(qubit_id=qubit_id, name='readout_calibration_ignore_other_qubits'))
 
@@ -124,7 +124,7 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
     classifier.readout_classifier.cov_mode = 'equal'
 
     try:
-        adc.set_nums(nums)
+        adc.set_adc_nums(nums)
         measurement = device.sweeper.sweep(classifier,
                                            measurement_type='readout_calibration',
                                            metadata=metadata,
@@ -132,7 +132,7 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
     except:
         raise
     finally:
-        adc.set_nums(old_nums)
+        adc.set_adc_nums(old_nums)
 
     return measurement
     # classifier.repeat_samples = 2
@@ -188,8 +188,8 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                           recalibrate_excitation=True, ignore_other_qubits=False):
     adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
     nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
-    adc.set_nop(int(device.get_sample_global('readout_adc_points')))
-    old_nums = adc.get_nums()
+    adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
+    old_nums = adc.get_adc_nums()
 
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
 
@@ -250,7 +250,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
             device.pg.p(readout_channel, readout_length, device.pg.rect, readout_amplitude)]
 
     try:
-        adc.set_nums(nums)
+        adc.set_adc_nums(nums)
         measurement = device.sweeper.sweep(classifier,
                                            (readout_pulse_lengths, set_readout_length, 'length', 's'),
                                            (readout_pulse_amplitudes, set_readout_amplitude, 'amplitude', ''),
@@ -260,7 +260,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
     except:
         raise
     finally:
-        adc.set_nums(old_nums)
+        adc.set_adc_nums(old_nums)
 
     return measurement
     # classifier.repeat_samples = 2
