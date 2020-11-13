@@ -223,7 +223,7 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
             channel_amplitudes_override=channel_amplitudes_override.id if hasattr (channel_amplitudes_override, 'id') else channel_amplitudes_override,
             sample_name = device.exdir_db.sample_name)
         fits = device.exdir_db.db.db.select(query)
-        print ( query)
+        #print ( query)
         print ('good Rabi fits:', fits)
         for Rabi_fit_id in fits:
             try:
