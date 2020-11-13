@@ -32,8 +32,9 @@ class ziUHF(ZIDevice):
 		# Set default result source to be Integration
 		self.result_source = 7
 		self.timeout = 10
-		self.internal_average = True
+		self.repetition_reg = 2
 		self.default_delay_reg = 9
+		self.internal_avg = False
 
 	def set_adc_nop(self, nop):
 		self.nsamp = nop
@@ -41,20 +42,53 @@ class ziUHF(ZIDevice):
 	def get_adc_nop(self):
 		return self.nsamp
 
-	def set_adc_nums(self, nums):
-		self.nsegm = nums
-
-	def get_adc_nums(self):
-		return self.nsegm
-
-	def get_nums(self):
-		return self.get_adc_nums()
-
 	def set_nums(self, nums):
-		self.set_adc_nums(nums)
+		if self.internal_avg:
+			self.nsegm = nums
+			self.nres = 1
+		else:
+			self.nsegm = 1
+			self.nres = nums
 
-	def get_clock(self):
-		return self.daq.getDouble('/' + self.device + '/clockbase')
+		self.config_iterations(self.nsegm, self.nres)
+	
+	def get_nums(self):
+		return self.nsegm if self.internal_avg else self.nres
+
+
+	def config_iterations(self, nsegm, nres):
+		'''
+		Config sequencer and trace averaging according to nsegm and nres
+		'''
+		if nsegm * nres > int(2**15):
+			logging.warning('Number of segments is higher then the maximum possible number of trace averages')
+		# Set monitor average
+		self.daq.setInt('/' + self.device + '/qas/0/monitor/averages', nsegm * nres)
+		# Set repetition repetition reg
+		self.daq.setInt('/' + self.device + '/awgs/0/userregs/{}'.format(self.repetition_reg), nsegm * nres)
+
+
+	@property
+	def nres(self) -> int:
+		'''
+		Number of elements in result array
+		'''
+		return self.daq.getInt('/' + self.device + '/qas/0/result/length')
+	
+	@nres.setter
+	def nres(self, nres):
+		self.daq.setInt('/' + self.device + '/qas/0/result/length', nres)
+
+	@property
+	def nsegm(self) -> int:
+		'''
+		Number of iteration to obtain single result
+		'''
+		return self.daq.getInt('/' + self.device + '/qas/0/result/averages')
+
+	@nsegm.setter
+	def nsegm(self, nsegm):
+		self.daq.setInt('/' + self.device + '/qas/0/result/averages', nsegm)
 
 	@property
 	def nsamp(self) -> int:
@@ -71,23 +105,8 @@ class ziUHF(ZIDevice):
 		self.daq.setInt('/' + self.device + '/qas/0/monitor/length', nsamp)
 		self.daq.setInt('/' + self.device + '/qas/0/integration/length', nsamp)
 
-	@property
-	def nsegm(self) -> int:
-		'''
-		Amount of repetitions to get the result
-		'''
-		return self.daq.getInt('/' + self.device + '/qas/0/result/length')
-
-	@nsegm.setter
-	def nsegm(self, nsegm):
-		if nsegm > int(2**15):
-			logging.warning('Number of segments is higher then the maximum possible number of trace averages')
-		# First tell QA to integrate nsegm traces
-		self.daq.setInt('/' + self.device + '/qas/0/result/averages', nsegm)
-		# Then make monitor average raw trace nsegm times
-		self.daq.setInt('/' + self.device + '/qas/0/monitor/averages', nsegm)
-		# Set the repetition user register to nsegm
-		self.daq.setInt('/' + self.device + '/awgs/0/userregs/2', nsegm)
+	def get_clock(self):
+		return self.daq.getDouble('/' + self.device + '/clockbase')
 
 	@property
 	def trigger_result(self) -> int:
@@ -154,10 +173,12 @@ class ziUHF(ZIDevice):
 	def get_points(self) -> dict:
 		points = {}
 		if self.output_raw:
-			points.update({'Voltage': [('Sample', np.arange(self.nsegm), ''),  # UHFQA stores only the averaged trace
+			points.update({'Voltage': [('Sample', [], ''),  # UHFQA stores only the averaged trace
 						('Time', np.arange(self.nsamp)/self.get_clock(), 's')]})
 		if self.output_result:
-			points.update({self.result_source + str(channel): [] for channel in range(self.ch_num)})
+			points.update({self.result_source + str(channel): 
+			[] if self.internal_avg else np.arange(self.nres)
+			 for channel in range(self.ch_num)})
 
 		return points
 
