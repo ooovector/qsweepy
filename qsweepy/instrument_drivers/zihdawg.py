@@ -750,7 +750,7 @@ class ZIDevice():
 
             factor = 2 ** 15 - 1
             ch1 = np.asarray((waveformI_truncated + offsetI) * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
-            ch2 = np.asarray((waveformI_truncated + offsetQ) * factor, dtype=np.int16)
+            ch2 = np.asarray((waveformQ_truncated + offsetQ) * factor, dtype=np.int16)
             m1 = np.asarray(markerI_truncated, dtype=np.uint16)
             m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
             #vector = np.asarray(np.transpose([ch1, ch2]).ravel())

@@ -5,7 +5,6 @@ from time import sleep
 import numpy as np
 from matplotlib import pyplot as plt
 from qsweepy.instrument_drivers._signal_hound import _signal_hound
-from .abstract_measurer import AbstractMeasurer
 
 import ctypes
 
@@ -14,7 +13,7 @@ def get_signal_hounds():
 	devices = [s for s in serial_numbers[:num_devices]]
 	return devices
 
-class Signal_Hound_SA(Instrument, AbstractMeasurer):
+class Signal_Hound_SA(Instrument):
 	'''
 	This is the python driver for the Signal Hound SA124 spectrum analyzer
 

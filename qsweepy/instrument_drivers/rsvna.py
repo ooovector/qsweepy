@@ -1,9 +1,8 @@
 import visa
 import logging
 import numpy
-from .abstract_measurer import AbstractMeasurer
 
-class RSVNA(AbstractMeasurer):
+class RSVNA():
 	'''
 	This is the python driver for Rohde&Schwarz vector network analyzers (written specifically for ZNA26)
 	'''

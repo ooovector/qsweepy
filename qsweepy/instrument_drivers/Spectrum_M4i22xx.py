@@ -5,7 +5,6 @@ import sys
 import logging
 from ctypes import *
 import numpy
-from .abstract_measurer import AbstractMeasurer
 
 from qsweepy.instrument_drivers.instrument import Instrument
 
@@ -15,7 +14,7 @@ from qsweepy.instrument_drivers._Spectrum_M4i22xx.spcerr import *
 from qsweepy.instrument_drivers._Spectrum_M4i22xx.regs import *
 
 
-class Spectrum_M4i22xx(AbstractMeasurer, Instrument):
+class Spectrum_M4i22xx(Instrument):
 	def __init__(self,name):
 		logging.info(__name__ + ' : Initializing instrument Spectrum')
 		Instrument.__init__(self, name, tags=['physical'])

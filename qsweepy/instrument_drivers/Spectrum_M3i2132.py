@@ -27,9 +27,9 @@ import logging
 import numpy
 import os
 import platform
-from .abstract_measurer import AbstractMeasurer
 
-class Spectrum_M3i2132(AbstractMeasurer, Instrument):
+
+class Spectrum_M3i2132(Instrument):
 	'''
 	This is the driver for the Spectrum M3i2132 data acquisition card
 
