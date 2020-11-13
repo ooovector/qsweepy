@@ -1,5 +1,5 @@
 from qsweepy.libraries import pulses, awg_iq_multi, modem_readout, awg_channel
-from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
+
 
 import copy
 from qsweepy.ponyfiles.exdir_db import Exdir_db
@@ -443,6 +443,7 @@ class QubitDevice:
         return adc_reducer, qubit_measurement_dict
 
     def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False):
+        from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         self.hardware.set_pulsed_mode()
         adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
         adc_reducer.output_raw = raw
