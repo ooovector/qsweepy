@@ -317,7 +317,7 @@ class ZIDevice():
             self._offsets = [None] * self.num_channels
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
-        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts-20000]))
+        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts]))
         for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
