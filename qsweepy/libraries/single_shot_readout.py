@@ -85,8 +85,8 @@ class single_shot_readout:
             for i in range(self.repeat_samples):
                 for class_id, prepare_seq in enumerate(self.prepare_seqs):
                     self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
-                    # TODO: integration_results measurement
-                    i = self.adc.measure()['Integration result'].ravel()
+                    # TODO do we need to calibrate for all discriminators?
+                    i = self.adc.measure()[self.adc.result_source + str(0)]
                     x.extend(i.tolist())
                     y.extend([class_id] * len(i))
 
