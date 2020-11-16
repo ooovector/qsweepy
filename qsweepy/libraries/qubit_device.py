@@ -411,7 +411,7 @@ class QubitDevice:
         self.modem.get_dc_calibrations(amplitude=hardware.get_modem_dc_calibration_amplitude())
         return self.modem
 
-    def setup_adc_reducer_iq(self, qubits, raw=False): ### pimp this code to make it more universal. All the hardware belongs to the hardware
+    def setup_adc_reducer_iq(self, qubits, raw=False, internal_avg=True): ### pimp this code to make it more universal. All the hardware belongs to the hardware
         # file, but how do we do that here without too much boilerplate???
         # params: qubits: str or list #
         feature_id = 0
@@ -425,6 +425,8 @@ class QubitDevice:
 
         #adc_reducer.avg_cov_mode = 'iq'
         adc_reducer = self.hardware.adc
+        adc_reducer.internal_avg = internal_avg
+        adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
         qubit_measurement_dict = {}
 
         if type(qubits) is str:
@@ -442,7 +444,7 @@ class QubitDevice:
             feature_id += 1
         return adc_reducer, qubit_measurement_dict
 
-    def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False):
+    def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False, internal_avg=False):
         from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         self.hardware.set_pulsed_mode()
         adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)

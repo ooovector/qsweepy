@@ -211,7 +211,7 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
         v = np.transpose([x, y]).tolist()
         pdf = np.asarray(sorted(v, key = lambda x: x[0]))
         ftc = np.asarray(pdf)  # fidelity-on-threshold-curve
-        ftc[:, 1] = (-np.cumsum(ftc[:, 1]) + 0.5 * np.arange(ftc.shape[0] * 2)) / ftc.shape[0]
+        ftc[:, 1] = (-np.cumsum(ftc[:, 1]) + 0.5 * np.arange(ftc.shape[0])) / ftc.shape[0]
 
         self.thresholds = ftc[:, 0]
         self.fidelities = ftc[:, 1]

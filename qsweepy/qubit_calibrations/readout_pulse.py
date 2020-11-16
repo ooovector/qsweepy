@@ -1,6 +1,5 @@
-from qsweepy.qubit_calibrations.calibrated_readout import get_calibrated_measurer, readout_fidelity_scan, get_qubit_readout_pulse_from_fidelity_scan
-from qsweepy.ponyfiles.data_structures import *
-from qsweepy.libraries import data_reduce
+from ..ponyfiles.data_structures import *
+from ..libraries import data_reduce
 import traceback
 
 
@@ -73,6 +72,7 @@ def get_multi_qubit_readout_pulse(device, qubit_ids, length=None):
 
 def get_qubit_readout_pulse(device, qubit_id, length=None):
     from .readout_passthrough import readout_passthrough
+    from qsweepy.qubit_calibrations.calibrated_readout import readout_fidelity_scan, get_qubit_readout_pulse_from_fidelity_scan
 
     ## if we need to make a readout scan, here are the parameters
     points = int(device.get_qubit_constant(name='readout_passthrough_points', qubit_id=qubit_id))
@@ -181,6 +181,7 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 
 def get_uncalibrated_measurer(device, qubit_id, transition='01'):
+    from qsweepy.qubit_calibrations.calibrated_readout import get_calibrated_measurer
     try:
        assert transition == '01'
        qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)

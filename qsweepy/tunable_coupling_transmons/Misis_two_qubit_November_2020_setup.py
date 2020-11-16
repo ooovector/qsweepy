@@ -24,7 +24,7 @@ pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
                    'ex_clock': 2400e6,  # 1 GHz - clocks of some devices
                    'ro_clock': 1800e6,
-                   'rep_rate': 20e3,  # 10 kHz - pulse sequence repetition rate
+                   'rep_rate': 10e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
@@ -81,9 +81,9 @@ class hardware_setup():
         #self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
-        self.lo1 = instruments.SignalCore_5502a()
-        self.lo1.search()
-        self.lo1.open()
+        #self.lo1 = instruments.SignalCore_5502a()
+        #self.lo1.search()
+        #self.lo1.open()
 
         if self.device_settings['use_rf_switch']:
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
@@ -119,10 +119,10 @@ class hardware_setup():
         self.q2x = awg_channel(self.hdawg, 5)
         self.q3x = awg_channel(self.hdawg, 6)
 
-        self.qz3 = awg_channel(self.hdawg, 0)  # coil control
-        self.qz2 = awg_channel(self.hdawg, 1)  # coil control
+        self.q3z = awg_channel(self.hdawg, 0)  # coil control
+        self.q2z = awg_channel(self.hdawg, 1)  # coil control
         self.cz = awg_channel(self.hdawg, 2)  # coil control
-        self.qz1 = awg_channel(self.hdawg, 3)  # coil control
+        self.q1z = awg_channel(self.hdawg, 3)  # coil control
 
 
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
@@ -185,9 +185,9 @@ class hardware_setup():
             return
         self.hardware_state = 'undefined'
 
-        self.lo1.set_status(1)  # turn on lo1 output
-        self.lo1.set_power(self.pulsed_settings['lo1_power'])
-        self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
+        #self.lo1.set_status(1)  # turn on lo1 output
+        #self.lo1.set_power(self.pulsed_settings['lo1_power'])
+        #self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
         self.pna.set_power(self.pulsed_settings['vna_power'])
         #self.pna.write("OUTP ON")
@@ -310,10 +310,10 @@ class hardware_setup():
                               'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
                               'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
 
-                              'qz3': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
-                              'qz2': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
+                              'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
+                              'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
                               'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
-                              'qz1': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
+                              'q1z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']

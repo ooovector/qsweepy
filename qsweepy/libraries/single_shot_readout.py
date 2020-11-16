@@ -54,10 +54,10 @@ class single_shot_readout:
                 # pulse sequence to prepare state
                 self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
                 measurement = self.adc.measure()
-                if self.adc.dev_type == 'SK':
+                if self.adc.devtype == 'SK':
                     X.append(measurement[self.adc_measurement_name])
                     y.extend([class_id] * len(self.adc.get_points()[self.adc_measurement_name][0][1]))
-                elif self.adc.dev_type == 'UHF':
+                elif self.adc.devtype == 'UHF':
                     # UHF scenario
                     X.append(measurement[self.adc_measurement_name])
                     y.append(class_id)
@@ -67,11 +67,11 @@ class single_shot_readout:
         y = np.asarray(y)
         self.readout_classifier.fit(X, y)
 
-        if self.adc.dev_type == 'SK':
+        if self.adc.devtype == 'SK':
             scores = readout_classifier.evaluate_classifier(self.readout_classifier, X, y)
             self.scores = scores
             self.confusion_matrix = readout_classifier.confusion_matrix(y, self.readout_classifier.predict(X))
-        elif self.adc.dev_type == 'UHF':
+        elif self.adc.devtype == 'UHF':
             # UHF scenario
             x0 = np.mean(X[y == 0, :], axis=0)
             x1 = np.mean(X[y == 1, :], axis=0)
@@ -79,6 +79,8 @@ class single_shot_readout:
             feature = feature - np.mean(feature)
             threshold = 0
             self.readout_classifier.feature = feature
+            self.adc.internal_avg = False
+            self.adc.config_iterations(self.adc.nsegm, self.adc.nres)
             self.adc.set_feature_real(feature_id=0, feature=feature, threshold=threshold)
             x = []
             y = []
