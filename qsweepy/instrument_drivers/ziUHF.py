@@ -34,7 +34,7 @@ class ziUHF(ZIDevice):
         self.timeout = 10
         self.repetition_reg = 2
         self.default_delay_reg = 9
-        self.internal_avg = False
+        self.internal_avg = True
 
     def set_adc_nop(self, nop):
         self.nsamp = nop
@@ -270,14 +270,22 @@ class ziUHF(ZIDevice):
         :param channel: number of channel used to demodulate
         :param feature_real: I part of the weights
         :param feature_imag: Q part of the weights
-        # Had to separate due to strange ZI setVector method issue
-        # Should be defined separately
         '''
         feature = feature[:self.nsamp]/np.max(np.abs(feature[:self.nsamp]))
         feature_real = np.ascontiguousarray(np.real(feature))
         feature_imag = np.ascontiguousarray(np.imag(feature))
         self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/real', feature_real)
         self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/imag', feature_imag)
+
+    # King of kostyl
+    def set_feature_real(self, feature_id, feature, threshold=None):
+        self.internal_avg = False
+
+        if threshold is not None:
+			threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
+            # TODO add threshold setting for state discrimination
+        self.set_feature_iq(feature_id = feature_id, feature = feature)
+
 
     @property
     def crosstalk_matrix(self) -> np.ndarray:
