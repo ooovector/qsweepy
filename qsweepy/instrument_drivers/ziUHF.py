@@ -184,15 +184,14 @@ class ziUHF(ZIDevice):
     def get_points(self) -> dict:
         points = {}
         if self.output_raw:
-            points.update({'Voltage': [('Sample', [], ''),  # UHFQA stores only the averaged trace
+            points.update({'Voltage': [('Sample', np.asarray([0]), ''),  # UHFQA stores only the averaged trace
                         ('Time', np.arange(self.nsamp)/self.get_clock(), 's')]})
         if self.output_result:
-            points.update({self.result_source + str(channel):
-            [] if self.internal_avg else np.arange(self.nres)
-             for channel in range(self.ch_num)})
-
-        if self.output_resnum:
-            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num), '')]})
+            if self.internal_avg:
+                points.update({self.result_source + str(channel): [] for channel in range(self.ch_num)})
+            else:
+                points.update({self.result_source + str(channel): [('Sample', np.arange(self.nres), '')]
+                               for channel in range(self.ch_num)})
 
         return points
 
@@ -264,8 +263,8 @@ class ziUHF(ZIDevice):
 
         if self.output_raw:
             # Acquire data from the device:
-            result.update({'Voltage': (self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/0/wave')[0][1][0]['vector'] +
-                        1j * self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/1/wave')[0][1][0]['vector'])[:self.nsamp]})
+            result.update({'Voltage': np.reshape((self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/0/wave')[0][1][0]['vector'] +
+                        1j * self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/1/wave')[0][1][0]['vector'])[:self.nsamp], (1, -1))})
 
         # Readout result and store it with key depending on result source
         if self.output_result or self.output_resnum:
