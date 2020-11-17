@@ -29,12 +29,17 @@ class ziUHF(ZIDevice):
         # Set parameters required to be returned
         self.output_raw = True
         self.output_result = True
+        self.output_resnum = True
         # Set default result source to be Integration
         self.result_source = 7
-        self.timeout = 10
+        # Regs used in sequencer
         self.repetition_reg = 2
         self.default_delay_reg = 9
+        # Define if we should leave Integration result as vector or number
         self.internal_avg = True
+        # Service values
+        self.timeout = 10
+        self.thresholds = [None] * ch_num
 
     def set_adc_nop(self, nop):
         self.nsamp = nop
@@ -186,6 +191,9 @@ class ziUHF(ZIDevice):
             [] if self.internal_avg else np.arange(self.nres)
              for channel in range(self.ch_num)})
 
+        if self.output_resnum:
+            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num), '')]})
+
         return points
 
     def get_opts(self) -> dict:
@@ -194,6 +202,8 @@ class ziUHF(ZIDevice):
             opts.update({'Voltage': {'log': None}})
         if self.output_result:
             opts.update({self.result_source + str(channel): {'log': None} for channel in range(self.ch_num)})
+        if self.output_resnum:
+            opts.update({'resultnumbers': {'log': None}})
 
         return opts
 
@@ -207,6 +217,8 @@ class ziUHF(ZIDevice):
             dtypes.update({self.result_source + str(channel):
                 self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector'].dtype
             for channel in range(self.ch_num)})
+        if self.output_resnum:
+            dtypes.update({'resultnumbers': int})
 
         return dtypes
 
@@ -256,11 +268,25 @@ class ziUHF(ZIDevice):
                         1j * self.daq.getList('/' + self.device + '/qas/0/monitor/inputs/1/wave')[0][1][0]['vector'])[:self.nsamp]})
 
         # Readout result and store it with key depending on result source
-        if self.output_result:
-            result.update({self.result_source + str(channel):
-                        self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector']
-                        for channel in range(self.ch_num)})
+        if self.output_result or self.output_resnum:
 
+            int_res = np.asarray(self.daq.getList('/' + self.device + '/qas/0/result/data' + std(channel)+ '/wave')[0][1][0]['vector'] 
+                                for channel in range(self.ch_num))
+
+            if self.output_result:
+                result.update({self.result_source + str(channel):
+                        int_res[channel]
+                        for channel in range(self.ch_num)})
+        
+            if self.output_resnum:
+                ro_res = np.asarray([(np.real(int_res[channel]) + np.imag(int_res[channel])) > self.thresholds[channel]
+                    for channel in range(self.ch_num)]).T
+
+                disk = np.asarray([sum(v << i for i, v in enumerate(ro_res[sample][::-1])) for sample in range(self.nres)])
+                result_numbers = np.asarray([list(disk).count(state) for state in range(int(2**self.ch_num))])
+
+                result.update({'resultnumbers': result_numbers})
+                           
         return result
 
     def set_feature_iq(self, feature_id, feature) -> None:
@@ -281,9 +307,10 @@ class ziUHF(ZIDevice):
         self.internal_avg = False
 
         if threshold is not None:
-			threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
-            # TODO add threshold setting for state discrimination
-        self.set_feature_iq(feature_id = feature_id, feature = feature)
+            threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
+            self.thresholds[feature_id] = threshold
+            
+        self.set_feature_iq(feature_id=feature_id, feature=feature)
 
 
     @property
