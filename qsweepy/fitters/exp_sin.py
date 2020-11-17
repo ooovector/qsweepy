@@ -92,20 +92,26 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
                               'inf': A_inf[:len(A_inf)//2], 'A': A_inf[len(A_inf)//2:]}
 
 
-        MSE_rel_calculator = lambda parameters: np.sum(cost(parameters_flat(parameters)))/np.sum(np.abs(y-np.mean(y))**2)
+        MSE_rel_calculator = lambda parameters: np.sum(cost(parameters_flat(parameters)))/np.sum(np.abs(y.T-np.mean(y, axis=1))**2)
 
         MSE_rel_new = MSE_rel_calculator(parameters_new)
+        #print('parameters_new:', parameters_new)
         if not parameters_old:
             MSE_rel = MSE_rel_calculator(parameters_new)
             parameters = parameters_new
         else:
             parameters_old = {k: np.asarray(v)[0] if (k != 'A' and k != 'inf') else v for k,v in parameters_old.items()}
+            #print ('parameters_old:', parameters_old)
             MSE_rel_old = MSE_rel_calculator(parameters_old)
             parameters = parameters_old if MSE_rel_new > MSE_rel_old else parameters_new
+            #print ('MSE_rel_new:', MSE_rel_new, 'MSE_rel_old:', MSE_rel_old)
             MSE_rel = MSE_rel_old if MSE_rel_new > MSE_rel_old else MSE_rel_new
 
-        parameters['f'] = np.abs(parameters['f'])
-        if parameters['T']<0: parameters['T'] = np.inf
+        if parameters['f']  < 0:
+            parameters['f'] = -parameters['f']
+            parameters['phi'] = -parameters['phi']
+        if parameters['T'] < 0:
+            parameters['T'] = np.inf
         if mode == 'sync':
             if parameters['inf']<-np.sqrt(MSE_rel):
                 parameters['inf'] = -parameters['inf']
@@ -144,5 +150,6 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
     decay_goodness_test = parameters['decays_in_scan_length']>0.75 and frequency_goodness_test and np.isfinite(parameters['T'])
     parameters['frequency_goodness_test'] = 1 if frequency_goodness_test else 0
     parameters['decay_goodness_test'] = 1 if decay_goodness_test else 0
+    # print ('parameters:', parameters)
 
     return fit_dataset.resample_x_fit(x_full), fitted_curve, parameters

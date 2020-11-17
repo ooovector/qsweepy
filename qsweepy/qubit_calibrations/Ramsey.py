@@ -68,7 +68,8 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
 
-        device.pg.set_seq(ex_pulse1.get_pulse_sequence(0)+
+        device.pg.set_seq(device.pre_pulses+
+                          ex_pulse1.get_pulse_sequence(0)+
                           delay_seq+
                           ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+
                           readout_delay_seq+
@@ -338,7 +339,8 @@ def Ramsey_crosstalk(device,
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
 
-        device.pg.set_seq(ex_control_pulse.get_pulse_sequence(0)+\
+        device.pg.set_seq(device.pre_pulses+\
+                          ex_control_pulse.get_pulse_sequence(0)+\
                           ex_pulse1.get_pulse_sequence(0)+\
                           delay_seq+\
                           ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+\

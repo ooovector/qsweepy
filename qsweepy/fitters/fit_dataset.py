@@ -54,6 +54,8 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
         # load fit data from last measurement
         if hasattr(source_measurement_updated, 'fit'):
+            #for name, dataset in source_measurement_updated.fit.datasets.items():
+            #    print(name, dataset.data)
             order_amplitudes = np.asarray([a for i, a in enumerate(transposition) if i < len(linear_parameter_shape)+len(sweep_parameter_shape)])
             if len(order_amplitudes):
                 removals = [i for i in range(max(order_amplitudes)) if i not in order_amplitudes]
@@ -88,7 +90,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
             if unpack_complex:
                 #print('unpacking old_A_2d complex, old shape: ', old_A_2d.shape)
                 #old_A_2d = np.vstack([np.real(A_sorted).T, np.imag(A_sorted).T]).T
-                old_amplitudes_2d = {k: np.vstack([np.real(v).T, np.imag(v).T]) for k, v in old_amplitudes_2d.items()}
+                old_amplitudes_2d = {k: np.hstack([np.real(v).T, np.imag(v).T]) if np.iscomplexobj(v) else v for k, v in old_amplitudes_2d.items()}
                 #print('new shape: ', old_A_2d.shape)
             old_fit_parameters_1d = {k: np.reshape(v, [np.prod(sweep_parameter_shape)]) for k, v in fit_parameters_sorted.items()}
 
@@ -98,10 +100,14 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
         fit_3d = np.zeros(fit_3d_shape, data_3d.dtype)
         fit_parameters = []
 
-
+        #if hasattr(source_measurement_updated, 'fit'):
+        #    print('old_fit_parameters_1d', old_fit_parameters_1d)
+        #    print('old_amplitudes_2d', old_amplitudes_2d)
         ## initializing amplitude array
         #A = np.zeros((data_3d.shape[0], data_3d.shape[1]), data_3d.dtype)
         amplitudes = {}
+
+        # print ('data_3d_shape:', data_3d.shape)
 
         for sweep_parameter_id in range(data_3d.shape[0]):
             y = data_3d[sweep_parameter_id, :, :]
@@ -115,6 +121,9 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
                 #    print('old_parameters[{}][{}] = {}'.format(k, sweep_parameter_id, old_parameters[k]))
                 #old_parameters['A'] = old_A_2d[sweep_parameter_id,:]
                 old_parameters.update({k: v[sweep_parameter_id, :] for k,v in old_amplitudes_2d.items()})
+
+                #for name, old_amplitude_2d in old_amplitudes_2d.items():
+                #    print ('old_amplitudes_2d inside sweep: ', name, old_amplitude_2d.shape, old_amplitude_2d[sweep_parameter_id, :])
                 #for k,v in old_amplitudes_2d.items():
                     #print ('old_amplitudes_2d[{}] = {}'.format(k,v))
                     #print ('old_amplitudes_2d[{}][{}] = {}'.format(k, sweep_parameter_id, v[sweep_parameter_id, :]))
@@ -122,6 +131,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
 
             else:
                 old_parameters = None
+            #print ('old_parameters inside sweep:', old_parameters)
 
             #print ('old_parameters:', old_parameters)
             x_fit, y_fit, fitresults = fitter.fit(t, y_real, old_parameters)
@@ -196,6 +206,9 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
             metadata.update({k: str(v.ravel()[0]) for k, v in amplitudes_unsorted.items()})
             # copy fit parameters to metadata if singleton
 
+        #print ('amplitudes_unsorted:', amplitudes_unsorted)
+        #print('fit_parameters_unsorted:', amplitudes_unsorted)
+
         #return fit_unsorted, A_unsorted, fit_parameters_unsorted, metadata, references, x_fit
         return fit_unsorted, amplitudes_unsorted, fit_parameters_unsorted, metadata, references, x_fit
 
@@ -246,7 +259,6 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
                 fit_measurement.datasets[name].data[...] = amplitude[...]
             else:
                 fit_measurement.datasets[name].data = amplitude
-
         #raise Exception('debug')
         #print('updater called')
 

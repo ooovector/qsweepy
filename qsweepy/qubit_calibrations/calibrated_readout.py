@@ -41,7 +41,7 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
             qubit_state = (1 << _id) & state
             if qubit_state:
                 excitation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
-        device.pg.set_seq(excitation_sequence + [
+        device.pg.set_seq(device.pre_pulses+excitation_sequence + [
             device.pg.pmulti(pause_length)] + device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence())
 
     return device.sweeper.sweep(readout_device,

@@ -22,7 +22,7 @@ MAPPINGS = {
 class ziUHF(ZIDevice):
     def __init__(self, ch_num) -> None:
         self.sync_mode = False  # True only during mixers calibration
-        super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF')
+        super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF', clock=1.8e9, delay_int=0)
         # Set number of different channels for signal demodulation
         self.ch_num = ch_num
         # self.dev.enable_readout_channels(list(range(ch_num)))
@@ -52,8 +52,13 @@ class ziUHF(ZIDevice):
 
         self.config_iterations(self.nsegm, self.nres)
 
+    def set_internal_avg(self, internal_avg):
+        nums = self.get_nums()
+        self.internal_avg = internal_avg
+        self.set_nums(nums)
+
     def get_nums(self):
-        return self.nsegm if self.internal_avg else self.nres
+        return self.nsegm*self.nres
 
     def set_adc_nums(self, nums):
         self.set_nums(nums)
@@ -282,7 +287,7 @@ class ziUHF(ZIDevice):
         self.internal_avg = False
 
         if threshold is not None:
-			threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
+            threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
             # TODO add threshold setting for state discrimination
         self.set_feature_iq(feature_id = feature_id, feature = feature)
 

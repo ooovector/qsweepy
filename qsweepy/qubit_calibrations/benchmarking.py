@@ -86,7 +86,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
 
     ro_seq = [device.pg.pmulti(pause_length)]+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence()
     pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device,
-            set_seq = lambda x: device.pg.set_seq(x+ro_seq), interleavers = HZ_group)
+            set_seq = lambda x: device.pg.set_seq(device.pre_pulses+x+ro_seq), interleavers = HZ_group)
 
     pi2_bench.random_sequence_num = random_sequence_num
     random_sequence_ids = np.arange(random_sequence_num)
@@ -172,7 +172,7 @@ def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_
 
     ro_seq = [device.pg.pmulti(pause_length)]+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence()
     pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device,
-            set_seq = lambda x: device.pg.set_seq(x+ro_seq))
+            set_seq = lambda x: device.pg.set_seq(device.pre_pulses+x+ro_seq))
 
     pi2_bench.interleavers = HZ_group
 

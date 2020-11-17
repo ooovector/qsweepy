@@ -105,7 +105,8 @@ def frequency_shift_scan(device, gate, pulse, frequency_shift_range, calibration
                                                      rotation_angle=np.pi)
 
     def set_frequency_shift(frequency_shift):
-        device.pg.set_seq(pi_pulse.get_pulse_sequence(0.0)+\
+        device.pg.set_seq(device.pre_pulses+
+                          pi_pulse.get_pulse_sequence(0.0)+\
                           pulse.get_pulse_sequence(0.0, frequency_shift=frequency_shift)+\
                           device.trigger_readout_seq+\
                           readout_pulse.get_pulse_sequence())

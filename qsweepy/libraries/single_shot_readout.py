@@ -24,7 +24,7 @@ class single_shot_readout:
 
         self.ro_delay_seq = ro_delay_seq
         self.pulse_generator = pulse_generator
-        self.repeat_samples = 2
+        self.repeat_samples = 8
         self.save_last_samples = False
         self.train_test_split = 0.8
         self.measurement_name = ''
@@ -52,6 +52,7 @@ class single_shot_readout:
         for i in range(self.repeat_samples):
             for class_id, prepare_seq in enumerate(self.prepare_seqs):
                 # pulse sequence to prepare state
+                self.adc.set_internal_avg(True)
                 self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
                 measurement = self.adc.measure()
                 if self.adc.devtype == 'SK':
@@ -62,9 +63,13 @@ class single_shot_readout:
                     X.append(measurement[self.adc_measurement_name])
                     y.append(class_id)
 
+        # print (np.asarray(X).shape, np.asarray(y).shape)
         X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
-        # last dimension is the feature dimension
         y = np.asarray(y)
+        # last dimension is the feature dimension
+        # y = np.asarray(y)
+        # print(np.asarray(X).shape, np.asarray(y).shape)
+        # print (X, y)
         self.readout_classifier.fit(X, y)
 
         if self.adc.devtype == 'SK':
@@ -73,28 +78,28 @@ class single_shot_readout:
             self.confusion_matrix = readout_classifier.confusion_matrix(y, self.readout_classifier.predict(X))
         elif self.adc.devtype == 'UHF':
             # UHF scenario
-            x0 = np.mean(X[y == 0, :], axis=0)
-            x1 = np.mean(X[y == 1, :], axis=0)
-            feature = x1 - x0
-            feature = feature - np.mean(feature)
+            #x0 = np.mean(X[y == 0, :], axis=0)
+            #x1 = np.mean(X[y == 1, :], axis=0)
+            #feature = x1 - x0
+            #feature = feature - np.mean(feature)
             threshold = 0
-            self.readout_classifier.feature = feature
-            self.adc.internal_avg = False
-            self.adc.config_iterations(self.adc.nsegm, self.adc.nres)
-            self.adc.set_feature_real(feature_id=0, feature=feature, threshold=threshold)
+            #self.readout_classifier.feature = feature
+            self.adc.set_internal_avg(False)
+            self.adc.set_feature_real(feature_id=0, feature=self.readout_classifier.feature, threshold=threshold)
             x = []
             y = []
             for i in range(self.repeat_samples):
                 for class_id, prepare_seq in enumerate(self.prepare_seqs):
                     self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
                     # TODO do we need to calibrate for all discriminators?
-                    i = self.adc.measure()[self.adc.result_source + str(0)]
-                    x.extend(i.tolist())
-                    y.extend([class_id] * len(i))
+                    j = self.adc.measure()[self.adc.result_source + str(0)]
+                    x.extend(j.tolist())
+                    y.extend([class_id] * len(j))
 
             self.readout_classifier.naive_bayes_reduced(x, y)
             self.scores = self.readout_classifier.scores
-            self.confusion_matrix = readout_classifier.confusion_matrix(y, self.readout_classifier.predict_reduced(x))
+            self.confusion_matrix = readout_classifier.confusion_matrix(np.asarray(y),
+                                                                        np.asarray(self.readout_classifier.predict_reduced(x)))
 
     def get_opts(self):
         opts = {}
@@ -140,7 +145,7 @@ class single_shot_readout:
 
         if self.measure_avg_samples:
             avg_samples = {
-                'avg_sample' + str(_class): [('Time', np.arange(self.adc.get_nop()) / self.adc.get_clock(), 's')] for
+                'avg_sample' + str(_class): [('Time', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')] for
                 _class in self.readout_classifier.class_list}
             # features = {'feature'+str(_class):[('Time',np.arange(self.adc.get_nop())/self.adc.get_clock(), 's')] for _class in self.readout_classifier.class_list}
             points.update(avg_samples)
@@ -149,10 +154,10 @@ class single_shot_readout:
         #    points['hists'] = [('class', self.readout_classifier.class_list, ''),
         #                       ('bin', np.arange(self.readout_classifier.nbins), '')]
         #    points['proba_points'] = [('bin', np.arange(self.readout_classifier.nbins), '')]
-        points['fidelities'] = [('bin', np.arange(self.readout_classifier.nbins), '')]
-        points['thresholds'] = [('bin', np.arange(self.readout_classifier.nbins), '')]
+        points['fidelities'] = [('bin', np.arange(self.adc.get_adc_nums()*self.repeat_samples*len(self.prepare_seqs)), '')]
+        points['thresholds'] = [('bin', np.arange(self.adc.get_adc_nums()*self.repeat_samples*len(self.prepare_seqs)), '')]
         if self.measure_feature_w_threshold:
-            points['feature'] = [('Time', np.arange(self.adc.get_nop()) / self.adc.get_clock(), 's')]
+            points['feature'] = [('Time', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')]
             points['threshold'] = []
         return points
 

@@ -157,7 +157,7 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
     excitation_pulse_sequence = excitation_pulse.get_pulse_sequence(0) if excitation_pulse is not None else []
 
-    device.pg.set_seq(excitation_pulse_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
+    device.pg.set_seq(device.pre_pulses+excitation_pulse_sequence+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence())
 
     # refers to Awg_iq_multi calibrations
     metadata = {'qubit_id':qubit_id, 'averages': nums}
@@ -180,7 +180,7 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
     return measurement
 
 
-def get_uncalibrated_measurer(device, qubit_id, transition='01'):
+def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False):
     from qsweepy.qubit_calibrations.calibrated_readout import get_calibrated_measurer
     try:
        assert transition == '01'
@@ -193,12 +193,16 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01'):
 
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
-    adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=False)
+    adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=samples)
+    adc_reducer.set_internal_avg(True)
     adc_reducer.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     measurer = data_reduce.data_reduce(adc_reducer)
     measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],
                                                         background_calibration.datasets['S21'].data, adc_reducer.get_adc_nums())
+    if samples:
+        measurer.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc_reducer, 'Voltage', 0)
     # measurer.references = {'readout_background_calibration': background_calibration.id}
     nums = int(device.get_qubit_constant(name='uncalibrated_readout_nums', qubit_id=qubit_id))
     adc_reducer.set_adc_nums(nums)
     return qubit_readout_pulse_, measurer
+

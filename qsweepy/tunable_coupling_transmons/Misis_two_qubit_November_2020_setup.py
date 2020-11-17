@@ -94,8 +94,8 @@ class hardware_setup():
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/ac', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/imp50', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/imp50', 1)
-        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/0/range', 0.1)
-        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/1/range', 0.1)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/0/range', 0.2)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/1/range', 0.2)
 
         self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/0/range', 0.8)
         self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/1/range', 0.8)

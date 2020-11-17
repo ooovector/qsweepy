@@ -42,7 +42,7 @@ def gauss_hd_ape_pihalf(device, qubit_id, num_pulses_range, phase_sign='+'):
                      [device.pg.pmulti(length, *tuple(channel_pulses_xm))]) * num_pulses + \
                     [device.pg.pmulti(length, *tuple(channel_pulses_yp))]
 
-        device.pg.set_seq(pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
+        device.pg.set_seq(device.pre_pulses+pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
 
     #measurement_name = [m for m in measurer.get_points().keys()][0]
     measurement_name = list( measurer.get_points().keys())[0]
@@ -228,7 +228,7 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle
                                 for c, a in channel_amplitudes.metadata.items()]
 
         pulse = [device.pg.pmulti(length, *tuple(channel_pulses))]*num_pulses
-        device.pg.set_seq(pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
+        device.pg.set_seq(device.pre_pulses+pulse+device.trigger_readout_seq+readout_pulse.get_pulse_sequence())
 
     measurement = device.sweeper.sweep(measurer,
                                         (amplitudes, set_amplitude, 'Amplitude'),

@@ -17,6 +17,7 @@ class QubitDevice:
         self.sweeper = sweeper
         self.controls = controls
         self.hardware = hardware
+        self.pre_pulses = []
 
         self.pg = None
 
@@ -378,7 +379,8 @@ class QubitDevice:
         hardware.adc.set_adc_nums(int(self.get_sample_global('delay_calibration_nums')))
         hardware.adc.set_adc_nop(int(self.get_sample_global('delay_calibration_nop')))
 
-        self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
+        #self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
+        self.trigger_readout_seq = []
 
         self.modem = modem_readout.modem_readout(self.pg, hardware, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
         self.modem.save=True
@@ -412,21 +414,25 @@ class QubitDevice:
         return self.modem
 
     def setup_adc_reducer_iq(self, qubits, raw=False, internal_avg=True): ### pimp this code to make it more universal. All the hardware belongs to the hardware
+        from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         # file, but how do we do that here without too much boilerplate???
         # params: qubits: str or list #
         feature_id = 0
 
         self.hardware.set_pulsed_mode()
-        #adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-        #adc_reducer.output_raw = raw
-        #adc_reducer.last_cov = False
-        #adc_reducer.avg_cov = True
-        #adc_reducer.resultnumber = False
+        if self.hardware.adc.devtype == 'SK':
+            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+            adc_reducer.output_raw = raw
+            adc_reducer.last_cov = False
+            adc_reducer.avg_cov = True
+            adc_reducer.resultnumber = False
 
-        #adc_reducer.avg_cov_mode = 'iq'
-        adc_reducer = self.hardware.adc
-        adc_reducer.internal_avg = internal_avg
-        adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
+            adc_reducer.avg_cov_mode = 'iq'
+        elif self.hardware.adc.devtype == 'UHF':
+            adc_reducer = self.hardware.adc
+            adc_reducer.internal_avg = internal_avg
+            adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
+
         qubit_measurement_dict = {}
 
         if type(qubits) is str:
@@ -447,13 +453,19 @@ class QubitDevice:
     def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False, internal_avg=False):
         from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         self.hardware.set_pulsed_mode()
-        adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-        adc_reducer.output_raw = raw
-        adc_reducer.last_cov = False
-        adc_reducer.avg_cov = False
-        adc_reducer.resultnumber = True
+        if self.hardware.adc.devtype == 'SK':
+            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+            adc_reducer.output_raw = raw
+            adc_reducer.last_cov = False
+            adc_reducer.avg_cov = False
+            adc_reducer.resultnumber = True
 
-        adc_reducer.avg_cov_mode = 'real'
+            adc_reducer.avg_cov_mode = 'real'
+        elif self.hardware.adc.devtype == 'UHF':
+            adc_reducer = self.hardware.adc
+            adc_reducer.internal_avg = internal_avg
+            adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
+
 
         feature_id = 0
         for feature, threshold in zip(features, thresholds):
