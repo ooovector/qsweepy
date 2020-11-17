@@ -192,6 +192,9 @@ class ziUHF(ZIDevice):
             else:
                 points.update({self.result_source + str(channel): [('Sample', np.arange(self.nres), '')]
                                for channel in range(self.ch_num)})
+        
+        if self.output_resnum:
+            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num, ''))]})
 
         return points
 
