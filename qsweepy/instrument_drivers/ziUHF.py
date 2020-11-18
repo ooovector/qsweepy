@@ -20,11 +20,9 @@ MAPPINGS = {
 
 
 class ziUHF(ZIDevice):
-    def __init__(self, ch_num) -> None:
+    def __init__(self, num_covariances) -> None:
         self.sync_mode = False  # True only during mixers calibration
         super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF', clock=1.8e9, delay_int=0)
-        # Set number of different channels for signal demodulation
-        self.ch_num = ch_num
         # self.dev.enable_readout_channels(list(range(ch_num)))
         # Set parameters required to be returned
         self.output_raw = True
@@ -39,8 +37,8 @@ class ziUHF(ZIDevice):
         self.internal_avg = True
         # Service values
         self.timeout = 10
-        self.thresholds = [0] * ch_num
-        self.num_covariances = ch_num
+        self.thresholds = [0] * num_covariances
+        self.num_covariances = num_covariances
 
     def set_adc_nop(self, nop):
         self.nsamp = nop
@@ -194,13 +192,13 @@ class ziUHF(ZIDevice):
                         ('Time', np.arange(self.nsamp)/self.get_clock(), 's')]})
         if self.output_result:
             if self.internal_avg:
-                points.update({self.result_source + str(channel): [] for channel in range(self.ch_num)})
+                points.update({self.result_source + str(channel): [] for channel in range(self.num_covariances)})
             else:
                 points.update({self.result_source + str(channel): [('Sample', np.arange(self.nres), '')]
-                               for channel in range(self.ch_num)})
+                               for channel in range(self.num_covariances)})
 
         if self.output_resnum:
-            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num), '')]})
+            points.update({'resultnumbers':[('State', np.arange(2**self.num_covariances), '')]})
 
         return points
 
@@ -209,7 +207,7 @@ class ziUHF(ZIDevice):
         if self.output_raw:
             opts.update({'Voltage': {'log': None}})
         if self.output_result:
-            opts.update({self.result_source + str(channel): {'log': None} for channel in range(self.ch_num)})
+            opts.update({self.result_source + str(channel): {'log': None} for channel in range(self.num_covariances)})
         if self.output_resnum:
             opts.update({'resultnumbers': {'log': None}})
 
@@ -224,7 +222,7 @@ class ziUHF(ZIDevice):
             # it isn't
             dtypes.update({self.result_source + str(channel):
                 self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector'].dtype
-            for channel in range(self.ch_num)})
+            for channel in range(self.num_covariances)})
         if self.output_resnum:
             dtypes.update({'resultnumbers': int})
 
@@ -279,17 +277,17 @@ class ziUHF(ZIDevice):
         if self.output_result or self.output_resnum:
             int_res = np.asarray([
                 self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector']
-                for channel in range(self.ch_num)])
+                for channel in range(self.num_covariances)])
             if self.output_result:
                 result.update({self.result_source + str(channel): int_res[channel]
-                        for channel in range(self.ch_num)})
+                        for channel in range(self.num_covariances)})
 
             if self.output_resnum:
                 ro_res = np.asarray([(np.real(int_res[channel]) + np.imag(int_res[channel])) > self.thresholds[channel]
-                    for channel in range(self.ch_num)]).T
+                    for channel in range(self.num_covariances)]).T
 
-                disc = np.asarray([sum(v << i for i, v in enumerate(ro_res[sample][::-1])) for sample in range(self.nres)])
-                result_numbers = np.asarray([list(disc).count(state) for state in range(int(2**self.ch_num))])
+                disc = np.asarray([sum(v << i for i, v in enumerate(ro_res[sample])) for sample in range(self.nres)])
+                result_numbers = np.asarray([list(disc).count(state) for state in range(int(2**self.num_covariances))])
 
                 result.update({'resultnumbers': result_numbers})
 
@@ -311,6 +309,7 @@ class ziUHF(ZIDevice):
     # King of kostyl
     def set_feature_real(self, feature_id, feature, threshold=None):
         self.internal_avg = False
+        print (feature, threshold)
 
         if threshold is not None:
             threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
@@ -321,6 +320,7 @@ class ziUHF(ZIDevice):
     def disable_feature(self, feature_id):
         self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/real', np.zeros(4096))
         self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/imag', np.zeros(4096))
+        self.thresholds[feature_id] = 1
 
     @property
     def crosstalk_matrix(self) -> np.ndarray:
