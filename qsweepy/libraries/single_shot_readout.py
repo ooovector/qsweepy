@@ -93,7 +93,7 @@ class single_shot_readout:
                     self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
                     # TODO do we need to calibrate for all discriminators?
                     j = self.adc.measure()[self.adc.result_source + str(0)]
-                    x.extend(j.tolist())
+                    x.extend((np.real(j) + np.imag(j)).tolist())
                     y.extend([class_id] * len(j))
 
             self.readout_classifier.naive_bayes_reduced(x, y)

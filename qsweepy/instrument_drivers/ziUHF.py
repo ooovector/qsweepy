@@ -39,7 +39,8 @@ class ziUHF(ZIDevice):
         self.internal_avg = True
         # Service values
         self.timeout = 10
-        self.thresholds = [None] * ch_num
+        self.thresholds = [0] * ch_num
+        self.num_covariances = ch_num
 
     def set_adc_nop(self, nop):
         self.nsamp = nop
@@ -199,7 +200,7 @@ class ziUHF(ZIDevice):
                                for channel in range(self.ch_num)})
 
         if self.output_resnum:
-            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num, ''))]})
+            points.update({'resultnumbers':[('State', np.arange(2**self.ch_num), '')]})
 
         return points
 
@@ -276,9 +277,9 @@ class ziUHF(ZIDevice):
 
         # Readout result and store it with key depending on result source
         if self.output_result or self.output_resnum:
-            int_res = np.asarray(
-                self.daq.getList('/' + self.device + '/qas/0/result/data' + str(channel) + '/wave')[0][1][0]['vector']
-                for channel in range(self.ch_num))
+            int_res = np.asarray([
+                self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector']
+                for channel in range(self.ch_num)])
             if self.output_result:
                 result.update({self.result_source + str(channel): int_res[channel]
                         for channel in range(self.ch_num)})
@@ -317,6 +318,9 @@ class ziUHF(ZIDevice):
 
         self.set_feature_iq(feature_id=feature_id, feature=feature)
 
+    def disable_feature(self, feature_id):
+        self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/real', np.zeros(4096))
+        self.daq.setVector('/' + self.device + '/qas/0/integration/weights/' + str(feature_id) + '/imag', np.zeros(4096))
 
     @property
     def crosstalk_matrix(self) -> np.ndarray:
