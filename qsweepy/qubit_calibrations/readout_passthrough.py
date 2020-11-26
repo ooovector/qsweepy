@@ -12,7 +12,7 @@ def readout_passthrough(device, qubit_id, length, amplitudes):#, lengths):
 	mean_sample.filters['S21'] = data_reduce.thru(adc, mnames[qubit_id])
 
 	def set_amplitude(amplitude):
-		device.pg.set_seq(device.trigger_readout_seq+[device.pg.p(readout_channel, length, device.pg.rect, amplitude)])
+		device.pg.set_seq(device.pre_pulses+device.trigger_readout_seq+[device.pg.p(readout_channel, length, device.pg.rect, amplitude)])
 
 	# refers to Awg_iq_multi calibrations
 	metadata = {'channel': readout_channel, 'qubit_id':qubit_id, 'averages': device.modem.adc.get_adc_nums(), 'length': length}

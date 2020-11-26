@@ -25,7 +25,8 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
 
-        device.pg.set_seq(ex_pulse.get_pulse_sequence(0)+
+        device.pg.set_seq(device.pre_pulses+
+                          ex_pulse.get_pulse_sequence(0)+
                           delay_seq+
                           readout_delay_seq+
                           readout_trigger_seq+

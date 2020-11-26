@@ -12,7 +12,7 @@ import numpy as np
 
 
 class ZIDevice():
-    def __init__(self, device_id, devtype, config=0, clock=1e9, nop = 1000):
+    def __init__(self, device_id, devtype, config=0, clock=2.4e9, nop=1000, delay_int=4e-6):
         """
         Parameters
         ----------
@@ -63,8 +63,9 @@ class ZIDevice():
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [0, 400, 800, 2000, 6000, 20000]
+        self.wave_lengths_default = [0, 800, 8000, 80000]
         self.wave_lengths = tuple(self.wave_lengths_default)
+        self.delay_int = delay_int
         # self.repetition_period=
 
         self.amplitudes = np.ones((self.num_channels, ))
@@ -248,9 +249,9 @@ class ZIDevice():
         self._markers[sequencer * 2 + 1] = np.zeros(self.get_nop())
         self._offsets[sequencer * 2 + 0] = 0
         self._offsets[sequencer * 2 + 1] = 0
-        if self.devtype == 'HDAWG':
-            self._markers[sequencer * 2 + 0][0:10] = 1
-            self._markers[sequencer * 2 + 1][0:10] = 1
+        #if self.devtype == 'HDAWG':
+        #    self._markers[sequencer * 2 + 0][0:10] = 1
+        #    self._markers[sequencer * 2 + 1][0:10] = 1
 
         if (sequencer > (self.num_seq - 1)):
             print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer, self.awg_config, (self.num_seq - 1)))
@@ -317,7 +318,7 @@ class ZIDevice():
             self._offsets = [None] * self.num_channels
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
-        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts-20000]))
+        self.wave_lengths = tuple(np.sort(self.wave_lengths_default+[numpts]))
         for sequencer in range(0, self.num_seq):
             self.set_cur_prog(self.initial_param_values, sequencer)
             self.send_cur_prog(sequencer)
@@ -713,10 +714,13 @@ class ZIDevice():
         offsetQ = self._offsets[sequencer * 2 + 1]
 
         nonzero_sig = np.abs(waveformI)+np.abs(waveformQ)+np.abs(markerI)+np.abs(markerQ) > 1e-5
+        #nonzero_sig1 = np.abs(waveformI) + np.abs(waveformQ) > 1e-5
         nonzero = np.nonzero(nonzero_sig)[0]
 
         if len(nonzero) == 0:
             wave_length = 0
+            self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 0)
+            self.daq.sync()
         else:
             first_point = int(np.floor(nonzero[0]/8)*8)
             last_point = int(np.ceil((nonzero[-1]+1)/8)*8)
@@ -802,7 +806,7 @@ class ZIDevice():
 
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
                 sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
-                        int(self.Predelay[sequencer]//8))
+                        int(self.Predelay[sequencer]//8-self.delay_int*self.get_clock()//8))
 
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),

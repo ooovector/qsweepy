@@ -197,6 +197,8 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
         self.avg_zero = np.mean(X[y==0, :], axis=0)
         self.avg_one  = np.mean(X[y==1, :], axis=0)
         self.class_averages = {0:self.avg_zero, 1:self.avg_one}
+        self.X = X
+        self.y = y
 
         self.avg = (self.avg_zero+self.avg_one)/2
         self.diff = (self.avg_one-self.avg_zero)/2
@@ -205,13 +207,14 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
         #self.Sigma_inv = np.linalg.inv(self.sigma_0+self.sigma_1)
         #self.feature = self.Sigma_inv
         self.feature = self.diff - np.mean(self.diff)#self.diff-np.mean(self.diff)
-        self.naive_bayes(X,y)
+        self.naive_bayes(X, y)
 
     def naive_bayes_reduced(self, x, y):
+        x = np.real(x)
         v = np.transpose([x, y]).tolist()
         pdf = np.asarray(sorted(v, key = lambda x: x[0]))
         ftc = np.asarray(pdf)  # fidelity-on-threshold-curve
-        ftc[:, 1] = (-np.cumsum(ftc[:, 1]) + 0.5 * np.arange(ftc.shape[0] * 2)) / ftc.shape[0]
+        ftc[:, 1] = 0.5 + (-np.cumsum(ftc[:, 1]) + 0.5 * np.arange(ftc.shape[0])) / ftc.shape[0]
 
         self.thresholds = ftc[:, 0]
         self.fidelities = ftc[:, 1]

@@ -24,7 +24,7 @@ pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
                    'ex_clock': 2400e6,  # 1 GHz - clocks of some devices
                    'ro_clock': 1800e6,
-                   'rep_rate': 20e3,  # 10 kHz - pulse sequence repetition rate
+                   'rep_rate': 10e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
@@ -81,9 +81,9 @@ class hardware_setup():
         #self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
-        self.lo1 = instruments.SignalCore_5502a()
-        self.lo1.search()
-        self.lo1.open()
+        #self.lo1 = instruments.SignalCore_5502a()
+        #self.lo1.search()
+        #self.lo1.open()
 
         if self.device_settings['use_rf_switch']:
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
@@ -94,8 +94,8 @@ class hardware_setup():
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/ac', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/imp50', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/imp50', 1)
-        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/0/range', 0.1)
-        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/1/range', 0.1)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/0/range', 0.2)
+        self.uhfqa.daq.setDouble('/' + self.uhfqa.device + '/sigins/1/range', 0.2)
 
         self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/0/range', 0.8)
         self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/1/range', 0.8)
@@ -185,9 +185,9 @@ class hardware_setup():
             return
         self.hardware_state = 'undefined'
 
-        self.lo1.set_status(1)  # turn on lo1 output
-        self.lo1.set_power(self.pulsed_settings['lo1_power'])
-        self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
+        #self.lo1.set_status(1)  # turn on lo1 output
+        #self.lo1.set_power(self.pulsed_settings['lo1_power'])
+        #self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
         self.pna.set_power(self.pulsed_settings['vna_power'])
         #self.pna.write("OUTP ON")
