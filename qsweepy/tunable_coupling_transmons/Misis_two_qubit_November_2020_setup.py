@@ -69,9 +69,9 @@ class hardware_setup():
         self.adc = None
 
         self.ro_trg = None
-        self.qz1 = None
+        self.q1z = None
         self.cz = None
-        self.qz2 = None
+        self.q2z = None
         self.iq_devices = None
 
     def open_devices(self):
@@ -119,10 +119,10 @@ class hardware_setup():
         self.q2x = awg_channel(self.hdawg, 5)
         self.q3x = awg_channel(self.hdawg, 6)
 
-        self.qz3 = awg_channel(self.hdawg, 0)  # coil control
-        self.qz2 = awg_channel(self.hdawg, 1)  # coil control
+        self.q3z = awg_channel(self.hdawg, 0)  # coil control
+        self.q2z = awg_channel(self.hdawg, 1)  # coil control
         self.cz = awg_channel(self.hdawg, 2)  # coil control
-        self.qz1 = awg_channel(self.hdawg, 3)  # coil control
+        self.q1z = awg_channel(self.hdawg, 3)  # coil control
 
 
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
@@ -310,10 +310,10 @@ class hardware_setup():
                               'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
                               'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
 
-                              'qz3': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
-                              'qz2': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
+                              'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
+                              'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
                               'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
-                              'qz1': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
+                              'q1z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']
