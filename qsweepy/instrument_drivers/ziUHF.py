@@ -309,7 +309,6 @@ class ziUHF(ZIDevice):
     # King of kostyl
     def set_feature_real(self, feature_id, feature, threshold=None):
         self.internal_avg = False
-        print (feature, threshold)
 
         if threshold is not None:
             threshold = threshold/np.max(np.abs(feature[:self.nsamp]))
@@ -357,7 +356,7 @@ class ziUHF(ZIDevice):
         if self.sync_mode:
             repetition_fragment = 'repeat(getUserReg(2))'
             #pre_wave_fragment = '''waitDigTrigger(2, 1);
-            pre_wave_fragment = '''wait(2);
+            pre_wave_fragment = '''wait(3);
             setTrigger(AWG_INTEGRATION_ARM);
             '''
             post_wave_fragment = '''wait(getUserReg(9));

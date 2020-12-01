@@ -63,7 +63,7 @@ class ZIDevice():
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [0, 800, 8000, 80000]
+        self.wave_lengths_default = [0, 400, 4000, 460000]
         self.wave_lengths = tuple(self.wave_lengths_default)
         self.delay_int = delay_int
         # self.repetition_period=
@@ -346,6 +346,7 @@ class ZIDevice():
         for out_seq in range(self.num_seq):
             self.daq.setInt('/' + self.device + '/awgs/%d/enable' % out_seq, 1)
         #self.set_all_outs()
+        self.daq.sync()
 
 
     def stop(self):
@@ -811,7 +812,9 @@ class ZIDevice():
         self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
                 sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
                         wave_length//8)
-        time.sleep(0.3)
+        #time.sleep(0.3)
+        #self.set_output(channel=sequencer*2+0, output=1)
+        #self.set_output(channel=sequencer*2+1, output=1)
 
     def get_waveform(self, channel):
         return self._waveforms[channel]
