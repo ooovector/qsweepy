@@ -461,47 +461,53 @@ class Awg_iq_multi:
         self.awg_Q.run()
         sign = 1 if carrier.get_if()>0 else -1
         solution = [-0.2, 0.5]
+
+        def tfunc(x):
+            # dc = x[0] + x[1]*1j
+            target_sideband_id = 1 if carrier.get_if() > 0 else -1
+            sideband_ids = np.asarray(np.linspace(-(num_sidebands - 1) / 2, (num_sidebands - 1) / 2, num_sidebands),
+                                      dtype=int)
+            I = 0.5
+            Q = x[0] + x[1] * 1j
+            max_amplitude = self._set_if_cw(self.calib_dc()['dc'], I, Q, carrier.get_if(), half_length)
+            if max_amplitude < 1:
+                clipping = 0
+            else:
+                clipping = (max_amplitude - 1)
+            # if we can measure all sidebands in a single sweep, do it
+            if hasattr(sa, 'set_nop') and use_single_sweep:
+                result = sa.measure()['Power'].ravel()
+            else:
+                # otherwise, sweep through each sideband
+                result = []
+                for sideband_id in range(num_sidebands):
+                    sa.set_centerfreq(
+                        self.lo.get_frequency() + (sideband_id - (num_sidebands - 1) / 2.) * np.abs(carrier.get_if()))
+                    # time.sleep(0.1)
+                    # result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
+                    result.append(np.log10(np.sum(10 ** (sa.measure()['Power'] / 10))) * 10)
+                # time.sleep(0.1)
+                result = np.asarray(result)
+            if use_central:
+                bad_sidebands = sideband_ids != target_sideband_id
+            else:
+                bad_sidebands = np.logical_and(sideband_ids != target_sideband_id, sideband_ids != 0)
+            bad_power = np.sum(10 ** ((result[bad_sidebands]) / 20))
+            good_power = np.sum(10 ** ((result[sideband_ids == target_sideband_id]) / 20))
+            bad_power_dbm = np.log10(bad_power) * 20
+            good_power_dbm = np.log10(good_power) * 20
+            print('\rdc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\t'
+                  'B: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}'.format(self.calib_dc()['dc'], I, Q,
+                                                               bad_power_dbm, good_power_dbm, clipping) + str(result),
+                  end="")
+            return -good_power / bad_power + np.abs(good_power / bad_power) * 10 * clipping
+
+        if tfunc(solution) > tfunc(-np.asarray(solution)):
+            solution = -np.asarray(solution)
         print (carrier.get_if(), carrier.frequency)
         for iter_id in range(1):
-            def tfunc(x):
-                #dc = x[0] + x[1]*1j
-                target_sideband_id = 1 if carrier.get_if() > 0 else -1
-                sideband_ids = np.asarray(np.linspace(-(num_sidebands-1)/2, (num_sidebands-1)/2, num_sidebands), dtype=int)
-                I = 0.5
-                Q = x[0] + x[1]*1j
-                max_amplitude = self._set_if_cw(self.calib_dc()['dc'], I, Q, carrier.get_if(), half_length)
-                if max_amplitude < 1:
-                    clipping = 0
-                else:
-                    clipping = (max_amplitude-1)
-                # if we can measure all sidebands in a single sweep, do it
-                if hasattr(sa, 'set_nop') and use_single_sweep:
-                    result = sa.measure()['Power'].ravel()
-                else:
-                    # otherwise, sweep through each sideband
-                    result = []
-                    for sideband_id in range(num_sidebands):
-                        sa.set_centerfreq(self.lo.get_frequency()+(sideband_id-(num_sidebands-1)/2.)*np.abs(carrier.get_if()))
-                        #time.sleep(0.1)
-                        #result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
-                        result.append(np.log10(np.sum(10**(sa.measure()['Power']/10)))*10)
-                    #time.sleep(0.1)
-                    result = np.asarray(result)
-                if use_central:
-                    bad_sidebands = sideband_ids != target_sideband_id
-                else:
-                    bad_sidebands = np.logical_and(sideband_ids != target_sideband_id, sideband_ids != 0)
-                bad_power = np.sum(10**((result[bad_sidebands])/20))
-                good_power = np.sum(10**((result[sideband_ids==target_sideband_id])/20))
-                bad_power_dbm = np.log10(bad_power)*20
-                good_power_dbm = np.log10(good_power)*20
-                print('\rdc: {0: 4.2e}\tI: {1: 4.2e}\tQ:{2: 4.2e}\t'
-                      'B: {3:4.2f} G: {4:4.2f}, C:{5:4.2f}'.format(self.calib_dc()['dc'], I, Q,
-                                                                   bad_power_dbm, good_power_dbm, clipping)+str(result),
-                      end="")
-                return -good_power/bad_power+np.abs(good_power/bad_power)*10*clipping
             #solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-13))
-            solution = fmin(tfunc, solution, maxiter=75, xtol=2**(-12))
+            solution = fmin(tfunc, solution, maxiter=30, xtol=2**(-12))
             num_sidebands = num_sidebands_final
             use_central = True
 

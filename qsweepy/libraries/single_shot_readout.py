@@ -24,7 +24,7 @@ class single_shot_readout:
 
         self.ro_delay_seq = ro_delay_seq
         self.pulse_generator = pulse_generator
-        self.repeat_samples = 8
+        self.repeat_samples = 4
         self.save_last_samples = False
         self.train_test_split = 0.8
         self.measurement_name = ''
@@ -85,7 +85,8 @@ class single_shot_readout:
             threshold = 0
             #self.readout_classifier.feature = feature
             self.adc.set_internal_avg(False)
-            self.adc.set_feature_real(feature_id=0, feature=self.readout_classifier.feature, threshold=threshold)
+            self.readout_classifier.feature = self.readout_classifier.feature/np.max(np.abs(self.readout_classifier.feature))
+            self.adc.set_feature_iq(feature_id=0, feature=self.readout_classifier.feature)
             x = []
             y = []
             for i in range(self.repeat_samples):
@@ -94,6 +95,7 @@ class single_shot_readout:
                     # TODO do we need to calibrate for all discriminators?
                     j = self.adc.measure()[self.adc.result_source + str(0)]
                     x.extend((np.real(j) + np.imag(j)).tolist())
+                    #x.extend((np.real(j)).tolist())
                     y.extend([class_id] * len(j))
 
             self.readout_classifier.naive_bayes_reduced(x, y)
