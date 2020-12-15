@@ -69,9 +69,9 @@ class hardware_setup():
         self.adc = None
 
         self.ro_trg = None
-        self.qz1 = None
+        self.q1z = None
         self.cz = None
-        self.qz2 = None
+        self.q2z = None
         self.iq_devices = None
 
     def open_devices(self):

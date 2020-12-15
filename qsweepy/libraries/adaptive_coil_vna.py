@@ -1,4 +1,4 @@
-from qsweepy.fitters.single_period_sin import sin_model
+from qsweepy.fitters.single_tone_fit import sin_model
 
 class adaptive_coil_vna_tool:
     '''
@@ -12,6 +12,6 @@ class adaptive_coil_vna_tool:
 
     def set_coil_current_vna_freq(self, cur):
         self.cur_setter(cur)
-        vna_freq = sin_model(cur, *self._model_params_tuple)
-        self.vna_freq_setter(vna_freq)
+        vna_freq = sin_model(cur, *self.model_params_tuple)
+        self.vna_freq_setter(vna_freq, vna_freq)
 

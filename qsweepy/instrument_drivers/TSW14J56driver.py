@@ -32,18 +32,19 @@ class TSW14J56_evm_reducer():
 		self.cov_norms = {channel_id:1 for channel_id in range(4)}
 		self.cov_signals = {channel_id:None for channel_id in range(4)}
 		self.resultnumbers_dimension = 16
+		self.devtype = 'SK'
 		#self.avg_cov_mode = 'norm_cmplx' ## normalized results in complex Volts, IQ
 
 	def get_clock(self):
 		return self.adc.get_clock()
 
-	def get_nums(self):
+	def get_adc_nums(self):
 		return self.adc.nsegm
-	def get_nop(self):
+	def get_adc_nop(self):
 		return self.adc.nsamp
-	def set_nums(self, nums):
+	def set_adc_nums(self, nums):
 		self.adc.nsegm = nums
-	def set_nop(self, nop):
+	def set_adc_nop(self, nop):
 		self.adc.nsamp = nop
 
 	def get_points(self):

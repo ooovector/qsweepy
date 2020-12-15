@@ -76,6 +76,9 @@ class QubitDevice:
     def get_sample_global(self, name):
         return self.exdir_db.select_measurement(measurement_type=name, metadata={'scope':'sample'}).metadata[name]
 
+    def set_qubit_constant(self, qubit_id, name, value):
+        self.exdir_db.save(measurement_type=name, metadata={'qubit_id': qubit_id, name: value})
+
     def get_qubit_constant(self, name, qubit_id):
         try:
             return self.exdir_db.select_measurement(measurement_type=name, metadata={'qubit_id': qubit_id}).metadata[name]
@@ -379,8 +382,8 @@ class QubitDevice:
         hardware.adc.set_adc_nums(int(self.get_sample_global('delay_calibration_nums')))
         hardware.adc.set_adc_nop(int(self.get_sample_global('delay_calibration_nop')))
 
-        #self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
-        self.trigger_readout_seq = []
+        self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
+        #self.trigger_readout_seq = []
 
         self.modem = modem_readout.modem_readout(self.pg, hardware, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
         self.modem.save=True
@@ -395,8 +398,8 @@ class QubitDevice:
                 self.modem.adc_device.sync_mode = True
                 self.modem.adc_device.set_cur_prog(self.modem.adc_device.initial_param_values, 0)
                 self.modem.adc_device.send_cur_prog(0)
-            else:
-                pass
+        else:
+            pass
 
         self.modem_delay_calibration_channel = [channel_name for channel_name in self.modem.readout_channels.keys()][0]
         self.ro_trg = hardware.ro_trg

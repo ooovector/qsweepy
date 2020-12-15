@@ -115,23 +115,3 @@ def single_period_sin_fit(x, y, parameters_old=None, mode='sync'):
 
     return fit_dataset.resample_x_fit(x_full), fitted_curve, parameters
 
-
-def sin_model(x, A, k, phase, offset):
-    return A * np.sin(k * x + phase) + offset
-
-def sin_fit(x, y):
-    y_max = y[np.argmax(y)]
-    x_max = x[np.argmax(y)]
-    y_min = y[np.argmin(y)]
-    x_min = x[np.argmin(y)]
-    A_0 = (y_max-y_min) #/2
-    offset = np.mean(y)
-    y_1 = (y_max - offset)/A_0
-    y_2 = (y_min - offset)/A_0
-    k_0 = (asin(y_2)-asin(y_1))/(x_min-x_max)
-    phi_0 = asin(y_2)-k_0*x_min
-    popt, pcov = curve_fit(sin_model, x, y, p0=[A_0, k_0, phi_0, offset])
-    fitted_curve = sin_model(x, *popt)
-    parameters = {'A': popt[0], 'k': popt[1], 'phase': popt[2], 'offset':popt[3]}
-
-    return fitted_curve, parameters
