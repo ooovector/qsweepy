@@ -44,5 +44,5 @@ def exp_fit(x, y):
     fitted_curve = model(fit_dataset.resample_x_fit(x), fitresults)
     MSE_rel = np.mean(cost(fitresults))/np.mean(np.abs(nonnan_y-np.mean(nonnan_y))**2)
 
-    parameters = {'decay': fitresults[0], 'A': fitresults[1:-y.shape[0]], 'MSE_rel': MSE_rel}
+    parameters = {'decay': fitresults[0], 'A': fitresults[1:-y.shape[0]], 'inf': fitresults[-y.shape[0]:], 'MSE_rel': MSE_rel}
     return fit_dataset.resample_x_fit(x), fitted_curve, parameters

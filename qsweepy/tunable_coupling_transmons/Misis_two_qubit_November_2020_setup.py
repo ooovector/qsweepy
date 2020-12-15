@@ -24,7 +24,7 @@ pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
                    'ex_clock': 2400e6,  # 1 GHz - clocks of some devices
                    'ro_clock': 1800e6,
-                   'rep_rate': 10e3,  # 10 kHz - pulse sequence repetition rate
+                   'rep_rate': 5e3,  # 10 kHz - pulse sequence repetition rate
                    # 500 ex_clocks - all waves is shorten by this amount of clock cycles
                    # to verify that M3202 will not miss next trigger
                    # (awgs are always missing trigger while they are still outputting waveform)
@@ -40,7 +40,7 @@ pulsed_settings = {'lo1_power': 18,
                    'uhfqa_ch0_amplitude': 0.7,
                    'uhfqa_ch1_amplitude': 0.7,
                    'lo1_freq': 3.70e9,
-                   'pna_freq': 7.0e9,
+                   'pna_freq': 7.2e9, #
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
@@ -89,7 +89,7 @@ class hardware_setup():
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
         self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG')
-        self.uhfqa = instruments.ziUHF(ch_num=3)
+        self.uhfqa = instruments.ziUHF(1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/ac', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/ac', 1)
         self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/imp50', 1)
@@ -108,16 +108,16 @@ class hardware_setup():
         #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/1/direct', 1)
         #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/2/direct', 1)
         #self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/3/direct', 1)
-        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/4/direct', 1)
-        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/5/direct', 1)
-        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/6/direct', 1)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/4/direct', 0)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/5/direct', 0)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/6/direct', 0)
 
         #self.uhfqa = instruments.ZIDevice(self.device_settings['uhfqa_address'], devtype='UHF')
         self.coil_device = self.hdawg
 
-        self.q1x = awg_channel(self.hdawg, 4)
-        self.q2x = awg_channel(self.hdawg, 5)
-        self.q3x = awg_channel(self.hdawg, 6)
+        #self.q1x = awg_channel(self.hdawg, 4)
+        #self.q2x = awg_channel(self.hdawg, 5)
+        #self.q3x = awg_channel(self.hdawg, 6)
 
         self.q3z = awg_channel(self.hdawg, 0)  # coil control
         self.q2z = awg_channel(self.hdawg, 1)  # coil control
@@ -167,12 +167,13 @@ class hardware_setup():
             self.uhfqa.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
         self.hdawg.set_output(output=1, channel=0)
+        self.hdawg.set_output(output=1, channel=1)
         self.hdawg.set_output(output=1, channel=2)
         self.hdawg.set_output(output=1, channel=3)
-        self.hdawg.set_output(output=1, channel=4)
-        self.hdawg.set_output(output=1, channel=5)
-        self.hdawg.set_output(output=1, channel=6)
-        self.hdawg.set_output(output=1, channel=7)
+        self.hdawg.set_output(output=0, channel=4)
+        self.hdawg.set_output(output=0, channel=5)
+        self.hdawg.set_output(output=0, channel=6)
+        self.hdawg.set_output(output=0, channel=7)
         if channels_off is not None:
             for channel_off in channels_off:
                 self.hdawg.set_output(output=0, channel=channel_off)
@@ -193,7 +194,7 @@ class hardware_setup():
         #self.pna.write("OUTP ON")
         self.pna.write("SOUR1:POW1:MODE ON")
         self.pna.write("SOUR1:POW2:MODE OFF")
-        #self.pna.set_sweep_mode("CW") # privet RS ZVB20
+        self.pna.set_sweep_mode("CW") # privet RS ZVB20
         #self.pna.set_trigger_source("ON")
         self.pna.set_frequency(self.pulsed_settings['pna_freq'])
 
@@ -241,7 +242,7 @@ class hardware_setup():
         self.uhfqa.set_dig_trig2_source([1])
         #self.uhfqa.default_delay = pulsed_settings['adc_default_delay']
 
-        for sequencer in range(4):
+        for sequencer in range(2):
             self.hdawg.send_cur_prog(sequencer=sequencer)
             self.hdawg.set_marker_out(channel=np.int(2 * sequencer), source=4)  # set marker 1 to awg mark out 1 for sequencer
             self.hdawg.set_marker_out(channel=np.int(2 * sequencer + 1),
@@ -249,12 +250,15 @@ class hardware_setup():
         self.uhfqa.send_cur_prog(sequencer=0)
         self.uhfqa.set_marker_out(channel=0, source=32)  # set marker 1 to awg mark out 1 for sequencer
         self.uhfqa.set_marker_out(channel=1, source=33)  # set marker 2 to awg mark out 2 for sequencer
-        for channel in range(8):
+        for channel in range(4):
             self.hdawg.set_amplitude(channel=channel, amplitude=self.pulsed_settings['hdawg_ch%d_amplitude'%channel])
             self.hdawg.set_offset(channel=channel, offset=0 * 1.0)
             self.hdawg.set_digital(channel=channel, marker=[0]*(global_num_points))
+            self.hdawg.set_output(channel=channel, output=1)
             self.hdawg.daq.set([['/{}/sigouts/{}/range'.format(self.hdawg.device, channel), 1]])
-        self.hdawg.set_all_outs()
+            self.hdawg.daq.set([['/{}/awgs/{}/outputs/{}/gains/{}'.format(self.hdawg.device, channel//2,
+                                                                         channel%2, channel%2), 1]])
+        #self.hdawg.set_all_outs()
         self.hdawg.run()
 
         for channel in range(2):
@@ -306,9 +310,9 @@ class hardware_setup():
         self.iq_devices['iq_ro'].sa = self.sa
 
         self.fast_controls = {
-                              'q1x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 4),
-                              'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
-                              'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
+                              #'q1x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 4),
+                              #'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
+                              #'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
 
                               'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
                               'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),

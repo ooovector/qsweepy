@@ -2,7 +2,7 @@ from qsweepy.qubit_calibrations import excitation_pulse
 import numpy as np
 
 def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
-           readout_delay=0, delay_seq_generator=None, measurement_type='decay',
+           readout_delay=0, delay_seq_generator=None, measurement_type='decay', ex_pulse=None,
            additional_references = {}, additional_metadata = {}):
     from .readout_pulse import get_uncalibrated_measurer
     from ..fitters.exp import exp_fitter
@@ -13,7 +13,8 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
 
     #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
-    ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes)
+    if ex_pulse is None:
+        ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes)
 
     def set_delay(length):
         #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]

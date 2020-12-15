@@ -112,8 +112,8 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                        'delay_calibration': device.modem.delay_measurement.id})
 
     classifier = single_shot_readout.single_shot_readout(adc=adc,
-                                                         prepare_seqs=[other_qubit_pulse_sequence,
-                                                                       other_qubit_pulse_sequence + qubit_excitation_pulse.get_pulse_sequence(
+                                                         prepare_seqs=[device.pre_pulses + other_qubit_pulse_sequence,
+                                                                       device.pre_pulses + other_qubit_pulse_sequence + qubit_excitation_pulse.get_pulse_sequence(
                                                                            0)],
                                                          ro_seq=device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence(),
                                                          pulse_generator=device.pg,
@@ -222,8 +222,8 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                        'delay_calibration': device.modem.delay_measurement.id})
 
     classifier = single_shot_readout.single_shot_readout(adc=adc,
-                                                         prepare_seqs=[other_qubit_pulse_sequence,
-                                                                       other_qubit_pulse_sequence +
+                                                         prepare_seqs=[device.pre_pulses + other_qubit_pulse_sequence,
+                                                                       device.pre_pulses + other_qubit_pulse_sequence +
                                                                        qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ro_seq=device.trigger_readout_seq,
                                                          pulse_generator=device.pg,

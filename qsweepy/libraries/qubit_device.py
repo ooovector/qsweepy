@@ -417,13 +417,13 @@ class QubitDevice:
         return self.modem
 
     def setup_adc_reducer_iq(self, qubits, raw=False, internal_avg=True): ### pimp this code to make it more universal. All the hardware belongs to the hardware
-        from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         # file, but how do we do that here without too much boilerplate???
         # params: qubits: str or list #
         feature_id = 0
 
         self.hardware.set_pulsed_mode()
         if self.hardware.adc.devtype == 'SK':
+            from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
             adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
             adc_reducer.output_raw = raw
             adc_reducer.last_cov = False
@@ -454,9 +454,9 @@ class QubitDevice:
         return adc_reducer, qubit_measurement_dict
 
     def set_adc_features_and_thresholds(self, features, thresholds, disable_rest=True, raw=False, internal_avg=False):
-        from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
         self.hardware.set_pulsed_mode()
         if self.hardware.adc.devtype == 'SK':
+            from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
             adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
             adc_reducer.output_raw = raw
             adc_reducer.last_cov = False
@@ -496,7 +496,7 @@ class QubitDevice:
             calib = self.exdir_db.select_measurement(measurement_type=calib_type,
                                                      metadata=self.awg_channels[awg_ch].parent.rf_calibration_identifier(self.awg_channels[awg_ch]),\
                                                      ignore_invalidation = True)
-        else:
+        elif calib_type =='iq_dc_calibration':
             calib = self.exdir_db.select_measurement(measurement_type=calib_type,
                                                      metadata=self.awg_channels[awg_ch].parent.dc_calibration_identifier(),\
                                                      ignore_invalidation = True)

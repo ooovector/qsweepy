@@ -82,8 +82,10 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         #fitting with leastsq
 
         from scipy.optimize import leastsq
-        cost = lambda p: (np.abs(model(x, p)-y)**2).ravel()
-        fitresults = leastsq (cost, p0, maxfev=200)
+        cost_mod = lambda p: (np.abs(model(x, p)-y)**2/np.log(np.sum(np.std(model(x, p)**2, axis=1)))).ravel()
+        cost = lambda p: (np.abs(model(x, p) - y) ** 2).ravel()
+        fitresults = leastsq (cost_mod, p0, maxfev=200)
+        #print (np.std(model(x, p0))**2, axis=1)
         if mode == 'sync':
             parameters_new = {'phi':fitresults[0][0], 'f':fitresults[0][1], 'T': fitresults[0][2], 'inf': fitresults[0][3], 'A': fitresults[0][4:]}
         elif mode == 'unsync':
@@ -119,6 +121,16 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
                 parameters['phi'] = parameters['phi']+np.pi
 
         parameters['phi'] -= np.floor(parameters['phi']/(2*np.pi)+1.)*2*np.pi
+
+        p0 = parameters_flat(parameters)
+        fitresults = leastsq (cost, p0, maxfev=200)
+        if mode == 'sync':
+            parameters = {'phi':fitresults[0][0], 'f':fitresults[0][1], 'T': fitresults[0][2], 'inf': fitresults[0][3], 'A': fitresults[0][4:]}
+        elif mode == 'unsync':
+            A_inf = fitresults[0][3:]
+            parameters = {'phi': fitresults[0][0], 'f': fitresults[0][1], 'T': fitresults[0][2],
+                              'inf': A_inf[:len(A_inf)//2], 'A': A_inf[len(A_inf)//2:]}
+
 
         #sampling fitted curve
         fitted_curve = model(fit_dataset.resample_x_fit(x_full), parameters_flat(parameters))
