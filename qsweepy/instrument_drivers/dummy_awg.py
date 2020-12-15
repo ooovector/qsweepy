@@ -59,3 +59,7 @@ class DummyAWG:
 		self.frozen = False
 	def get_physical_devices(self):
 		return []
+	def stop(self):
+		pass
+	def run(self):
+		pass

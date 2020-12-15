@@ -783,6 +783,7 @@ class ZIDevice():
 
             print (
                'device:', self.device,
+               'sequencer:', sequencer,
                'first_point: ', first_point,
                'last_point: ', last_point,
                'waveformI length', waveformI.shape,
