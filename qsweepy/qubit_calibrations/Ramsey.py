@@ -78,7 +78,8 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
     references = {'ex_pulse1':ex_pulse1.id,
                   'ex_pulse2':ex_pulse2.id,
-                  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id)}
+                  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=qubit_id),
+                  'readout_pulse':readout_pulse.id }
     references.update(additional_references)
 
     if hasattr(measurer, 'references'):
