@@ -41,16 +41,21 @@ def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
         raise
 
 
-def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, **kwargs):
+def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, span=None, power=None, nop=None, bandwidth=None, **kwargs):
     print ('fr_guess: ', fr_guess)
     try:
         device.hardware.set_cw_mode()
         device.hardware.lo1.set_status(0)
 
-        span = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_span'))
-        power = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_power'))
-        nop = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_nop'))
-        bandwidth = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_bandwidth'))
+        if span is None:
+            span = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_span'))
+        if power is None:
+            power = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_power'))
+        if nop is None:
+            nop = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_nop'))
+        if bandwidth is None:
+            bandwidth = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_bandwidth'))
+
 
         fit_type = device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_fit_type')
 

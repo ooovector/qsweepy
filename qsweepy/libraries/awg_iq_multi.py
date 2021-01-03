@@ -240,7 +240,7 @@ class Awg_iq_multi:
             waveform_Q += np.imag(self.calib_rf(carrier)['Q']*waveform_if)
         if not self.frozen:
             self.awg_I.set_offset(np.real(self.calib_dc()['dc']), channel=self.awg_ch_I)
-            self.awg_I.set_offset(np.imag(self.calib_dc()['dc']), channel=self.awg_ch_Q)
+            self.awg_Q.set_offset(np.imag(self.calib_dc()['dc']), channel=self.awg_ch_Q)
             self.waveform = waveform_I + 1j * waveform_Q
             self.__set_waveform_IQ_cmplx(self.waveform)
 
@@ -255,7 +255,7 @@ class Awg_iq_multi:
 
     # clip DC to prevent mixer damage
     def clip_dc(self, x):
-        """Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
+        """Clips the dc component of the output at both channels of the AWG to prevent mixer damage."""
         x = [np.real(x), np.imag(x)]
         for c in (0,1):
             if x[c] < -0.5:
@@ -266,7 +266,7 @@ class Awg_iq_multi:
         return x
 
     def _set_dc(self, x):
-        """Clips the dc complonent of the output at both channels of the AWG to prevent mixer damage."""
+        """Clips the dc component of the output at both channels of the AWG to prevent mixer damage."""
         dc = self.clip_dc(x)
         if self.use_offset_I:
             self.awg_I.set_offset(np.real(dc), channel=self.awg_ch_I)
@@ -606,7 +606,7 @@ class Awg_iq_multi:
                            amplitude_small_id = 1,
                            amplitude_zero_id = 0):
         awg_device = self.awg_I
-        sa_device = sa
+        sa = sa_device
         lo_device = self.lo
         awg_channel_I = self.awg_ch_I
         awg_channel_Q = self.awg_ch_Q
