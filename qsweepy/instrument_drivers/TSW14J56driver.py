@@ -33,7 +33,12 @@ class TSW14J56_evm_reducer():
 		self.cov_signals = {channel_id:None for channel_id in range(4)}
 		self.resultnumbers_dimension = 16
 		self.devtype = 'SK'
+		self.result_source = 'avg_cov'
+		self.internal_avg = True
 		#self.avg_cov_mode = 'norm_cmplx' ## normalized results in complex Volts, IQ
+
+	def set_internal_avg(self, internal_avg):
+		pass
 
 	def get_clock(self):
 		return self.adc.get_clock()
