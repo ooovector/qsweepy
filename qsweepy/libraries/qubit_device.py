@@ -423,16 +423,19 @@ class QubitDevice:
 
         self.hardware.set_pulsed_mode()
         if self.hardware.adc.devtype == 'SK':
-            from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
-            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+            # from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
+            # adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+            adc_reducer = self.hardware.adc
+            adc_reducer.devtype = 'SK'
             adc_reducer.output_raw = raw
             adc_reducer.last_cov = False
             adc_reducer.avg_cov = True
             adc_reducer.resultnumber = False
-
             adc_reducer.avg_cov_mode = 'iq'
+
         elif self.hardware.adc.devtype == 'UHF':
             adc_reducer = self.hardware.adc
+            adc_reducer.devtype = 'UHF'
             adc_reducer.internal_avg = internal_avg
             adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
 
@@ -457,7 +460,7 @@ class QubitDevice:
         self.hardware.set_pulsed_mode()
         if self.hardware.adc.devtype == 'SK':
             from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
-            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
+            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device.adc)
             adc_reducer.output_raw = raw
             adc_reducer.last_cov = False
             adc_reducer.avg_cov = False
@@ -478,7 +481,7 @@ class QubitDevice:
         adc_reducer.resultnumbers_dimension = 2**feature_id
 
         if disable_rest:
-            while (feature_id < self.modem.adc_device.num_covariances):
+            while (feature_id < self.modem.adc_device.adc.num_covariances):
                 adc_reducer.disable_feature(feature_id=feature_id)
                 feature_id += 1
         return adc_reducer
