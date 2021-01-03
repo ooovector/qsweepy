@@ -48,6 +48,73 @@ def echo_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None
     return measurement
 
 
+def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
+                   channel_amplitudes1=None, channel_amplitudes_pi=None, channel_amplitudes2=None, lengths=None,
+                   target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='echo_crosstalk',
+                   additional_references = {}, additional_metadata = {}):
+    from .readout_pulse import get_uncalibrated_measurer
+    if type(lengths) is type(None):
+        lengths = np.arange(0,
+                            float(device.get_qubit_constant(qubit_id=target_qubit_id, name='Ramsey_length')),
+                            float(device.get_qubit_constant(qubit_id=target_qubit_id, name='Ramsey_step')))
+
+    #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
+    readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id)
+    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
+    ex_pulse_pi = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_pi)
+    ex_pulse_control = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi)
+    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+
+    def set_delay(length):
+        #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
+        if delay_seq_generator is None:
+            delay_seq = [device.pg.pmulti(length/2)]
+        else:
+            delay_seq = delay_seq_generator(length/2)
+        readout_delay_seq = [device.pg.pmulti(readout_delay)]
+        readout_trigger_seq = device.trigger_readout_seq
+        readout_pulse_seq = readout_pulse.pulse_sequence
+
+        device.pg.set_seq(device.pre_pulses +
+                          ex_pulse1.get_pulse_sequence(0) +
+                          delay_seq +
+                          device.pg.parallel(ex_pulse_pi.get_pulse_sequence(0), ex_pulse_control.get_pulse_sequence(0)) +
+                          delay_seq +
+                          ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi) +
+                          readout_delay_seq +
+                          readout_trigger_seq +
+                          readout_pulse_seq)
+
+    references = {'ex_pulse_control': ex_pulse_control.id,
+                  'ex_pulse1': ex_pulse1.id,
+                  'ex_pulse_pi': ex_pulse_pi.id,
+                  'ex_pulse2': ex_pulse2.id,
+                  'frequency_controls': device.get_frequency_control_measurement_id(qubit_id=target_qubit_id)}
+    references.update(additional_references)
+
+    if hasattr(measurer, 'references'):
+        references.update(measurer.references)
+
+    fitter_arguments = ('iq'+target_qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+
+    metadata = {'target_qubit_id': target_qubit_id,
+                'control_qubit_id': control_qubit_id,
+                'extra_sweep_args':str(len(extra_sweep_args)),
+                'target_offset_freq': str(target_freq_offset),
+                'readout_delay':str(readout_delay)}
+    metadata.update(additional_metadata)
+
+    measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
+                                              *extra_sweep_args,
+                                              (lengths, set_delay, 'Delay', 's'),
+                                              fitter_arguments = fitter_arguments,
+                                              measurement_type=measurement_type,
+                                              metadata=metadata,
+                                              references=references)
+
+    return measurement
+
+
 def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes_pi=None, channel_amplitudes2=None, lengths=None,
            target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='echo',
            additional_references = {}, additional_metadata = {}):
@@ -115,7 +182,7 @@ def get_echo_pulse_frequency(device, echo_measurement):
     ex_pulse1 = device.exdir_db.select_measurement_by_id(echo_measurement.references['ex_pulse1'])
     ex_pulse_pi = device.exdir_db.select_measurement_by_id(echo_measurement.references['ex_pulse_pi'])
     ex_pulse2 = device.exdir_db.select_measurement_by_id(echo_measurement.references['ex_pulse2'])
-    qubit_id = Echo_measurement.metadata['qubit_id']
+    qubit_id = echo_measurement.metadata['qubit_id']
     frequency_rounding = float(device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
     channel1_frequencies = []
     channel_pi_frequencies = []
@@ -312,90 +379,6 @@ def get_echo_coherence_measurement(device,
     else:
         raise ValueError('No coherence measurement available for qubit {}, recalibrate is False, so fail'.format(qubit_id))
 
-def echo_crosstalk(device,
-                    target_qubit_id,
-                    control_qubit_id,
-                    *extra_sweep_args,
-                    channel_amplitudes_control=None,
-                    channel_amplitudes1=None,
-                    channel_amplitudes_pi=None,
-                    channel_amplitudes2=None,
-                    lengths=None,
-                    target_freq_offset=None,
-                    readout_delay=0):
-
-    #if type(lengths) is type(None):
-    #	lengths = np.arange(0,
-    #						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
-    #						float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
-
-    # if we don't have a echo coherence scan, get one
-    from .readout_pulse import get_uncalibrated_measurer
-    try:
-        deexcited_measurement = device.exdir_db.select_measurement_by_id(get_echo_coherence_measurement(device, target_qubit_id).references['fit_source'])
-    except:
-        deexcited_measurement = None
-
-    if lengths is None:
-        lengths = deexcited_measurement.datasets['iq'+target_qubit_id].parameters[-1].values
-    if target_freq_offset is None: ###TODO: make sure we don't skip oscillations due to decoherence
-        ##(improbable but possible if the qubits are very coherent even at high crosstalks AHAHAHA)
-        target_freq_offset = float(deexcited_measurement.metadata['target_offset_freq'])
-
-    #readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id)#, readout_pulse)
-    ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_control)
-    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
-    ex_pulse_pi = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_pi)
-    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
-
-    def set_delay(length):
-        #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
-        delay_seq = [device.pg.pmulti(length/2)]
-        readout_delay_seq = [device.pg.pmulti(readout_delay)]
-        readout_trigger_seq = device.trigger_readout_seq
-        readout_pulse_seq = readout_pulse.pulse_sequence
-
-        device.pg.set_seq(device.pre_pulses+\
-                          ex_control_pulse.get_pulse_sequence(0)+\
-                          ex_pulse1.get_pulse_sequence(0)+\
-                          delay_seq+ \
-                          ex_pulse_pi.get_pulse_sequence(0)+\
-                          delay_seq+ \
-                          ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+\
-                          readout_delay_seq+\
-                          readout_trigger_seq+\
-                          readout_pulse_seq)
-
-    references = {'ex_control_pulse':ex_control_pulse.id,
-                  'ex_pulse1':ex_pulse1.id,
-                  'ex_pulse_pi': ex_pulse_pi.id,
-                  'ex_pulse2':ex_pulse2.id,
-                  'frequency_controls':device.get_frequency_control_measurement_id(qubit_id=target_qubit_id),
-                  }
-    if deexcited_measurement is not None:
-        references['deexcited_measurement'] = deexcited_measurement.id
-
-    if hasattr(measurer, 'references'):
-        references.update(measurer.references)
-
-    fitter_arguments = ('iq'+target_qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
-
-    metadata = {'target_qubit_id': target_qubit_id,
-                'control_qubit_id': control_qubit_id,
-              'extra_sweep_args':str(len(extra_sweep_args)),
-              'target_offset_freq': str(target_freq_offset),
-              'readout_delay':str(readout_delay)}
-
-    measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
-                                              *extra_sweep_args,
-                                              (lengths, set_delay, 'Delay','s'),
-                                              fitter_arguments = fitter_arguments,
-                                              measurement_type='echo_crosstalk',
-                                              metadata=metadata,
-                                              references=references)
-
-    return measurement
 
 def calibrate_all_cross_echo(device):
     cross_echo_fits = {}
