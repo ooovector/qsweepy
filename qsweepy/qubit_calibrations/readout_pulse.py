@@ -194,7 +194,12 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
     adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=samples)
-    adc_reducer.set_internal_avg(True)
+
+    if adc_reducer.devtype == 'UHF':
+        adc_reducer.set_internal_avg(True)
+    else:
+        adc_reducer.set_adc_nums(int(device.get_sample_global('uncalibrated_readout_nums')))
+
     adc_reducer.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     measurer = data_reduce.data_reduce(adc_reducer)
     measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],

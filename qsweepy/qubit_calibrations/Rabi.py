@@ -36,6 +36,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
     references = {('frequency_controls', qubit_id_): device.get_frequency_control_measurement_id(qubit_id=qubit_id_) for qubit_id_ in qubit_id}
     references['channel_amplitudes'] = channel_amplitudes.id
+    references['readout_pulse'] = readout_pulse.id
 
     if hasattr(measurer, 'references'):
         references.update(measurer.references)
