@@ -1,6 +1,10 @@
-from qsweepy.qubit_calibrations import excitation_pulse
-from qsweepy.qubit_calibrations import Ramsey, relaxation, echo
+from qsweepy.qubit_calibrations import excitation_pulse2 as excitation_pulse
+from qsweepy.qubit_calibrations import Ramsey2 as Ramsey
+from qsweepy.qubit_calibrations import relaxation2 as relaxation
+from qsweepy.qubit_calibrations import echo2 as echo
 from qsweepy.qubit_calibrations import channel_amplitudes
+#from qsweepy.qubit_calibrations import sequence_control
+#from qsweepy import zi_scripts
 
 
 def zgate_ramsey(device, gate):
@@ -22,8 +26,11 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
     post_pause = float(gate.metadata['post_pause'])
     class ParameterSetter:
         def __init__(self):
-            self.amplitude=None
-            self.length = None
+            self.amplitude=amplitudes[0]
+            self.length = lengths[0]
+            self.pre_pause_seq = []
+            self.gate_pulse_seq = []
+            self.post_pause_seq = []
 
         def amplitude_setter(self, amplitude):
             self.amplitude = amplitude
@@ -40,16 +47,20 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
                     #print(self.length)
                     channel_pulses = [(c, device.pg.sin, self.amplitude, frequency) for c, a in
                                       channel_amplitudes_.metadata.items()]
-                    gate_pulse = [device.pg.pmulti(self.length, *tuple(channel_pulses))]
+                    gate_pulse = [device.pg.pmulti(device, self.length, *tuple(channel_pulses))]
             else:
                 gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                                               channel_amplitudes=channel_amplitudes_,
                                                                               tail_length=float(
                                                                                   gate.metadata['tail_length']),
                                                                               length=self.length,
-                                                                              phase=0.0)
+                                                                              phase=0.0,
+                                                                              fast_control=True)
+            self.pre_pause_seq = [device.pg.pmulti(device, pre_pause)]
+            self.gate_pulse_seq = gate_pulse
+            self.post_pause_seq = [device.pg.pmulti(device, post_pause)]
 
-            return [device.pg.pmulti(pre_pause)]+gate_pulse+[device.pg.pmulti(post_pause)]
+            return self.pre_pause_seq, self.gate_pulse_seq, self.post_pause_seq
     setter = ParameterSetter()
 
     return Ramsey.Ramsey(device, gate.metadata['target_qubit_id'], '01', (amplitudes, setter.amplitude_setter, 'amplitude'),

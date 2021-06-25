@@ -6,13 +6,11 @@ import timeit
 import traceback
 import logging
 #from qsweepy.libraries.instrument import Instrument
-
-from scipy.signal import gaussian
 import numpy as np
 
 
-class ZIDevice():
-    def __init__(self, device_id, devtype, config=0, clock=2.4e9, nop=1000, delay_int=4e-6):
+class ZIDevice2():
+    def __init__(self, device_id, devtype, config=0, clock=2.40e9, nop=1000, delay_int=4e-6):
         """
         Parameters
         ----------
@@ -59,11 +57,12 @@ class ZIDevice():
             raise ValueError('devtype not recognized')
 
         self._clock = clock
-        self._nop=nop
+        self._nop = nop
         self.rep_rate = 10e3
         self.predelay = 0
         self.postdelay = 0
-        self.wave_lengths_default = [0, 400, 4000, 460000]
+        #What the fuck is this?
+        self.wave_lengths_default = [0, 400, 4000, 40000, 360000]
         self.wave_lengths = tuple(self.wave_lengths_default)
         self.delay_int = delay_int
         # self.repetition_period=
@@ -209,8 +208,8 @@ class ZIDevice():
         for wave_length_id, wave_length in enumerate(self.wave_lengths):
             if wave_length != 0:
                 definition_fragments.append(textwrap.dedent('''
-                wave w_marker_I_{wave_length} = join(marker(10, 1), marker({wave_length} - 10, 0));
-                wave w_marker_Q_{wave_length} = join(marker(10, 2), marker({wave_length} - 10, 0));
+                wave w_marker_I_{wave_length} = join(marker(20, 1), marker({wave_length} - 20, 0));
+                wave w_marker_Q_{wave_length} = join(marker(20, 2), marker({wave_length} - 20, 0));
                 wave w_I_{wave_length} = zeros({wave_length}) + w_marker_I_{wave_length};
                 wave w_Q_{wave_length} = zeros({wave_length}) + w_marker_Q_{wave_length};
                 '''.format(wave_length = wave_length)))
@@ -315,6 +314,7 @@ class ZIDevice():
         if self._nop != numpts:
             self._nop = numpts
             self._waveforms = [None] * 8
+            self._markers = [None] * 8
             self._offsets = [None] * self.num_channels
         self.initial_param_values['nop'] = numpts
         self.initial_param_values['nsupersamp'] = numpts//8
@@ -702,8 +702,10 @@ class ZIDevice():
         self.set_sequencer(sequencer)
 
     def set_sequencer(self, sequencer):
+        #print ('freeze status: ', self.frozen)
         if self.frozen:
             self.sequencers_updated[sequencer] = True
+            #print ('Sequencer ', sequencer, ' frozen, not setting')
             return
 
         self.stop_seq(sequencer=sequencer)
@@ -897,11 +899,13 @@ class ZIDevice():
         return self.sin_enable[sin_num, :]
 
     def freeze(self):
+        #print (self.device, 'freeze')
         if not self.frozen:
             self.sequencers_updated = [False]*4
             self.frozen = True
 
     def unfreeze(self):
+        #print (self.device, 'unfreeze')
         if self.frozen:
             self.frozen = False
             for sequencer, updated in enumerate(self.sequencers_updated):

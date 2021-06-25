@@ -91,13 +91,15 @@ def downsample_reducer(source, src_meas, axis, carrier, downsample, iq=True, iq_
 			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
-		
+
+
 def thru(source, src_meas, diff=0, scale=1):
 	filter = {'filter': lambda x:x[src_meas]/scale-diff,
 			  'get_points': lambda : source.get_points()[src_meas],
 			  'get_dtype': (lambda : source.get_dtype()[src_meas]),
 			  'get_opts': (lambda : source.get_opts()[src_meas])}
 	return filter
+
 
 def cross_section_reducer(source, src_meas, axis, index):
 	def get_points():
@@ -112,6 +114,7 @@ def cross_section_reducer(source, src_meas, axis, index):
 			  'get_dtype': (lambda: complex if source.get_dtype()[src_meas] is complex else float),
 			  'get_opts': (lambda: source.get_opts()[src_meas])}
 	return filter
+
 
 def mean_reducer(source, src_meas, axis):
 	def get_points():

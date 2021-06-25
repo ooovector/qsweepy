@@ -1,4 +1,7 @@
-from qsweepy.libraries import pulses, awg_iq_multi, modem_readout, awg_channel
+from qsweepy.libraries import pulses2 as pulses
+from qsweepy.libraries import awg_iq_multi2 as awg_iq_multi
+from qsweepy.libraries import awg_channel2 as awg_channel
+from qsweepy.libraries import modem_readout2 as modem_readout
 
 
 import copy
@@ -9,7 +12,7 @@ from typing import Mapping, List
 class QubitDevice:
     # explicit variables type declaration
     exdir_db: Exdir_db
-    pg: pulses.pulses
+    pg: pulses.Pulses
 
     def __init__(self, exdir_db, sweeper, hardware = None, controls=()):
         self.exdir_db = exdir_db
@@ -354,7 +357,7 @@ class QubitDevice:
                     self.awg_channels[carrier_name] = awg_channel.awg_channel_carrier(control, frequency = frequency)
 
         self.awg_channels.update(extra_channels)
-        self.pg = pulses.pulses(self.awg_channels)
+        self.pg = pulses.Pulses(self.awg_channels)
         self.update_pulsed_frequencies()
 
     def update_pulsed_frequencies(self):
@@ -395,10 +398,10 @@ class QubitDevice:
         hardware.adc.set_adc_nums(int(self.get_sample_global('delay_calibration_nums')))
         hardware.adc.set_adc_nop(int(self.get_sample_global('delay_calibration_nop')))
 
-        self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
-        #self.trigger_readout_seq = []
+        #self.trigger_readout_seq = [self.pg.p('ro_trg', hardware.get_readout_trigger_pulse_length(), self.pg.rect, 1)]
+        self.trigger_readout_seq = []
 
-        self.modem = modem_readout.modem_readout(self.pg, hardware, self.trigger_readout_seq, axis_mean=0, exdir_db=self.exdir_db)
+        self.modem = modem_readout.modem_readout(self.pg, hardware, hardware.ro_trg, axis_mean=0, exdir_db=self.exdir_db)
         self.modem.save=True
         self.modem.sequence_length = int(self.get_sample_global('delay_calibration_sequence_length'))
         self.modem.readout_channels = self.readout_channels

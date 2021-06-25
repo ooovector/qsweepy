@@ -1,6 +1,7 @@
 import qsweepy.libraries.instruments as instruments
 import qsweepy
-from qsweepy.libraries.awg_channel import awg_channel
+from qsweepy.libraries.awg_channel2 import awg_channel
+from qsweepy.libraries.awg_digital2 import awg_digital
 import numpy as np
 from qsweepy import zi_scripts
 
@@ -30,7 +31,7 @@ pulsed_settings = {#'lo1_power': 18,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
                    'lo1_freq': 3.70e9,
-                   'pna_freq': 7.20e9, #
+                   'pna_freq': 7.22e9,
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,
@@ -47,16 +48,18 @@ class hardware_setup():
         self.sa = None
 
         self.pna = None
-        #self.lo1 = None
+        self.lo1 = None
         self.rf_switch = None
         self.coil_device = None
         self.hdawg = None
         self.adc_device = None
         self.adc = None
 
+        self.ro_trg = None
         self.q1z = None
         self.cz = None
         self.q2z = None
+        self.q3z = None
         self.iq_devices = None
         self.fast_controls = None
 
@@ -75,6 +78,13 @@ class hardware_setup():
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
         self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2e9, delay_int=0)
+
+        for channel_id in range(8):
+            self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/range' % channel_id, 1)
+        #It is necessary if you want to use DIOs control features during pulse sequence
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/dios/0/mode', 1)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/dios/0/drive', 1)
+        self.hdawg.daq.sync()
         #
         # self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/0/range', 0.8)
         # self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/1/range', 0.8)
@@ -87,10 +97,11 @@ class hardware_setup():
 
         self.coil_device = self.hdawg
 
-        self.q3z = awg_channel(self.hdawg, 0)  # coil control
-        self.q2z = awg_channel(self.hdawg, 1)  # coil control
-        self.cz = awg_channel(self.hdawg, 2)  # coil control
-        self.q1z = awg_channel(self.hdawg, 3)  # coil control
+        # Qubit lines should be connected with even channels
+        self.q3z = awg_channel(self.hdawg, 6)  # coil control
+        self.q2z = awg_channel(self.hdawg, 2)  # coil control
+        self.cz = awg_channel(self.hdawg, 7)  # coil control
+        self.q1z = awg_channel(self.hdawg, 0)  # coil control
 
 
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
@@ -113,14 +124,46 @@ class hardware_setup():
             return
         self.hardware_state = 'cw_mode'
 
-        self.cw_sequence = zi_scripts.CWSequence(self.hdawg, sequencer_id=2)
-        self.hdawg.set_sequencer(self.cw_sequence)
+        self.cw_sequence = zi_scripts.CWSequence(awg=self.hdawg, sequencer_id=2)
+        #self.hdawg.set_sequencer(self.cw_sequence)
+        self.hdawg.set_sequence(2, self.cw_sequence)
         self.cw_sequence.set_amplitude_i(0)
         self.cw_sequence.set_amplitude_q(0)
         self.cw_sequence.set_phase_i(0)
         self.cw_sequence.set_phase_q(0)
         self.cw_sequence.set_offset_i(cw_settings['mixer_thru'])
         self.cw_sequence.set_offset_q(0)
+
+        self.pna.set_sweep_mode("LIN")
+        self.hardware_state = 'cw_mode'
+
+    def set_spectroscopy_mode(self, channels_off=None):
+        if self.hardware_state == 'cw_mode':
+            return
+        self.hardware_state = 'cw_mode'
+        self.hdawg.stop()
+
+        self.cw_sequence = zi_scripts.CWSequence(awg=self.hdawg, sequencer_id=2)
+        # self.hdawg.set_sequencer(self.cw_sequence)
+        self.hdawg.set_sequence(2, self.cw_sequence)
+        self.cw_sequence.set_amplitude_i(0)
+        self.cw_sequence.set_amplitude_q(0)
+        self.cw_sequence.set_phase_i(0)
+        self.cw_sequence.set_phase_q(0)
+        self.cw_sequence.set_offset_i(cw_settings['mixer_thru'])
+        self.cw_sequence.set_offset_q(0)
+
+        self.hdawg.set_output(output=1, channel=0)
+        self.hdawg.set_output(output=1, channel=1)
+        self.hdawg.set_output(output=1, channel=2)
+        self.hdawg.set_output(output=1, channel=3)
+        self.hdawg.set_output(output=1, channel=4)
+        self.hdawg.set_output(output=1, channel=5)
+        self.hdawg.set_output(output=0, channel=6)
+        self.hdawg.set_output(output=0, channel=7)
+        if channels_off is not None:
+            for channel_off in channels_off:
+                self.hdawg.set_output(output=0, channel=channel_off)
 
         self.pna.set_sweep_mode("LIN")
         self.hardware_state = 'cw_mode'
@@ -148,14 +191,38 @@ class hardware_setup():
         self.hdawg.set_clock_source(0)
 
         self.hdawg.set_trigger_impedance_1e3()
-        self.hdawg.set_dig_trig1_source([0, 0, 0, 0])
-        self.hdawg.set_dig_trig1_slope([0, 0, 0, 0])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
+        self.hdawg.set_dig_trig1_source([4, 4, 4, 4])
+        self.hdawg.set_dig_trig1_slope([1, 1, 1, 1])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
                                                       # 2 - Falling edge trigger, 3 - Rising or falling edge trigger
         self.hdawg.set_dig_trig2_source([0, 0, 0, 0])
-        self.hdawg.set_dig_trig2_slope([0, 0, 0, 0])
-        self.hdawg.set_trig_level(0.6)
+        self.hdawg.set_dig_trig2_slope([1, 1, 1,1])
+        self.hdawg.set_trig_level(0.3)
 
+        self.ro_trg = awg_digital(self.hdawg, 4, delay_tolerance=20e-9)  # triggers readout card
+        self.ro_trg.adc = self.adc
+        self.ro_trg.mode = 'waveform'
         self.hardware_state = 'pulsed_mode'
+
+        # I don't know HOW but it works
+        # For each exitation sequencers:
+        # We need to set DIO slope as  Rise (0- off, 1 - rising edge, 2 - falling edge, 3 - both edges)
+        for ex_seq_id in range(4):
+            self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/strobe/slope' % ex_seq_id, 1)
+            # We need to set DIO valid polarity as High (0- none, 1 - low, 2 - high, 3 - both )
+            self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/valid/polarity' % ex_seq_id, 2)
+
+        # For readout channels
+        # For readout sequencer:
+        read_seq_id = self.ro_trg.channel //2
+        # We need to set DIO slope as  Fall (0- off, 1 - rising edge, 2 - falling edge, 3 - both edges)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/strobe/slope' % read_seq_id, 1)
+        # We need to set DIO valid polarity as  None (0- none, 1 - low, 2 - high, 3 - both )
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/valid/polarity' % read_seq_id, 0)
+        self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/strobe/index' % read_seq_id, 3)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/mask/value' % read_seq_id, 2)
+        #self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/mask/shift' % read_seq_id, 1)
+        # For readout channels
+
 
     def set_switch_if_not_set(self, value, channel):
         if self.rf_switch is not None:
@@ -164,13 +231,16 @@ class hardware_setup():
 
     def setup_iq_channel_connections(self, exdir_db):
         # промежуточные частоты для гетеродинной схемы new:
-        self.iq_devices = {'iq_ro':  qsweepy.libraries.awg_iq_multi2.Awg_iq_multi(awg=self.hdawg, sequencer_id=2,
+        self.iq_devices = {'iq_ro':  qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=2,
                                                                                   lo=self.pna, exdir_db=exdir_db)}
         self.iq_devices['iq_ro'].name = 'ro'
         self.iq_devices['iq_ro'].calibration_switch_setter = lambda: None
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
-                              'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
-                              'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
-                              'q1z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
+        self.fast_controls = {'q3z': awg_channel(self.hdawg, 6),
+                              'q2z':awg_channel(self.hdawg, 2),
+                              'cz': awg_channel(self.hdawg, 7),
+                              'q1z': awg_channel(self.hdawg, 0)}  # coil control
+
+    def get_modem_dc_calibration_amplitude(self):
+        return self.pulsed_settings['modem_dc_calibration_amplitude']

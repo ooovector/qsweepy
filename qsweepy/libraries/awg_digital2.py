@@ -32,46 +32,6 @@ class awg_digital:
     def set_delay(self, delay):
         self.delay = delay
 
-    def set_waveform(self, waveform):
-        if self.mode == 'waveform':
-            self.awg.set_digital(np.roll(waveform, self.delay), channel=self.channel)
-            self._last_waveform = np.roll(waveform, self.delay)
-        if self.mode == 'marker':
-            delay_tock = np.where(waveform)[0][0]
-            delay = int(np.ceil(delay_tock / 10));
-            length_tock = np.where(1-waveform[delay_tock:])[0][0]
-            length = int(np.ceil(length_tock/10))
-            self.awg.set_marker(delay, length, channel=self.channel)
-        if self.mode == 'set_delay':
-            delay_tock = np.where(waveform)[0][0]
-            delay = int(np.ceil(delay_tock));
-            self.delay_setter(delay)
-        if self.mode == 'internal_delay':
-            if self.delay > 1020:
-                #logging.warning('delay set to be 1020 adc-cycles instead of {} (can not be bigger)'.format(self.delay))
-                raise ValueError('Calibrated delay larger than 1020')
-                pass
-                #self.delay = 1020
-            elif self.delay < 0:
-                raise ValueError('Delay cannot be negative')
-                #if np.abs(self.delay) > 1020:
-                #    logging.warning('delay set to be {} instead of {} (can not be negative or bigger then 1020)'.format(
-                #        1020, self.delay))
-                #    self.delay = 1020
-                #else:
-                #    logging.warning('delay set to be {} instead of {} (can not be negative)'.format(np.abs(self.delay),
-                #                                                                                    self.delay))
-                #    self.delay = np.abs(self.delay)
-            self.awg.set_digital(waveform, channel=self.channel)
-            self.adc.delay = self.delay / self.adc.get_clock()
-
-    def freeze(self):
-        self.frozen = True
-    def unfreeze(self):
-        if self.frozen:
-            self.frozen = False
-            #self.assemble_waveform()
-
     def get_physical_devices(self):
         return [self.awg]
 
@@ -172,7 +132,7 @@ class awg_digital:
                                                           )
             #modem.delay_calibration = calibration_measurement
         print ('Calibration measurement (delay):', self.measured_delay)
-        self.delay = int(-self.measured_delay*self.get_clock()-10)
+        self.delay = self.measured_delay
 
     def get_modem_delay_calibration(self, modem, ex_channel_name):
         try:
@@ -181,7 +141,7 @@ class awg_digital:
             #modem.delay_calibration = calibration_measurement
             self.measured_delay = float(calibration_measurement.metadata['measured_delay'])
             result = self.measured_delay
-            self.delay = int(-self.measured_delay*self.get_clock()-10)
+            self.delay = self.measured_delay
         except Exception as e:
             print(str(e), type(e))
             self.modem_delay_calibrate(modem, ex_channel_name)

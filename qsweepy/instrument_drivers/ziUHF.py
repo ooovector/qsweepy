@@ -20,9 +20,9 @@ MAPPINGS = {
 
 
 class ziUHF(ZIDevice):
-    def __init__(self, num_covariances) -> None:
+    def __init__(self, num_covariances, delay_int=0) -> None:
         self.sync_mode = False  # True only during mixers calibration
-        super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF', clock=1.8e9, delay_int=0)
+        super(ziUHF, self).__init__(device_id='dev2491', devtype='UHF', clock=1.8e9, delay_int=delay_int)
         # self.dev.enable_readout_channels(list(range(ch_num)))
         # Set parameters required to be returned
         self.output_raw = True
@@ -39,6 +39,7 @@ class ziUHF(ZIDevice):
         self.timeout = 10
         self.thresholds = [0] * num_covariances
         self.num_covariances = num_covariances
+        self.adc = self
 
     def set_adc_nop(self, nop):
         self.nsamp = nop
@@ -224,7 +225,7 @@ class ziUHF(ZIDevice):
                 self.daq.getList('/' + self.device + '/qas/0/result/data/' + str(channel) + '/wave')[0][1][0]['vector'].dtype
             for channel in range(self.num_covariances)})
         if self.output_resnum:
-            dtypes.update({'resultnumbers': int})
+            dtypes.update({'resultnumbers': float})
 
         return dtypes
 
@@ -252,7 +253,7 @@ class ziUHF(ZIDevice):
         self.run()
 
         # Sleep to correctly capture initial status TODO mb there is a better way to do it
-        time.sleep(0.5)
+        time.sleep(0.3)
         t1 = time.time()
 
         while(1):

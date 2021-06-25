@@ -1,6 +1,7 @@
 from qsweepy.libraries import data_reduce
 import numpy as np
 from qsweepy.libraries import readout_classifier
+from qsweepy.qubit_calibrations import sequence_control
 
 
 class single_shot_readout:
@@ -16,10 +17,12 @@ class single_shot_readout:
         adc_measurement_name (str): name of measurement on ADC
     """
 
-    def __init__(self, adc, prepare_seqs, ro_seq, pulse_generator, ro_delay_seq=None, _readout_classifier=None,
+    def __init__(self, device, adc, prepare_seqs, ex_seqs, ro_seq, pulse_generator, ro_delay_seq=None, _readout_classifier=None,
                  adc_measurement_name='Voltage', dbg_storage=False):
         self.adc = adc
+        self.device = device
         self.ro_seq = ro_seq
+        self.ex_seqs = ex_seqs
         self.prepare_seqs = prepare_seqs
 
         self.ro_delay_seq = ro_delay_seq
@@ -58,7 +61,25 @@ class single_shot_readout:
             for class_id, prepare_seq in enumerate(self.prepare_seqs):
                 # pulse sequence to prepare state
                 self.adc.set_internal_avg(True)
-                self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
+                '''Warning'''
+                self.ro_seq.awg.stop_seq(self.ro_seq.params['sequencer_id'])
+                # self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
+
+                for ex_seq in self.ex_seqs:
+                    ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+                    ex_seq.clear_pulse_sequence()
+                    for prep_seq in prepare_seq:
+                        for seq_id, single_sequence in prep_seq.items():
+                            if seq_id == ex_seq.params['sequencer_id']:
+                                ex_seq.add_definition_fragment(single_sequence[0])
+                                ex_seq.add_play_fragment(single_sequence[1])
+                    self.device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+                    ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+
+                self.ro_seq.awg.start_seq(self.ro_seq.params['sequencer_id'])
+                #re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+                #re_sequence.start()
+
                 if self.adc.devtype == 'SK':
                     measurement = self.adc.measure()
                     X.append(measurement[self.adc_measurement_name])
@@ -108,7 +129,23 @@ class single_shot_readout:
             y = []
             for i in range(self.repeat_samples):
                 for class_id, prepare_seq in enumerate(self.prepare_seqs):
-                    self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
+                    '''Warning'''
+                    self.ro_seq.awg.stop_seq(self.ro_seq.params['sequencer_id'])
+                    #self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
+                    for ex_seq in self.ex_seqs:
+                        ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+                        ex_seq.clear_pulse_sequence()
+                        for prep_seq in prepare_seq:
+                            for seq_id, single_sequence in prep_seq.items():
+                                if seq_id == ex_seq.params['sequencer_id']:
+                                    ex_seq.add_definition_fragment(single_sequence[0])
+                                    ex_seq.add_play_fragment(single_sequence[1])
+                        self.device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+                        ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+
+                    self.ro_seq.awg.start_seq(self.ro_seq.params['sequencer_id'])
+                    #re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+                    #re_sequence.start()
                     # TODO do we need to calibrate for all discriminators?
                     j = self.adc.measure()[self.adc.result_source + str(0)]
                     x.extend((np.real(j)+np.imag(j)).tolist())

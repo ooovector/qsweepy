@@ -1,7 +1,9 @@
+
 from . import sweep
 # from . import save_pkl
 from . import fitting
 import numpy as np
+from qsweepy import zi_scripts
 from qsweepy.libraries import data_reduce
 
 import matplotlib.pyplot as plt
@@ -21,16 +23,15 @@ class modem_readout(data_reduce.data_reduce):
     # trigger sequence:
     # pg.p('ro_trg', trg_length, pg.rect, 1),
 
-    def __init__(self, pulse_sequencer, hardware, trigger_daq_seq, src_meas='Voltage', axis_mean=0, trigger_delay=0,
-                 exdir_db=None):
+    def __init__(self, pulse_sequencer, hardware, trigger_channel, src_meas='Voltage', axis_mean=0, exdir_db=None):
         self.pulse_sequencer = pulse_sequencer
         self.hardware = hardware
         self.adc = hardware.adc
         self.src_meas = src_meas
         self.axis_mean = axis_mean
-        self.trigger_daq_seq = trigger_daq_seq
-        self.trigger_delay = trigger_delay
+        self.trigger_channel = trigger_channel
         self.exdir_db = exdir_db
+        self.awg = hardware.hdawg
 
         self.readout_channels = {}
         self.delay_calibrations = {}
@@ -58,9 +59,9 @@ class modem_readout(data_reduce.data_reduce):
 
         return dac_sequence, dac_sequence_adc_time
 
-    def demodulation(self, ex_channel, sign=True):
+    def demodulation(self, ex_channel, sign=True, use_carrier=True):
         readout_time_axis = self.adc.get_points()[self.src_meas][1 - self.axis_mean][1]
-        if hasattr(ex_channel, 'get_if'):  # has get_if method => works on carrier, need to demodulate
+        if hasattr(ex_channel, 'get_if') and use_carrier:  # has get_if method => works on carrier, need to demodulate
             demodulation = np.exp(
                 1j * np.asarray(readout_time_axis) * 2 * np.pi * ex_channel.get_if() * (1 if sign else -1))
         else:
@@ -74,15 +75,24 @@ class modem_readout(data_reduce.data_reduce):
         # readout_delays = {}
         # for ex_channel_name, ex_channel in self.readout_channels.items():
         # delay calibration pulse sequence
+
         ex_channel = self.readout_channels[ex_channel_name]
         dac_sequence, dac_sequence_adc_time = self.random_alignment_sequence(ex_channel)
 
+        sequence = zi_scripts.DMSequence(ex_channel.parent.sequencer_id, self.awg, len(dac_sequence))
+        self.awg.set_sequence(ex_channel.parent.sequencer_id, sequence)
+        sequence.stop()
+        sequence.set_waveform(dac_sequence)
+        sequence.set_delay(self.trigger_channel.delay)
+        sequence.start()
+
         # set sequence in sequencer
-        seq = self.trigger_daq_seq + [
-            self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
-                                   self.pulse_sequencer.awg, dac_sequence)]
-        self.pulse_sequencer.set_seq(seq)
+        #seq = self.trigger_daq_seq + [
+        #    self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
+        #                           self.pulse_sequencer.awg, dac_sequence)]
+        #self.pulse_sequencer.set_seq(seq)
         # readout
+
         self.adc.output_raw = True
         meas_result = self.adc.measure()[self.src_meas]
         if meas_result.ndim == 1:  # in case of UHFQA data is already averaged on hardware
@@ -91,7 +101,7 @@ class modem_readout(data_reduce.data_reduce):
             adc_sequence = np.mean(meas_result, axis=self.axis_mean)
         # adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
         # demodulate
-        demodulation = self.demodulation(ex_channel, sign=True)
+        demodulation = self.demodulation(ex_channel, sign=True, use_carrier=False)
         # depending on how the cables are plugged in, measure
         xc1 = correlate(np.real(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # HUYAGIC is here
         xc2 = correlate(np.imag(adc_sequence) * demodulation, dac_sequence_adc_time, mode='full')  # magic is here
@@ -129,6 +139,7 @@ class modem_readout(data_reduce.data_reduce):
             'iq_calibration': [self.calibrations[ex_channel_name + '+'], self.calibrations[ex_channel_name + '-']],
             'feature': feature}
         self.calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas,
+
                                                                                1 - self.axis_mean, self.bg, feature)
 
     def get_dc_bg_calibration(self):
@@ -171,7 +182,14 @@ class modem_readout(data_reduce.data_reduce):
     def calibrate_dc_bg(self):
         # send nothing
         self.hardware.set_pulsed_mode()
-        self.pulse_sequencer.set_seq(self.trigger_daq_seq)
+        #self.pulse_sequencer.set_seq(self.trigger_daq_seq)
+        #ex_channel = self.readout_channels[ex_channel_name]
+        #sequence = zi_scripts.DCSequence(ex_channel.parent.sequencer_id, self.awg)
+        sequence = zi_scripts.DCSequence(2, self.awg) #kostyl podumoti
+        self.awg.set_sequence(2, sequence) #kostyl podumoti
+        sequence.stop()
+        sequence.start()
+
         measurer = data_reduce.data_reduce(self.adc)
         measurer.filters['bg'] = data_reduce.mean_reducer(self.adc, self.src_meas, self.axis_mean)
 
@@ -199,14 +217,35 @@ class modem_readout(data_reduce.data_reduce):
         dac_sequence_adc_time = dac_sequence_adc_time_I + 1j * dac_sequence_adc_time_Q
         demodulation = self.demodulation(ex_channel, sign=True)
         # set sequence in sequencer with amplitude & phase
-        seq = self.trigger_daq_seq + [
-            self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
-                                   self.pulse_sequencer.awg, dac_sequence)]
+
+        sequence = zi_scripts.DMSequence(ex_channel.parent.sequencer_id, self.awg, len(dac_sequence), use_modulation = True)
+        self.awg.set_sequence(ex_channel.parent.sequencer_id, sequence)
+        sequence.stop()
+        #ex_channel.parent.get_dc_calibration()
+        #ex_channel.parent.get_rf_calibration()
+        calib_dc = ex_channel.parent.calib_dc()
+        calib_rf = ex_channel.parent.calib_rf(ex_channel)
+        # set ampl? set phase? set ofset from calibrations возможно не надо делать setSinePhase(0, 0); а то калибровка миксеров слетит(
+        sequence.set_amplitude_i(np.abs(calib_rf['I']))
+        sequence.set_amplitude_q(np.abs(calib_rf['Q']))
+        sequence.set_phase_i(np.angle(calib_rf['I'])*360/np.pi)
+        sequence.set_phase_q(np.angle(calib_rf['Q'])*360/np.pi)
+        sequence.set_offset_i(np.real(calib_dc['dc']))
+        sequence.set_offset_q(np.imag(calib_dc['dc']))
+        sequence.set_frequency(np.abs(ex_channel.get_if())) # ex_channel == carrier
+        #sequence.set_waveform(np.asarray(dac_sequence_I)* amplitude, np.asarray(dac_sequence_Q)* amplitude)
+        sequence.set_waveform(np.real(dac_sequence), np.imag(dac_sequence))
+        sequence.set_delay(self.trigger_channel.delay)
+        sequence.start()
+
+        #seq = self.trigger_daq_seq + [
+        #    self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
+        #                           self.pulse_sequencer.awg, dac_sequence)]
         # seq_Q = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, sequence_length/ex_channel.get_clock(), self.pulse_sequencer.awg, 1j*dac_sequence)]
         # measure response on I sequence
-        self.pulse_sequencer.set_seq(seq)
+        #self.pulse_sequencer.set_seq(seq)
         calibration_measurement = self.adc.measure()
-        meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean) - self.bg)[
+        meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean))[
                  :len(dac_sequence_adc_time)]
 
         A_I = (meas_I * np.asarray(
