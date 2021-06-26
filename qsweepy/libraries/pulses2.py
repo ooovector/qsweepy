@@ -234,7 +234,7 @@ wave rect_cos_{length_samp} = rect({length_samp}, {amp});
     '''.format(length_samp=length_samp))
         return definition_fragment, play_fragment
 
-    def virtual_z(self, channel, length, phase, fast_control = False):
+    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 8):
         '''
         Parameters
         :param channel: channel name
@@ -245,7 +245,20 @@ wave rect_cos_{length_samp} = rect({length_samp}, {amp});
         definition_fragment = ''''''
         play_fragment = ''''''
         ex_channel = self.channels[channel]
-        if fast_control:
+        if fast_control == 'quasi-binary':
+            definition_fragment = '''cvar resolution = {resolution};'''.format(resolution=resolution)
+            for bit in range(resolution):
+                bitval = 1 << resolution
+                play_fragment += textwrap.dedent('''
+                    if (phase_variable & {bitval}) {
+                        incrementSinePhase(0, {increment});''')
+                if ex_channel.is_iq():
+                    play_fragment += textwrap.dedent('''
+                    incrementSinePhase(1, {increment});''')
+                play_fragment += '''
+                }'''
+                play_fragment = play_fragment.format(bitval=bitval, increment=bitval / (2 << resolution) * 360.0)
+        elif fast_control:
             definition_fragment += '''
 //
 var i;
