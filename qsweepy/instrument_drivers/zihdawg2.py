@@ -189,6 +189,10 @@ class ZIDevice():
         self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(sequencer_id, waveform_index), vector)
         self.daq.sync()
 
+    def load_instructions(self, sequencer_id, json_str):
+        self.daq.setVector('/' + self.device + '/awgs/{}/commandtable/data'.format(sequencer_id), json_str)
+        #self.daq.sync()
+        return
 
     def programs(self):
         return set(self.known_programs.keys())

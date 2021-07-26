@@ -47,32 +47,54 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
     references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
     references['readout_pulse'] = qubit_readout_pulse.id
 
+    re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+
+    #TODO
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_ids[0]).keys()][0]
+    ex_channel = device.awg_channels[exitation_channel]
+    if ex_channel.is_iq():
+        control_seq_id = ex_channel.parent.sequencer_id
+    else:
+        control_seq_id = ex_channel.channel//2
+    ex_sequencers = []
+    for seq_id in device.pre_pulses.seq_in_use:
+        if seq_id != control_seq_id:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses = [])
+        else:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+            control_sequence = ex_seq
+
+        device.pre_pulses.set_seq_offsets(ex_seq)
+        device.pre_pulses.set_seq_prepulses(ex_seq)
+        ex_seq.start()
+        ex_sequencers.append(ex_seq)
+
+    #sequence_control.set_preparation_sequence(device, ex_sequencers, [other_qubit_pulse_sequence+
+    #                                                                   qubit_excitation_pulse.get_pulse_sequence(0)])
+
+
     def set_target_state(state):
-        excitation_sequence = []
+        re_sequence.awg.stop_seq(re_sequence.params['sequencer_id'])
+        preparation_sequence = []
         for _id, qubit_id in enumerate(qubit_ids):
             qubit_state = (1 << _id) & state
             if qubit_state:
                 # TODO
                 '''Warning'''
-                excitation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
+                preparation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
         if middle_seq_generator is not None:
             # TODO
             '''Warning'''
             middle_pulse = middle_seq_generator()
+            preparation_sequence.extend(middle_pulse)
         else:
             middle_pulse = []
         # TODO
         '''Warning'''
-        device.pg.set_seq(device.pre_pulses + excitation_sequence + middle_pulse + [
-            device.pg.pmulti(pause_length)] + device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence())
-
-        #ex_sequencers = sequence_control.define_qubit_control_seq(device, ex_sequence, ex_channel,
-        #                                                         exitation_amplitude, pause_length)
-        #for sequence in ex_sequencers:
-        #    sequence.start()
-        re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
-
-
+        sequence_control.set_preparation_sequence(device, ex_sequencers, preparation_sequence)
+        re_sequence.awg.start_seq(re_sequence.params['sequencer_id'])
     if middle_seq_generator is not None:
         measurement_type = 'confusion_matrix_middle_seq'
     else:
@@ -173,12 +195,14 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
         else:
             ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
-            #control_sequence = ex_seq
+            control_sequence = ex_seq
 
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
+    sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     #readout_sequencer = sequence_control.define_readout_control_seq(device, readout_channel)
@@ -194,7 +218,8 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                                                                        qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,
-                                                         pulse_generator=device.pg,
+                                                         control_seq = control_sequence,
+                                                         #pulse_generator=device.pg,
                                                          ro_delay_seq=None,
                                                          _readout_classifier=readout_classifier.binary_linear_classifier(),
                                                          adc_measurement_name='Voltage',
@@ -323,12 +348,14 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
         else:
             ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
-            #control_sequence = ex_seq
+            control_sequence = ex_seq
 
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
+    sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     #readout_sequencer = sequence_control.define_readout_control_seq(device, readout_channel)
@@ -351,7 +378,8 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                                                                        qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,
-                                                         pulse_generator=device.pg,
+                                                         control_seq=control_sequence,
+                                                         #pulse_generator=device.pg,
                                                          ro_delay_seq=None,
                                                          _readout_classifier=readout_classifier.binary_linear_classifier(),
                                                          adc_measurement_name='Voltage',
@@ -426,7 +454,7 @@ def readout_Zgate_scan(device, qubit_id, qubit_readout_pulse, Zgate, amplitudes,
                 half_excited_pulse = excitation_pulse.get_excitation_pulse(device, other_qubit_id,
                                                                            rotation_angle=np.pi / 2.)
                 references[('other_qubit_pulse', other_qubit_id)] = half_excited_pulse.id
-                other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0))
+                other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0)[0])
 
     qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi)
     metadata = {'qubit_id': qubit_id,
@@ -442,10 +470,10 @@ def readout_Zgate_scan(device, qubit_id, qubit_readout_pulse, Zgate, amplitudes,
     classifier = single_shot_readout.single_shot_readout(adc=adc,
                                                          prepare_seqs=[
                                                              device.pre_pulses + other_qubit_pulse_sequence,
-                                                             device.pre_pulses + other_qubit_pulse_sequence + qubit_excitation_pulse.get_pulse_sequence(
-                                                                 0)],
+                                                             device.pre_pulses + other_qubit_pulse_sequence + qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ro_seq=device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence(),
-                                                         pulse_generator=device.pg,
+                                                         control_seq=None,
+                                                         # pulse_generator=device.pg,
                                                          ro_delay_seq=None,
                                                          _readout_classifier=readout_classifier.binary_linear_classifier(),
                                                          adc_measurement_name='Voltage')

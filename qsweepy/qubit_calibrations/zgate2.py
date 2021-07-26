@@ -33,7 +33,7 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
             self.post_pause_seq = []
 
         def amplitude_setter(self, amplitude):
-            self.amplitude = amplitude
+            self.amplitude = 1j*amplitude
 
         def filler_func(self, length):
             self.length = length
@@ -74,19 +74,33 @@ def zgate_amplitude_ramsey_crosstalk(device, gate, target_qubit_id, control_qubi
     post_pause = float(gate.metadata['post_pause'])
     class ParameterSetter:
         def __init__(self):
-            self.amplitude=None
+            self.amplitude = amplitudes[0]
+            self.length = lengths[0]
+            self.pre_pause_seq = []
+            self.gate_pulse_seq = []
+            self.post_pause_seq = []
 
         def amplitude_setter(self, amplitude):
-            self.amplitude = amplitude
+            self.amplitude = 1j*amplitude
 
         def filler_func(self, length):
-            channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device,
-                                                  **{gate.metadata['carrier_name']: self.amplitude})
-            return [device.pg.pmulti(pre_pause)]+excitation_pulse.get_rect_cos_pulse_sequence(device = device,
-                                               channel_amplitudes = channel_amplitudes_,
-                                               tail_length = float(gate.metadata['tail_length']),
-                                               length = length,
-                                               phase = 0.0)+[device.pg.pmulti(post_pause)]
+            self.length = length
+            channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{gate.metadata[
+                                                                               'carrier_name']: self.amplitude})
+
+            gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                      channel_amplitudes=channel_amplitudes_,
+                                                                      tail_length=float(
+                                                                          gate.metadata['tail_length']),
+                                                                      length=self.length,
+                                                                      phase=0.0,
+                                                                      fast_control=True)
+
+            self.pre_pause_seq = [device.pg.pmulti(device, pre_pause)]
+            self.gate_pulse_seq = gate_pulse
+            self.post_pause_seq = [device.pg.pmulti(device, post_pause)]
+
+            return self.pre_pause_seq, self.gate_pulse_seq, self.post_pause_seq
     setter = ParameterSetter()
     if measurement == 'Ramsey':
         measurement_type = 'Ramsey_crosstalk_amplitude_scan'
@@ -106,19 +120,33 @@ def zgate_amplitude_relaxation(device, gate, lengths, amplitudes):
     post_pause = float(gate.metadata['post_pause'])
     class ParameterSetter:
         def __init__(self):
-            self.amplitude=None
+            self.amplitude = amplitudes[0]
+            self.length = lengths[0]
+            self.pre_pause_seq = []
+            self.gate_pulse_seq = []
+            self.post_pause_seq = []
 
         def amplitude_setter(self, amplitude):
-            self.amplitude = amplitude
+            self.amplitude = 1j*amplitude
 
         def filler_func(self, length):
-            channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device,
-                                                  **{gate.metadata['carrier_name']: self.amplitude})
-            return [device.pg.pmulti(pre_pause)]+excitation_pulse.get_rect_cos_pulse_sequence(device = device,
-                                               channel_amplitudes = channel_amplitudes_ ,
-                                               tail_length = float(gate.metadata['tail_length']),
-                                               length = length,
-                                               phase = 0.0)+[device.pg.pmulti(post_pause)]
+            self.length = length
+            channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{gate.metadata[
+                                                                                      'carrier_name']: self.amplitude})
+
+            gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                      channel_amplitudes=channel_amplitudes_,
+                                                                      tail_length=float(
+                                                                          gate.metadata['tail_length']),
+                                                                      length=self.length,
+                                                                      phase=0.0,
+                                                                      fast_control=True)
+
+            self.pre_pause_seq = [device.pg.pmulti(device, pre_pause)]
+            self.gate_pulse_seq = gate_pulse
+            self.post_pause_seq = [device.pg.pmulti(device, post_pause)]
+
+            return self.pre_pause_seq, self.gate_pulse_seq, self.post_pause_seq
     setter = ParameterSetter()
 
     return relaxation.relaxation(device, gate.metadata['target_qubit_id'], '01', (amplitudes, setter.amplitude_setter, 'amplitude'),

@@ -41,17 +41,30 @@ def define_qubit_control_seq(device, ex_sequence, ex_channel, exitation_amplitud
             #ex_sequence.start()
 
     return ex_sequencers
-def set_preparation_sequence(device, ex_sequencers, prepare_seq):
-    for ex_seq in ex_sequencers:
-        ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
-        ex_seq.clear_pulse_sequence()
-        for prep_seq in prepare_seq:
-            for seq_id, single_sequence in prep_seq[0].items():
-                if seq_id == ex_seq.params['sequencer_id']:
-                    ex_seq.add_definition_fragment(single_sequence[0])
-                    ex_seq.add_play_fragment(single_sequence[1])
-        device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
-        ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+def set_preparation_sequence(device, ex_sequencers, prepare_seq, control_sequence = None):
+    if control_sequence is None:
+        for ex_seq in ex_sequencers:
+            ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+            ex_seq.clear_pulse_sequence()
+            for prep_seq in prepare_seq:
+                for seq_id, single_sequence in prep_seq[0].items():
+                    if seq_id == ex_seq.params['sequencer_id']:
+                        ex_seq.add_definition_fragment(single_sequence[0])
+                        ex_seq.add_play_fragment(single_sequence[1])
+            device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+            ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+    else:
+        for ex_seq in ex_sequencers:
+            if ex_seq.params['sequencer_id'] == control_sequence.params['sequencer_id']:
+                ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+                ex_seq.clear_pulse_sequence()
+                for prep_seq in prepare_seq:
+                    for seq_id, single_sequence in prep_seq[0].items():
+                        if seq_id == ex_seq.params['sequencer_id']:
+                            ex_seq.add_definition_fragment(single_sequence[0])
+                            ex_seq.add_play_fragment(single_sequence[1])
+                device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+                ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
 
 def define_readout_control_seq(device, readout_pulse):
     try:
@@ -70,7 +83,7 @@ def define_readout_control_seq(device, readout_pulse):
     sequence.stop()
     device.modem.awg.set_sequence(re_channel.parent.sequencer_id, sequence)
     sequence.set_delay(device.modem.trigger_channel.delay)
-    #sequence.start()
-
+    sequence.start()
+    sequence.awg.stop_seq(sequence.params['sequencer_id'])
 
     return sequence

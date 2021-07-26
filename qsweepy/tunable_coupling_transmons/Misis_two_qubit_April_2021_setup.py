@@ -31,7 +31,7 @@ pulsed_settings = {#'lo1_power': 18,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
                    'lo1_freq': 3.70e9,
-                   'pna_freq': 7.22e9,
+                   'pna_freq': 7.195e9, #7.2111e9 7.257e9 7.232e9 7.2275e9 7.1e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,
@@ -178,6 +178,7 @@ class hardware_setup():
         #self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
         self.pna.set_power(self.pulsed_settings['vna_power'])
+
         #self.pna.write("OUTP ON")
         self.pna.write("SOUR1:POW1:MODE ON")
         self.pna.write("SOUR1:POW2:MODE OFF")

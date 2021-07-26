@@ -160,7 +160,7 @@ class PrepulseSetter:
 
 class SIMPLESequence:
     def __init__(self, sequencer_id, awg, readout_delay=0, awg_amp=1, pre_pulses = [],
-                 use_modulation=True, var_reg0=0, var_reg1 =1, control=False, is_iq = False):
+                 use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, control=False, is_iq = False):
         """
         Pre pulses settings.
         Parameters
@@ -180,7 +180,7 @@ class SIMPLESequence:
         self.params = dict(sequencer_id=int(sequencer_id), qubit_channel=0,
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
-                           var_reg0=int(var_reg0), var_reg1=int(var_reg1), nco_id=sequencer_id * 4,
+                           var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2), nco_id=sequencer_id * 4,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
         self.pre_pulses = pre_pulses
         self.definition_pre_pulses = '''
@@ -201,8 +201,11 @@ setInt('sines/{qc}/oscselect', {nco_id}+1);
 const readout_delay = {readout_delay};
 const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
+const var_reg2 = {var_reg2};
+var wave_ind=0;
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
+var phase_variable = getUserReg(var_reg2);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -237,6 +240,7 @@ while (true) {{
     waitDIOTrigger();
     variable_register0 = getUserReg(var_reg0);
     variable_register1 = getUserReg(var_reg1);
+    phase_variable = getUserReg(var_reg2);
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
@@ -248,7 +252,7 @@ while (true) {{
 //
     // Send trigger for readout_channel to start waveform generation
     waitWave();
-    playWave(zeros(readout_delay));
+    playZero(readout_delay);
     setDIO(8);
     wait(10);
     setDIO(0);
@@ -259,7 +263,7 @@ while (true) {{
 //
     // Send trigger for readout_channel to start waveform generation
     //waitWave();
-    //playWave(zeros(readout_delay));
+    //playZero(readout_delay);
     //setDIO(8);
     //wait(50);
     //setDIO(0);
@@ -289,8 +293,10 @@ setInt('sines/{qc}/oscselect', {nco_id}+1);
 const readout_delay = {readout_delay};
 const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
+const var_reg2 = {var_reg2};
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
+var phase_variable = getUserReg(var_reg2);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -372,6 +378,10 @@ var variable_register1 = getUserReg(var_reg1);
         else:
             self.awg.set_register(self.params['sequencer_id'], self.params['var_reg0'], pause_cycles//8)
             self.awg.set_register(self.params['sequencer_id'], self.params['var_reg1'], pause_cycles % 8)
+
+    def set_phase(self, phase):
+
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg2'], phase)
 
     def start(self):
         #self.awg.start_seq(self.params['sequencer_id'])
