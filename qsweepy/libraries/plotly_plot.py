@@ -41,16 +41,26 @@ def cross_section_configurations_add_default(selected_traces, db, current_config
 				else:
 					current_value = parameter.values[0]
 				cross_sections.append({'trace-id':trace_id, 'parameter-id':parameter_id, 'parameter':parameter.name, 'value':0})
-		for measurement_id, measurement in measurements.items():
-			measurement.exdir.close()
+	for measurement_id, measurement in measurements.items():
+		measurement.exdir.close()
 	return cross_sections
 
 def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropdowns=[], interactive=True):
-	data = [i for i in old_traces]
+	'''
+	Generate conditional dropdown filter queries for x-axis and y-axis
+
+	:param loaded_measurements:
+	:param db:
+	:param old_traces:
+	:param conditional_dropdowns: list of conditional dropdown filter queries
+	:return: data and list of conditional dropdowns for x-axis and y-axis
+	'''
+	data = old_traces #[i for i in old_traces]
 	measurement_signatures_list = list(set([(d['dataset'], d['x-axis'], d['y-axis'], d['op']) for d in old_traces]))
 	measurement_signatures = {measurement_signature:[d for d in old_traces if (d['dataset'], d['x-axis'], d['y-axis'], d['op']) == measurement_signature] for measurement_signature in measurement_signatures_list}
 	measurement_signatures_axes_mapping = {measurement_signature:{'row':data[-1]['row'], 'col':data[-1]['col']} for measurement_signature, data in measurement_signatures.items()}
 	measurement_signatures_new = {}
+	cond_column = "{dataset}"
 
 	with db_session:
 		for m in loaded_measurements:
@@ -60,16 +70,19 @@ def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropd
 				if len(measurement_state.datasets[dataset].parameters) < 1:
 					continue
 				parameter_names = [p.name for p in measurement_state.datasets[dataset].parameters]
-				#dropdown_row_condition = 'id eq "{}" and dataset eq "{}"'.format(measurement_id, dataset)
-				dropdown_row_condition = 'dataset eq "{}"'.format(dataset)
-				#y_dropdown_row_condition = 'dataset eq "{}"'.format(dataset)
+				dropdown_row_condition = f'{cond_column} eq "{dataset}"'
 				if np.iscomplexobj(measurement_state.datasets[dataset].data): # if we are dealing with complex object, give the chance of selecting which op we want to apply
 					operations = ['Re', 'Im', 'Abs', 'Ph']
 				else:
 					operations = ['']
 				# check if there is a condition already
-				if not (len([True for d in conditional_dropdowns if d['condition']==dropdown_row_condition])):
-					conditional_dropdowns.append({'condition':dropdown_row_condition, 'dropdown':[{'label': p, 'value': p} for p in parameter_names]+[{'label':'data', 'value':'data'}]})
+				if not (len([True for d in conditional_dropdowns if d['if']['filter_query']==dropdown_row_condition])):
+					# construct filter query for conditional dropdowm
+					for axis in ['x-axis', 'y-axis']:
+						conditional_dropdowns.append({'if': {'column_id': axis, 'filter_query': dropdown_row_condition},
+												  'options': [{'label': p, 'value': p} for p in parameter_names] + [
+													  {'label': 'data', 'value': 'data'}]})
+
 				#y_axis_conditional_dropdowns.append({'condition':y_dropdown_row_condition, 'dropdown':[{'label': p, 'value': p} for p in parameter_names]+[{'label':'data', 'value':'data'}]})
 				if len(measurement_state.datasets[dataset].data.shape) > 0:
 					x_default = measurement_state.datasets[dataset].parameters[np.argsort(measurement_state.datasets[dataset].data.shape)[-1]].name
@@ -110,13 +123,14 @@ def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropd
 		for data_id in data_ids:
 			data[data_id]['row'], data[data_id]['col'] = ax_id(measurement_signature_id+len(measurement_signatures), len(measurement_signatures_new)+len(measurement_signatures))
 				# check if dataset is in current traces, if not, update the cell values with current values
-
 	return data, conditional_dropdowns
 
 def default_measurements(db):
 	with db_session:
 		last_measurement = select((measurement.id, measurement.filename) for measurement in db.Data).order_by(lambda id,filename: desc(id)).first()
 		last_meaningful_measurement = last_measurement
+		if last_meaningful_measurement is None:
+			return []
 		while (len(save_exdir.load_exdir(last_meaningful_measurement[1], db).datasets) == 0):
 			last_meaningful_measurement = select((measurement.id, measurement.filename) for measurement in db.Data if measurement.id < last_meaningful_measurement[0]).order_by(lambda id,filename: desc(id)).first()
 
