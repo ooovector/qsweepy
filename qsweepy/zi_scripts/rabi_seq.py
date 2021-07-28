@@ -24,18 +24,20 @@ class RABISequence:
         resudual__reg - User register for fast length setting.
 
         """
-        self.control_frequency = 0
         self.registors = {} #Dictionary for reserved User registors
         self.registors['length_reg'] = length_reg
         self.registors['resudual_reg'] = residual_reg
         self.nsamp = 16
         self.awg = awg
         self.clock = float(self.awg._clock)
+        frequency = self.awg.get_frequency(sequencer_id * 4)
         self.params = dict(sequencer_id=sequencer_id, qubit_channel=0,
                            offset_channel=1, use_modulation=use_modulation,
                            tail_samp=int(tail_length*self.clock), n_samp=self.nsamp,
                            awg_amp=awg_amp, readout_delay=int(readout_delay*self.clock),
                            length_reg=length_reg, residual_reg=residual_reg, nco_id=sequencer_id * 4,
+                           nco_control_id=sequencer_id * 4 + 1,
+                           frequency=frequency, control_frequency=0,
                            ic=2 * sequencer_id, qc=sequencer_id*2 + 1)
 
         self.pre_pulses = pre_pulses
@@ -82,6 +84,8 @@ class RABISequence:
 // Device settings
 setInt('sines/{ic}/oscselect', {nco_id});
 setInt('sines/{qc}/oscselect', {nco_id}+1);
+setDouble('oscs/{nco_id}/freq', {frequency});
+setDouble('oscs/{nco_control_id}/freq', {control_frequency});
 
 // Constant's and variables definition
 const readout_delay = {readout_delay};
@@ -184,6 +188,7 @@ while (true) {{
         self.play_pre_pulses += play_fragment
 
     def set_frequency(self, frequency):
+        self.params['frequency'] = frequency
         self.awg.set_frequency(self.params['nco_id'], frequency)
         self.awg.set_frequency(self.params['nco_id']+1, self.control_frequency)
 

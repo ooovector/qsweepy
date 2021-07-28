@@ -479,7 +479,7 @@ class ZIDevice():
     def get_awg_multi_osc(self, channel, carrier):
         awg_channel = channel // 2
         awg_out = channel % 2
-        return self.daq.get('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/oscselect' % (self.device, awg_channel,
+        return self.daq.getInt('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/oscselect' % (self.device, awg_channel,
                                                                                          awg_out, carrier))
 
     # harm=integer
@@ -495,7 +495,7 @@ class ZIDevice():
     def get_awg_multi_harm(self, channel, carrier):
         awg_channel = channel // 2
         awg_out = channel % 2
-        return self.daq.get('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/harmonic' % (self.device, awg_channel,
+        return self.daq.getInt('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/harmonic' % (self.device, awg_channel,
                                                                                         awg_out, carrier))
 
     # freq units=Hz
@@ -510,7 +510,7 @@ class ZIDevice():
     def get_awg_multi_freq(self, channel, carrier):
         awg_channel = channel // 4
         awg_out = channel % 4
-        return self.daq.get('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/freq' % (self.device, awg_channel,
+        return self.daq.getDouble('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/freq' % (self.device, awg_channel,
                                                                                     awg_out, carrier))
 
     # phase units=deg
@@ -526,7 +526,7 @@ class ZIDevice():
     def get_awg_multi_phase(self, channel, carrier):
         awg_channel = channel // 2
         awg_out = channel % 2
-        return self.daq.get('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/phaseshift' % (self.device, awg_channel,
+        return self.daq.getDouble('/%s/awgs/%d/outputs/%d/modulation/carriers/%d/phaseshift' % (self.device, awg_channel,
                                                                                           awg_out, carrier))
 
     # Osccillator settings
@@ -536,7 +536,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_frequency(self, osc_num):
-        return self.daq.get('/' + self.device + '/OSCS/%d/FREQ' % osc_num)
+        return self.daq.getDouble('/' + self.device + '/OSCS/%d/FREQ' % osc_num)
 
     # Sines settings
     #
@@ -546,7 +546,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_harmonic(self, sin_num):
-        return self.daq.get('/' + self.device + '/SINES/%d/HARMONIC' % sin_num)
+        return self.daq.getInt('/' + self.device + '/SINES/%d/HARMONIC' % sin_num)
 
     # Oscillator number choosing for sine signal generation type sin_num=integer, type osc_num=integer
     def set_sin_osc(self, sin_num, osc_num):
@@ -554,7 +554,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_sin_osc(self, sin_num):
-        return self.daq.get('/' + self.device + '/SINES/%d/OSCSELECT' % sin_num)
+        return self.daq.getInt('/' + self.device + '/SINES/%d/OSCSELECT' % sin_num)
 
     # Phaseshift for oscillator
     def set_sin_phase(self, sin_num, phase):
@@ -562,7 +562,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_sin_phase(self, sin_num):
-        return self.daq.get('/' + self.device + '/SINES/%d/PHASESHIFT' % sin_num)
+        return self.daq.getDouble('/' + self.device + '/SINES/%d/PHASESHIFT' % sin_num)
 
     # Amplitudes
     def set_sin_amplitude(self, sin_num, wave_output, amplitude):
@@ -570,7 +570,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_sin_amplitude(self, sin_num, wave_output):
-        return self.daq.get('/' + self.device + '/SINES/%d/AMPLITUDES/%d' % (sin_num, wave_output))
+        return self.daq.getDouble('/' + self.device + '/SINES/%d/AMPLITUDES/%d' % (sin_num, wave_output))
 
     # Enables
     def set_sin_enable(self, sin_num, wave_output, enable):
@@ -578,7 +578,7 @@ class ZIDevice():
         self.daq.sync()
 
     def get_sin_enable(self, sin_num, wave_output):
-        return self.daq.get('/' + self.device + '/SINES/%d/ENABLES/%d' % (sin_num, wave_output))
+        return self.daq.getInt('/' + self.device + '/SINES/%d/ENABLES/%d' % (sin_num, wave_output))
 
     # we should add to waveform(16 bits) 2 bits with information about markers(they are simply set
     # to zero by default) We use the marker function to assign the desired non-zero marker bits to the

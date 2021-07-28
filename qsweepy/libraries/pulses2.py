@@ -357,10 +357,11 @@ cvar resolution = {resolution};
         incrementSinePhase(1, {increment});
         //waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 play_fragment += '''
+        wait(1);
 //
-    } //else {
-    waitWave();
-    //}'''
+    } else {
+        wait(4);
+    }'''
 
         elif fast_control:
             definition_fragment += '''
@@ -517,14 +518,14 @@ wave sine_wawe_{samples} = sine({samples}, 1, 0, {nrOfPeriods});'''.format(name=
         re_channel.parent.awg.set_offset(2 * awg_channel, np.real(calib_dc['dc']))
         re_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
         definition_fragment = textwrap.dedent('''
-wave {name}_wawe_i = sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods});
-wave {name}_wawe_q = sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods});
+wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
+wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));
 '''.format(name=channel, samples=nrOfsampl, amplitude_i=np.abs(calib_rf['I']), amplitude_q=np.abs(calib_rf['Q']),
            phaseOffset_i=np.angle(calib_rf['I']) * 2, phaseOffset_q=np.angle(calib_rf['Q']) * 2,
            nrOfPeriods=nrOfPeriods))
         play_fragment = textwrap.dedent('''
 //
-    playWave({name}_wawe_i, {name}_wawe_q);
+    playWave({name}_wave_i, {name}_wave_q);
 '''.format(name=channel))
         return definition_fragment, play_fragment
 
@@ -549,8 +550,8 @@ wave {name}_wawe_q = sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriod
                 re_channel.parent.awg.set_offset(2 * awg_channel, np.real(calib_dc['dc']))
                 re_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
                 definition_fragment += textwrap.dedent('''
-wave {name}_wawe_i = sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods});
-wave {name}_wawe_q = sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods});
+wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
+wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));
 '''.format(name=channel, samples=nrOfsampl, amplitude_i=amplitude * np.abs(calib_rf['I']),
         amplitude_q=amplitude * np.abs(calib_rf['Q']),
            phaseOffset_i=np.angle(calib_rf['I']) * 2, phaseOffset_q=np.angle(calib_rf['Q']) * 2,
@@ -559,17 +560,17 @@ wave {name}_wawe_q = sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriod
             add_wave_q = ''''''
             for param in params:
                 channel = param[0]
-                add_wave_i += textwrap.dedent('''{name}_wawe_i,'''.format(name=channel))
-                add_wave_q += textwrap.dedent('''{name}_wawe_q,'''.format(name=channel))
+                add_wave_i += textwrap.dedent('''{name}_wave_i,'''.format(name=channel))
+                add_wave_q += textwrap.dedent('''{name}_wave_q,'''.format(name=channel))
 
             definition_fragment += textwrap.dedent('''
-wave ro_wawe_i = add({add_wave_i});
-wave ro_wawe_q = add({add_wave_q});
+wave ro_wave_i = add({add_wave_i});
+wave ro_wave_q = add({add_wave_q});
 '''.format(add_wave_i=add_wave_i[:-1], add_wave_q=add_wave_q[:-1]))
 
             play_fragment += textwrap.dedent('''
 //
-    playWave(ro_wawe_i, ro_wawe_q);
+    playWave(ro_wave_i, ro_wave_q);
 '''.format(name=channel))
 
         return definition_fragment, play_fragment

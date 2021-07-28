@@ -101,8 +101,10 @@ class XEBSequence:
             definition_fragments += self.pre_pulses[_i].get_definition_fragment(self.clock, _i)
             play_fragment += self.pre_pulses[_i].get_play_fragment(self.params['qubit_channel'], _i)
 
-        rotation_angle_fraction = list(set([pulse.rotation_angle for pulse in self.random_pulses]))
-        for rotation_angle_id
+        rotation_angle_fraction = sorted(list(set([pulse.rotation_angle for pulse in self.random_pulses])))[::-1]
+        for rotation_angle_id in rotation_angle_fraction:
+            excitation_pulse = get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle)
+            definition_fragments
         #for pulse_id, pulse in enumerate(self.random_pulses):
             #pulse_length  = pulse.length #TODO: pulse must have 'length' attribute
             #definition_fragment_i =
