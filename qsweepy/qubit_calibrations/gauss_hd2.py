@@ -597,7 +597,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     channel_pulses = [(c, device.pg.gauss_hd, 1, sigma, alpha, phase, fast_control)
                       for c, a in channel_amplitudes.metadata.items()]
     prepare_seq = []
-    prepare_seq.append([device.pg.pmulti(device, pulse_length, *tuple(channel_pulses))])
+    prepare_seq.append(device.pg.pmulti(device, pulse_length, *tuple(channel_pulses)))
     sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
     readout_sequencer.start()

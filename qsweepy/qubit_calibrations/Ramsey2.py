@@ -148,6 +148,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
         def set_delay(self, length):
             phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
 
             if self.delay_seq_generator is None:
                 for ex_seq in self.ex_sequencers:
