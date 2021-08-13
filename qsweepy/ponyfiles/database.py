@@ -69,6 +69,12 @@ class MyDatabase:
             # id = PrimaryKey(int, auto=True)
         self.Invalidations = Invalidations
 
+        class Queries(db.Entity):
+            query_name = Required(str)
+            query = Required(str)
+            query_date = Required(datetime)
+        self.Queries = Queries
+
         db.bind(provider, user=user, password=password, host=host, database=database, port=port)
         db.generate_mapping(create_tables=True)
         self.db = db
