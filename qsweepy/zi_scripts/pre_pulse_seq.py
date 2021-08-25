@@ -160,7 +160,7 @@ class PrepulseSetter:
 
 class SIMPLESequence:
     def __init__(self, sequencer_id, awg, readout_delay=0, awg_amp=1, pre_pulses = [],
-                 use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, control=False, is_iq = False):
+                 use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, var_reg3 =3, control=False, is_iq = False):
         """
         Pre pulses settings.
         Parameters
@@ -181,6 +181,7 @@ class SIMPLESequence:
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
+                           var_reg3=int(var_reg3),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
                            frequency=frequency, control_frequency=0,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
@@ -204,10 +205,12 @@ const readout_delay = {readout_delay};
 const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
 const var_reg2 = {var_reg2};
+const var_reg3 = {var_reg3};
 var wave_ind=0;
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
-var phase_variable = getUserReg(var_reg2);
+var variable_register2 = getUserReg(var_reg2);
+var variable_register3 = getUserReg(var_reg3);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -242,7 +245,8 @@ while (true) {{
     waitDIOTrigger();
     variable_register0 = getUserReg(var_reg0);
     variable_register1 = getUserReg(var_reg1);
-    phase_variable = getUserReg(var_reg2);
+    variable_register2 = getUserReg(var_reg2);
+    variable_register3 = getUserReg(var_reg3);
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
@@ -299,9 +303,12 @@ const readout_delay = {readout_delay};
 const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
 const var_reg2 = {var_reg2};
+const var_reg3 = {var_reg3};
+var wave_ind=0;
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
-var phase_variable = getUserReg(var_reg2);
+var variable_register2 = getUserReg(var_reg2);
+var variable_register3 = getUserReg(var_reg3);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -324,7 +331,7 @@ var phase_variable = getUserReg(var_reg2);
         self.params['frequency'] = frequency
 
         self.awg.set_frequency(self.params['nco_id'], frequency)
-        self.awg.set_frequency(self.params['nco_id']+1, self.control_frequency)
+        self.awg.set_frequency(self.params['nco_id']+1, self.params['control_frequency'])
 
     def set_awg_amp(self, awg_amp):
         if self.params['is_iq']:

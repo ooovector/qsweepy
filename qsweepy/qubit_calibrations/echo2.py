@@ -2,8 +2,10 @@
 from qsweepy.fitters.exp_sin import exp_sin_fitter
 from qsweepy.fitters.single_period_sin import SinglePeriodSinFitter
 from qsweepy.qubit_calibrations.channel_amplitudes import channel_amplitudes
+from qsweepy.qubit_calibrations import sequence_control
+from qsweepy import zi_scripts
 import numpy as np
-from qsweepy.qubit_calibrations import excitation_pulse
+from qsweepy.qubit_calibrations import excitation_pulse2 as excitation_pulse
 
 def echo_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None, channel_amplitudes2=None):
     '''
@@ -66,25 +68,102 @@ def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
     ex_pulse_control = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi)
     ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
 
-    def set_delay(length):
-        #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
-        if delay_seq_generator is None:
-            delay_seq = [device.pg.pmulti(length/2)]
-        else:
-            delay_seq = delay_seq_generator(length/2)
-        readout_delay_seq = [device.pg.pmulti(readout_delay)]
-        readout_trigger_seq = device.trigger_readout_seq
-        readout_pulse_seq = readout_pulse.pulse_sequence
+    # Define qubit and readout sequencers
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(target_qubit_id).keys()][0]
+    ex_channel = device.awg_channels[exitation_channel]
+    if ex_channel.is_iq():
+        control_seq_id = ex_channel.parent.sequencer_id
+    else:
+        control_seq_id = ex_channel.channel // 2
+    ex_sequencers = []
 
-        device.pg.set_seq(device.pre_pulses +
-                          ex_pulse1.get_pulse_sequence(0) +
-                          delay_seq +
-                          device.pg.parallel(ex_pulse_pi.get_pulse_sequence(0), ex_pulse_control.get_pulse_sequence(0)) +
-                          delay_seq +
-                          ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi) +
-                          readout_delay_seq +
-                          readout_trigger_seq +
-                          readout_pulse_seq)
+    for seq_id in device.pre_pulses.seq_in_use:
+        if seq_id != control_seq_id:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+        else:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+            control_sequence = ex_seq
+        device.pre_pulses.set_seq_offsets(ex_seq)
+        device.pre_pulses.set_seq_prepulses(ex_seq)
+        # device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+        ex_seq.start()
+        ex_sequencers.append(ex_seq)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer.start()
+
+
+    class ParameterSetter:
+        def __init__(self):
+            self.ex_sequencers=ex_sequencers
+            self.prepare_seq = []
+            self.readout_sequencer = readout_sequencer
+            self.delay_seq_generator = delay_seq_generator
+            self.lengths = lengths/2
+            self.control_sequence = control_sequence
+            # Create preparation sequence
+            self.prepare_seq.extend(ex_pulse1.get_pulse_sequence(0))
+            if self.delay_seq_generator is None:
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+            else:
+                self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                self.prepare_seq.extend(self.pre_pause)
+                self.prepare_seq.extend(self.delay_sequence)
+                self.prepare_seq.extend(self.post_pause)
+
+            self.prepare_seq.extend(device.pg.parallel(ex_pulse_pi.get_pulse_sequence(0), ex_pulse_control.get_pulse_sequence(0)))
+
+            if self.delay_seq_generator is None:
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+            else:
+                self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                self.prepare_seq.extend(self.pre_pause)
+                self.prepare_seq.extend(self.delay_sequence)
+                self.prepare_seq.extend(self.post_pause)
+
+            self.prepare_seq.extend(excitation_pulse.get_s(device, target_qubit_id,
+                                                           phase=(64/self.control_sequence.clock)*target_freq_offset*360 % 360,
+                                                           fast_control='quasi-binary'))
+            self.prepare_seq.extend(ex_pulse2.get_pulse_sequence(0))
+            # Set preparation sequence
+            sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+            self.readout_sequencer.start()
+
+        def set_delay(self, length):
+            phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
+
+            if self.delay_seq_generator is None:
+                for ex_seq in self.ex_sequencers:
+                    ex_seq.set_length(length/2)
+                self.control_sequence.set_phase(int(phase/360*(2**6)))
+            else:
+                if length == self.lengths[0]*2:
+                    self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+                    self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                    self.prepare_seq[-4] = self.delay_sequence[0]
+                    self.prepare_seq[-8] = self.delay_sequence[0]
+                    sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq,
+                                                              self.control_sequence)
+                    #sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(length/2)
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+                    self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+
+                else:
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(length/2)
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+
+    setter = ParameterSetter()
+
 
     references = {'ex_pulse_control': ex_pulse_control.id,
                   'ex_pulse1': ex_pulse1.id,
@@ -107,7 +186,7 @@ def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                               *extra_sweep_args,
-                                              (lengths, set_delay, 'Delay', 's'),
+                                              (lengths, setter.set_delay, 'Delay', 's'),
                                               fitter_arguments = fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,
@@ -131,25 +210,101 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
     ex_pulse_pi = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_pi)
     ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
 
-    def set_delay(length):
-        #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
-        if delay_seq_generator is None:
-            delay_seq = [device.pg.pmulti(length/2)]
-        else:
-            delay_seq = delay_seq_generator(length/2)
-        readout_delay_seq = [device.pg.pmulti(readout_delay)]
-        readout_trigger_seq = device.trigger_readout_seq
-        readout_pulse_seq = readout_pulse.pulse_sequence
+    # Define qubit and readout sequencers
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    ex_channel = device.awg_channels[exitation_channel]
+    if ex_channel.is_iq():
+        control_seq_id = ex_channel.parent.sequencer_id
+    else:
+        control_seq_id = ex_channel.channel // 2
+    ex_sequencers = []
 
-        device.pg.set_seq(device.pre_pulses+
-                          ex_pulse1.get_pulse_sequence(0)+
-                          delay_seq+
-                          ex_pulse_pi.get_pulse_sequence(0) +
-                          delay_seq +
-                          ex_pulse2.get_pulse_sequence(length*target_freq_offset*2*np.pi)+
-                          readout_delay_seq+
-                          readout_trigger_seq+
-                          readout_pulse_seq)
+    for seq_id in device.pre_pulses.seq_in_use:
+        if seq_id != control_seq_id:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+        else:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+            control_sequence = ex_seq
+        device.pre_pulses.set_seq_offsets(ex_seq)
+        device.pre_pulses.set_seq_prepulses(ex_seq)
+        # device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+        ex_seq.start()
+        ex_sequencers.append(ex_seq)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer.start()
+
+
+    class ParameterSetter:
+        def __init__(self):
+            self.ex_sequencers=ex_sequencers
+            self.prepare_seq = []
+            self.readout_sequencer = readout_sequencer
+            self.delay_seq_generator = delay_seq_generator
+            self.lengths = lengths/2
+            self.control_sequence = control_sequence
+            # Create preparation sequence
+            self.prepare_seq.extend(ex_pulse1.get_pulse_sequence(0))
+            if self.delay_seq_generator is None:
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+            else:
+                self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                self.prepare_seq.extend(self.pre_pause)
+                self.prepare_seq.extend(self.delay_sequence)
+                self.prepare_seq.extend(self.post_pause)
+
+            self.prepare_seq.extend(ex_pulse_pi.get_pulse_sequence(0))
+
+            if self.delay_seq_generator is None:
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+            else:
+                self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                self.prepare_seq.extend(self.pre_pause)
+                self.prepare_seq.extend(self.delay_sequence)
+                self.prepare_seq.extend(self.post_pause)
+
+            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+                                                           phase=(64/self.control_sequence.clock)*target_freq_offset*360 % 360,
+                                                           fast_control='quasi-binary'))
+            self.prepare_seq.extend(ex_pulse2.get_pulse_sequence(0))
+            # Set preparation sequence
+            sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+            self.readout_sequencer.start()
+
+        def set_delay(self, length):
+            phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
+
+            if self.delay_seq_generator is None:
+                for ex_seq in self.ex_sequencers:
+                    ex_seq.set_length(length/2)
+                self.control_sequence.set_phase(int(phase/360*(2**6)))
+            else:
+                if length == self.lengths[0]*2:
+                    self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+                    self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                    self.prepare_seq[-4] = self.delay_sequence[0]
+                    self.prepare_seq[-8] = self.delay_sequence[0]
+                    sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq,
+                                                              self.control_sequence)
+                    #sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(length/2)
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+                    self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+
+                else:
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(length/2)
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+
+    setter = ParameterSetter()
 
     references = {'ex_pulse1':ex_pulse1.id,
                   'ex_pulse_pi': ex_pulse_pi.id,
@@ -171,7 +326,7 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                               *extra_sweep_args,
-                                              (lengths, set_delay, 'Delay','s'),
+                                              (lengths, setter.set_delay, 'Delay','s'),
                                               fitter_arguments = fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,

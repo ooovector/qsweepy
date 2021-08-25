@@ -6,7 +6,7 @@ import time
 
 class XEBSequence:
     def __init__(self, sequencer_id, awg, readout_delay=0, pre_pulses = [],
-                 control=False, is_iq = False, num_gates_reg = 0, random_seed_reg = 1, interleaver_repeats_reg = 2):
+                 control=False, is_iq = False, num_gates_reg = 0, random_seed_reg = 1, interleaver_repeats_reg = 2, random_repeats_reg = 3):
         """
         Sequence for XEB pulse generation on a single channel.
         Send trigger for readout sequencer start.
@@ -31,7 +31,7 @@ class XEBSequence:
                            readout_delay=int(readout_delay*self.clock),
                            nco_id=sequencer_id*4, ic=2 * sequencer_id, qc=sequencer_id*2 + 1,
                            num_gates_reg=num_gates_reg, random_seed_reg=random_seed_reg,
-                           interleaver_repeats_reg=interleaver_repeats_reg)
+                           interleaver_repeats_reg=interleaver_repeats_reg, random_repeats_reg=random_repeats_reg)
 
         self.pre_pulses = pre_pulses
         self.definition_pre_pulses = '''
@@ -72,11 +72,9 @@ class XEBSequence:
         const num_gates_reg = {num_gates_reg};
         const random_seed_reg = {random_seed_reg};
         const interleaver_repeats_reg = {interleaver_repeats_reg};
+        const random_repeats_reg = {random_repeats_reg};
         const random_gate_num = {random_gate_num};
         
-        var num_gates = getUserReg(num_gates_reg);
-        var random_seed = getUserReg(random_seed_reg);
-        var interleaver_repeats = getUserReg(interleaver_repeats_reg);
         // Pre-pulse definition fragment
         '''.format(**self.params))
         # In play_fragment1 we wait for trigger from readout sequencer
@@ -85,6 +83,11 @@ class XEBSequence:
         wait_trigger_fragment = textwrap.dedent('''
         // Wait fragment
         while (true) {{
+            var num_gates = getUserReg(num_gates_reg);
+            var random_seed = getUserReg(random_seed_reg);
+            var interleaver_repeats = getUserReg(interleaver_repeats_reg);
+            var random_repeats = getUserReg(random_repeats_reg);
+        
             setPRNGSeed(random_seed);
             setPRNGRange(0, random_gate_num - 1);
             // Wait trigger and reset
@@ -101,25 +104,29 @@ class XEBSequence:
             definition_fragments += self.pre_pulses[_i].get_definition_fragment(self.clock, _i)
             play_fragment += self.pre_pulses[_i].get_play_fragment(self.params['qubit_channel'], _i)
 
-        rotation_angle_fraction = sorted(list(set([pulse.rotation_angle for pulse in self.random_pulses])))[::-1]
-        for rotation_angle_id in rotation_angle_fraction:
-            excitation_pulse = get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle)
-            definition_fragments
-        #for pulse_id, pulse in enumerate(self.random_pulses):
-            #pulse_length  = pulse.length #TODO: pulse must have 'length' attribute
-            #definition_fragment_i =
-            #definition_fragments += "assignWaveIndex(placeholder({wave_len:d}), placeholder({wave_len:d}), {i:d});\n".format(pulse_length)
+        for random_pulse_id, random_pulse in enumerate(self.random_pulses):
+            if 'waveform' in random_pulse:
+                definition_fragments += "wave random_pulse_{name}_ch0 = placeholder({wave_len:d});\n".format(
+                    name=random_pulse['name'], wave_len=len(random_pulse['waveform_ch0']))
+                definition_fragments += "wave random_pulse_{name}_ch1 = placeholder({wave_len:d});\n".format(
+                    name=random_pulse['name'], wave_len=len(random_pulse['waveform_ch1']))
+                definition_fragments += "assignWaveIndex(random_pulse_{name}_ch0, random_pulse_{name}_ch1, {id});\n".format(
+                    name=random_pulse['name'], id=random_pulse_id)
 
         play_fragment += textwrap.dedent('''
-        // Main play sequence
+    // Main play sequence
         resetOscPhase();
         wait(10);
-        repeat (num_gates) {
-            // (Pseudo) Random sequence of command table entries
-            var gate = getPRNGValue();
-            executeTableEntry(gate);
-        })
-        ''')
+        repeat (num_gates) {{
+            repeat (random_repeats) {{
+                // (Pseudo) Random sequence of command table entries
+                executeTableEntry(getPRNGValue());
+            }}
+            repeat (interleaver_repeats) {{
+                {play_interleaver}
+            }}
+        }})
+        '''.format(play_interleaver=self.play_interleaver))
 
 
         # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
@@ -142,6 +149,39 @@ class XEBSequence:
         ''')
         code = ''.join(definition_pre_pulses + definition_fragments + wait_trigger_fragment + play_fragment + end_sequence_fragment)
         return code
+
+    def set_commandtable(self):
+        import json
+        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                         "header": { "version": "0.2" },
+                         "table": [] }
+
+        for random_pulse_id, random_pulse in enumerate(self.random_pulses):
+            table_entry = {'index': random_pulse_id}
+            if 'waveform' in random_pulse:
+                table_entry['waveform'] = {'index': random_pulse_id}
+            if 'phase0' in random_pulse:
+                table_entry['phase0'] = {'phase0': {'value': random_pulse['phase0'], 'increment': True}}
+            if 'phase1' in random_pulse:
+                table_entry['phase1'] = {'phase0': {'value': random_pulse['phase1'], 'increment': True}}
+            command_table['table'].append(table_entry)
+
+        json_str = json.dumps(command_table)
+
+        self.awg.load_instructions(self.sequencer_id, json_str)
+
+    def load_waves(self):
+        """uploads a set of waveforms to the waveform memory
+
+        Parameters
+        ----------
+        waves: list
+            list of two-channel waveforms, given as [[I], [Q]]
+        """
+        # load AWG waveforms
+        for random_pulse_id, random_pulse in enumerate(self.random_pulses):
+            if 'waveform' in random_pulse:
+                self.awg.set_waveform_indexed(np.real(random_pulse['waveform']), np.imag(random_pulse['waveform']))
 
     def add_register(self, reg_name, value):
         # reg_name is a str

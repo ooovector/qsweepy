@@ -329,7 +329,7 @@ wave rect_cos_{length_samp} = rect({length_samp}, {amp});'''.format(tail_samp=ta
     waitWave();'''.format(length_samp=length_samp))
         return definition_fragment, play_fragment
 
-    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 6):
+    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 8):
         '''
         Parameters
         :param channel: channel name
@@ -340,15 +340,19 @@ wave rect_cos_{length_samp} = rect({length_samp}, {amp});'''.format(tail_samp=ta
         definition_fragment = ''''''
         play_fragment = ''''''
         ex_channel = self.channels[channel]
+        length_samp = int((length) * ex_channel.get_clock())
         if fast_control == 'quasi-binary':
             definition_fragment = '''
 cvar resolution = {resolution};
 '''.format(resolution=resolution)
+            play_fragment +=textwrap.dedent('''
+//
+    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
             for bit in range(resolution):
                 bitval = 1 << bit
                 play_fragment += textwrap.dedent('''
 //
-    if (phase_variable & {bitval}) {{
+    if (variable_register2 & {bitval}) {{
         incrementSinePhase(0, {increment});
         //waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 if ex_channel.is_iq():
@@ -368,11 +372,14 @@ cvar resolution = {resolution};
 //
 var i;
 var j;'''
-            if ex_channel.is_iq():
-                play_fragment += '''
+            play_fragment += textwrap.dedent('''
+//
+    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
+            play_fragment += '''
 //
     i=0;
     for (i=0; i < variable_register0; i = i +1) {'''
+            if ex_channel.is_iq():
                 play_fragment += textwrap.dedent('''
 //
         incrementSinePhase(0,{phase1});
@@ -389,10 +396,6 @@ var j;'''
     //playZero(0);
     waitWave();'''.format(phase2=64 * phase))
             else:
-                play_fragment +='''
-//
-    i=0;
-    for (i=0; i < variable_register0; i = i +1) {'''
                 play_fragment += textwrap.dedent('''
 //
         incrementSinePhase(0,{phase1});
@@ -406,17 +409,22 @@ var j;'''
     incrementSinePhase(0,{phase2});
     waitWave();'''.format(phase2=64*phase))
         else:
+            play_fragment += textwrap.dedent('''
+//
+    playWave(zeros({length_samp}))'''.format(length_samp=length_samp))
             if ex_channel.is_iq():
                 play_fragment += textwrap.dedent('''
 //
+    playWave(zeros({length_samp}));
     incrementSinePhase(0,{phase});
     incrementSinePhase(1,{phase});
-    waitWave();'''.format(phase=phase))
+    waitWave();'''.format(phase=phase, length_samp=length_samp))
             else:
                 play_fragment += textwrap.dedent('''
 //
+    playWave(zeros({length_samp}));
     incrementSinePhase({channel}, {phase});
-    waitWave();'''.format(channel=ex_channel.channel % 2, phase=phase))
+    waitWave();'''.format(channel=ex_channel.channel % 2, phase=phase, length_samp=length_samp))
 
         return definition_fragment, play_fragment
 

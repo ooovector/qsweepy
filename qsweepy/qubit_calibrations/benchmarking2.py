@@ -32,7 +32,8 @@ def create_flat_dataset(measurement, dataset_name):
 
 
 def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
-                           pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0):
+                           pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0,
+                           random_gate_num=1):
     channel_amplitudes_ = {}
     pi2_pulses = {}
     pi_pulses = {}
@@ -61,11 +62,11 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
 
     seq_lengths = np.asarray(np.round(np.linspace(0, max_pulses, seq_lengths_num)), int)
 
-    def get_pulse_seq_z(z_phase, qubit_id):
+    def get_pulse_seq_z(z_phase, length, qubit_id):
         fast_control = False
         z_pulse = [(c, device.pg.virtual_z, z_phase * 360 / 2 / np.pi, fast_control) for c, a in
                    channel_amplitudes_[qubit_id].items()]
-        sequence_z = [device.pg.pmulti(device, 0, *tuple(z_pulse))]
+        sequence_z = [device.pg.pmulti(device, length, *tuple(z_pulse))]
         return sequence_z
 
     def tensor_product(unitary, qubit_id):
@@ -84,10 +85,10 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id), 'price': 1.0},
               '-X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(np.pi),
                        'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, 1j], [1j, 1]]), qubit_id), 'price': 1.0},
-              'Z': {'pulses': get_pulse_seq_z(np.pi, qubit_id), 'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price': 0.1},
-              'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price': 0.1},
-              '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., qubit_id), 'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price': 0.1},
-              'I': {'pulses': get_pulse_seq_z(0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id), 'price': 0.1}
+              'Z': {'pulses': get_pulse_seq_z(np.pi, pi2_pulse_length, qubit_id), 'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price': 0.1},
+              'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, pi2_pulse_length, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price': 0.1},
+              '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., pi2_pulse_length,qubit_id), 'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price': 0.1},
+              'I': {'pulses': get_pulse_seq_z(0,pi2_pulse_length, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id), 'price': 0.1}
               }
 
         generators[qubit_id] = HZ
@@ -124,8 +125,10 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         ex_seq.start()
         ex_sequencers.append(ex_seq)
 
-    pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device, ex_sequencers,
-                                                                  interleavers=HZ_group, two_qubit_num=two_qubit_num)
+    pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device, ex_sequencers, interleavers=HZ_group,
+                                                                  random_sequence_num=random_sequence_num,
+                                                                  two_qubit_num=two_qubit_num,
+                                                                  random_gate_num=random_gate_num)
 
     #TODO prepare_seq
     prepare_seq = pi2_bench.create_hdawg_generator()
@@ -209,10 +212,10 @@ def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_
     max_pulses = T2/pi2_pulse_length
     seq_lengths = np.asarray(np.round(np.linspace(0, max_pulses, seq_lengths_num)), int)
 
-    def get_pulse_seq_z(z_phase):
+    def get_pulse_seq_z(z_phase, length):
         fast_control = False
         z_pulse = [(c, device.pg.virtual_z, z_phase*360/2/np.pi, fast_control) for c, a in channel_amplitudes_.items()]
-        sequence_z = [device.pg.pmulti(device,0, *tuple(z_pulse))]
+        sequence_z = [device.pg.pmulti(device, length, *tuple(z_pulse))]
         return sequence_z
 
     #TODO
@@ -229,13 +232,13 @@ def benchmarking_pi2(device, qubit_id, *params, pause_length=0, random_sequence_
     #X2_metadata = pi2_pulse.metadata()
     #X_2_metadata = pi2_pulse.metadata()
     #X_2_metadata['amplitude'] = float(a) * float(self.metadata['amplitude']) * np.exp(1j * phase)
-    HZ = {'X': {'pulses': pi_pulse.get_pulse_sequence(0),'metadata':pi_pulse.metadata(), 'unitary': np.asarray([[0, 1], [1, 0]]), 'price': 1.0},
-        'X/2': {'pulses': pi2_pulse.get_pulse_sequence(0), 'metadata':pi2_pulse.metadata(), 'unitary': np.sqrt(0.5) * np.asarray([[1, -1j], [-1j, 1]]), 'price': 1.0},
-        '-X/2': {'pulses': pi2_pulse.get_pulse_sequence(np.pi), 'metadata':pi2_pulse.metadata(), 'unitary': np.sqrt(0.5) * np.asarray([[1, 1j], [1j, 1]]), 'price': 1.0},
-        'Z': {'pulses': get_pulse_seq_z(np.pi), 'metadata':{'phase':np.pi}, 'unitary': np.asarray([[1, 0], [0, -1]]), 'price':0.1},
-        'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2), 'metadata':{'phase':np.pi/2},'unitary': np.asarray([[1, 0], [0, 1j]]), 'price':0.1},
-        '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2.), 'metadata':{'phase':-np.pi/2}, 'unitary': np.asarray([[1, 0], [0, -1j]]), 'price':0.1},
-        'I': {'pulses': get_pulse_seq_z(0, qubit_id), 'metadata':{'phase':0}, 'unitary': np.asarray([[1, 0], [0, 1]]), 'price':0.1}
+    HZ = {'X': {'pulses': pi_pulse.get_pulse_sequence(0), 'unitary': np.asarray([[0, 1], [1, 0]]), 'price': 1.0},
+        'X/2': {'pulses': pi2_pulse.get_pulse_sequence(0), 'unitary': np.sqrt(0.5) * np.asarray([[1, -1j], [-1j, 1]]), 'price': 1.0},
+        '-X/2': {'pulses': pi2_pulse.get_pulse_sequence(np.pi), 'unitary': np.sqrt(0.5) * np.asarray([[1, 1j], [1j, 1]]), 'price': 1.0},
+        'Z': {'pulses': get_pulse_seq_z(np.pi, pi2_pulse_length), 'unitary': np.asarray([[1, 0], [0, -1]]), 'price':0.1},
+        'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, pi2_pulse_length), 'unitary': np.asarray([[1, 0], [0, 1j]]), 'price':0.1},
+        '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., pi2_pulse_length),  'unitary': np.asarray([[1, 0], [0, -1j]]), 'price':0.1},
+        'I': {'pulses': get_pulse_seq_z(0, pi2_pulse_length),'unitary': np.asarray([[1, 0], [0, 1]]), 'price':0.1}
         }
 
     HZ_group = clifford.generate_group(HZ)

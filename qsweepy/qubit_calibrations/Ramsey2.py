@@ -131,7 +131,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             self.prepare_seq.extend(ex_pulse1.get_pulse_sequence(0))
             if self.delay_seq_generator is None:
                 self.prepare_seq.extend([device.pg.pmulti(device, 0)])
-                self.prepare_seq.extend([device.pg.pmulti(device, lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
                 self.prepare_seq.extend([device.pg.pmulti(device, 0)])
             else:
                 self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
@@ -153,25 +153,25 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             if self.delay_seq_generator is None:
                 for ex_seq in self.ex_sequencers:
                     ex_seq.set_length(length)
-                self.control_sequence.set_phase(int(phase/360*(2**6)))
+                self.control_sequence.set_phase(int(phase/360*(2**8)))
             else:
                 if length == self.lengths[0]:
                     self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
                     self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
                     self.prepare_seq[-4] = self.delay_sequence[0]
-                    sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq,
-                                                              self.control_sequence)
-                    #sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+                    #sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq,
+                                                              #self.control_sequence)
+                    sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
 
                     for ex_seq in self.ex_sequencers:
                         ex_seq.set_length(length)
-                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+                    self.control_sequence.set_phase(int(phase/360*(2**8)))
                     self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
                 else:
                     for ex_seq in self.ex_sequencers:
                         ex_seq.set_length(length)
-                    self.control_sequence.set_phase(int(phase/360*(2**6)))
+                    self.control_sequence.set_phase(int(phase/360*(2**8)))
 
         def set_delay1(self, length):
             self.prepare_seq[-2] = excitation_pulse.get_s(device, qubit_id,

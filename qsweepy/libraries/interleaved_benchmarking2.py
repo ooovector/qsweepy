@@ -22,16 +22,32 @@ class HDAWG_PRNG:
 class interleaved_benchmarking:
     #def __init__(self, measurer, set_seq, interleavers=None, random_sequence_num=8):
     def __init__(self, measurer, ex_sequencers, interleavers=None, random_sequence_num=8,
-                 two_qubit_num=0, two_qubit_name='fSIM'):
+                 two_qubit_num=0, random_gate_num=1, two_qubit_name='fSIM'):
+
+        self.seed_register = 1
+        self.sequence_length_register = 0
+        self.two_qubit_gate_register = 2
+        self.random_gate_register = 3
+
         self.measurer = measurer
         self.ex_sequencers = ex_sequencers
         self.two_qubit_num = two_qubit_num
         self.two_qubit_name = two_qubit_name
+        self.random_gate_num = random_gate_num
         self.interleavers = {}
 
         if interleavers is not None:
             for name, gate in interleavers.items():
                 self.add_interleaver(name, gate['pulses'], gate['unitary'])
+
+        # Set registers for two_qubit_num - number of two qubit gates in sequence
+        # Set registers for random_gate_num - number of random gate in sequence
+        # Sequence = (-(random_gate)^random_gate_num - (two_qubit_gate)^two_qubit_num)^sequence_length
+        # sequence_length is the sweep parameter
+        # random_sequence_num is the number of sequnces for each sequence length
+        for seq in self.ex_sequencers:
+            seq.awg.set_register(seq.params['sequencer_id'], self.two_qubit_gate_register, self.two_qubit_num)
+            seq.awg.set_register(seq.params['sequencer_id'], self.random_gate_register, self.random_gate_num)
 
         # self.initial_state_vector = np.asarray([1, 0]).T
 
@@ -49,8 +65,13 @@ class interleaved_benchmarking:
         self.prepare_random_sequence_before_measure = True
 
 
-    def return_hdawg_program(self,ex_seq):
-        definition_part = ''''''
+    def return_hdawg_program(self, ex_seq):
+        random_gate_num=24
+        definition_part =  textwrap.dedent('''
+const random_gate_num = {random_gate_num};
+var i;
+var rand_value;'''.format(random_gate_num=random_gate_num))
+
         procedure_part = '''
 //void definition
 void clifford_switch(argument1) {
@@ -58,41 +79,45 @@ void clifford_switch(argument1) {
         play_part = textwrap.dedent('''
 // Clifford play part
     setPRNGSeed(variable_register1);
-    setPRNGRange(0, {range});
+    setPRNGRange(0, random_gate_num-1);
     for (i = 0; i < variable_register0; i = i + 1) {{
-        rand_value = getPRNGValue();
-        clifford_switch(rand_value);'''.format(range=24))
+        
+        repeat(variable_register3){{
+            rand_value = getPRNGValue(); 
+            switch(rand_value) {{'''.format(range=random_gate_num))
         i = 0;
         for name, gate in self.interleavers.items():
             if name != self.two_qubit_name:
-                procedure_part += textwrap.dedent('''
-                //
-                        case {index}://'''.format(index=i))
+                play_part += textwrap.dedent('''
+//
+                case {index}://'''.format(index=i))
                 i += 1
                 for j in range(len(gate['pulses'])):
                     for seq_id, part in gate['pulses'][j][0].items():
                         if seq_id == ex_seq.params['sequencer_id']:
                             if part[0] not in definition_part:
                                 definition_part += part[0]
-                            procedure_part += textwrap.indent(part[1], '        ')
+                            play_part += textwrap.indent(part[1], '                 ')
+                            if i==random_gate_num:
+                                play_part += '''
+//
+            }}
+        }}'''
             else:
                 for seq_id, part in gate['pulses'][0][0].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         definition_part += part[0]
                         play_part += textwrap.dedent('''
 //
-    repeat (phase_variable){{:'''.format())
-                        play_part += part[1]
+        repeat (variable_register2){{:'''.format())
+                        play_part += textwrap.indent(part[1],'  ')
                         play_part += '''
 //
-    }}'''
+        }}'''
         play_part += '''
 //
     }}'''
-        procedure_part+='''
-//
-        return}}'''
-        definition_part += procedure_part
+
         return definition_part, play_part
     #def create_program_command_table(self, ):
 
@@ -108,7 +133,7 @@ void clifford_switch(argument1) {
             pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
             control_seq_ids.append(ex_seq.params['sequencer_id'])
 
-        return [pulses,control_seq_ids]
+        return [pulses, control_seq_ids]
 
     #for _i in group
 

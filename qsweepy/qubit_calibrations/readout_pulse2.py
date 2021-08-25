@@ -240,6 +240,7 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
     except:
        traceback.print_exc()
 
+    #qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     qubit_readout_pulse_ = get_qubit_readout_pulse(device, qubit_id)
     background_calibration = get_readout_calibration(device, qubit_readout_pulse_)
     adc_reducer, mnames = device.setup_adc_reducer_iq(qubit_id, raw=samples)
