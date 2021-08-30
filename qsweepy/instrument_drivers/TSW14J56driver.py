@@ -166,7 +166,7 @@ class TSW14J56_evm():
 
 		self.usb_reboot_timeout = 10
 		self.debug_print = False
-		#self.fpga_firmware = "_ADS54J40/qubit_daq.rbf"
+		# self.fpga_firmware = "_ADS54J40/qubit_daq.rbf"
 		self.fpga_firmware = config.get_config()['TSW14J56_firmware']
 		self.adc_reducer_hooks = []
 		#self.cov_cnt = 0 ### TODO:what's this??? maybe delete it?
@@ -297,6 +297,7 @@ class TSW14J56_evm():
 		Output:
 			None
 		'''
+		start = time.time()
 		self.write_reg(CAP_BASE, CAP_SEGM_NUM, int(self.nsegm))
 		if (cov):
 			self.write_reg(CAP_BASE, COV_LEN, int(self.nsamp/8))
@@ -319,14 +320,19 @@ class TSW14J56_evm():
 
 			if(time.time()-t1>self.timeout):
 				print ("Capture failed")
+				self.write_reg(CAP_BASE, CAP_CTRL, 1 << CAP_CTRL_ABORT)
 				break
 		if(self.debug_print): print("Done!")
+
+		stop = time.time()
+		print('Time for capture', stop - start)
 
 	def get_data(self):
 		'''
 		Transfer data from DDR
 		'''
 		#Number of samples per channel to read
+		start = time.time()
 		nsegm = self.nsegm
 		if self.nsegm ==0:
 			nsegm = 1
@@ -335,9 +341,11 @@ class TSW14J56_evm():
 		#Trigger DDR read
 		self.write_reg(FX3_BASE, FX3_CTRL, FX3_CTRL_START)
 		data = frombuffer(self.dev.read(endpoints.IN, data_len*4), dtype = dtype(int16))
-
 		data = reshape(data, (data_len, 2))
-		return reshape(data.T[1,:],(self.nsegm, self.nsamp))+1j*reshape(data.T[0,:], (self.nsegm, self.nsamp))
+		res = reshape(data.T[1, :], (self.nsegm, self.nsamp)) + 1j * reshape(data.T[0, :], (self.nsegm, self.nsamp))
+		stop = time.time()
+		print('Time of data transfer', stop - start)
+		return res
 
 		#dataiq = reshape(data, (2, self.nsamp*self.nsegm))[0]+ 1j*reshape(data, (2, self.nsamp*self.nsegm))[1]
 		#return (reshape(dataiq, (self.nsegm, self.nsamp)))
@@ -446,6 +454,7 @@ class TSW14J56_evm():
 		Output:
 			cov = averaged covariance coefficient value
 		'''
+		start = time.time()
 		dt = dtype(int64)
 		dt = dt.newbyteorder('>')
 		a,v = mk_val_ind((CAP_BASE + COV_RESAVG_BASE + ncov*4)<<2)
@@ -453,6 +462,8 @@ class TSW14J56_evm():
 		a,v = mk_val_ind((CAP_BASE + COV_RESAVG_BASE + COV_RESAVG_SUBBASE + ncov*4)<<2)
 		b1 = self.dev.ctrl_transfer(vend_req_dir.RD, vend_req.REG_READ,a,v,4 )
 		q = frombuffer(b1+b0, dtype = dt)[0]
+		stop = time.time()
+		print('Time of cow data transfer', stop - start)
 		return (q)
 
 	def get_resultnumbers(self):

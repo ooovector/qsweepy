@@ -149,6 +149,7 @@ def sweep(measurer, *parameters, shuffle=False,
     state = MeasurementState(**kwargs)
     state.parameter_values = [None for d in sweep_dimensions]
     state.total_sweeps = np.prod([d for d in sweep_dimensions])
+    indices_buffer = []
 
     # initialize data
     for dataset_name, point_parameters in point_parameters.items():
@@ -169,8 +170,10 @@ def sweep(measurer, *parameters, shuffle=False,
         all_indeces = [[]]
 
     def set_single_measurement_result(single_measurement_result, indeces):
-        nonlocal state
+        start_single_result = time.time()
+        nonlocal state, indices_buffer
         indeces = list(indeces)
+        indices_buffer = indices_buffer + indeces
         for dataset in single_measurement_result.keys():
             state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
             state.datasets[dataset].indeces_updates = tuple(indeces+[...])
@@ -179,11 +182,13 @@ def sweep(measurer, *parameters, shuffle=False,
         if (not (state.done_sweeps % on_update_divider)) or state.done_sweeps == state.total_sweeps:
             for event_handler, arguments in on_update:
                 try:
-                    event_handler(state, indeces, *arguments)
+                    event_handler(state, indices_buffer, *arguments)
                 except Exception as e:
                     if not ignore_callback_errors:
                         raise
                     #traceback.print_exc()
+            indices_buffer = []
+        print('set_single_measurement_result', time.time() - start_single_result)
 
     for event_handler, arguments in on_start:
         try:

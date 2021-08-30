@@ -122,7 +122,8 @@ def get_Ramsey_pulse_frequency(device, Ramsey_measurement):
     if np.max(channel2_frequencies) - np.min(channel2_frequencies) < frequency_rounding:
         raise Exception('Channel 2 frequency spreads are larger than frequency rounding')
 
-def Ramsey_adaptive(device, qubit_id, transition='01', set_frequency=True, delay_seq_generator=None, measurement_type='Ramsey', additional_references = {}, additional_metadata={}, expected_T2=None):
+def Ramsey_adaptive(device, qubit_id, transition='01', set_frequency=True, delay_seq_generator=None, measurement_type='Ramsey', additional_references = {},
+                    additional_metadata={}, expected_T2=None):
     # check if we have fitted Rabi measurements on this qubit-channel combo
     #Rabi_measurements = device.exdir_db.select_measurements_db(measurment_type='Rabi_rect', metadata={'qubit_id':qubit_id}, references={'channel_amplitudes': channel_amplitudes.id})
     #Rabi_fits = [exdir_db.references.this.filename for measurement in Rabi_measurements for references in measurement.reference_two if references.this.measurement_type=='fit_dataset_1d']
@@ -307,7 +308,10 @@ def Ramsey_crosstalk(device,
                     channel_amplitudes2=None,
                     lengths=None,
                     target_freq_offset=None,
-                    readout_delay=0):
+                    readout_delay=0,
+                    delay_seq_generator=None,
+                    measurement_type='Ramsey_crosstalk',
+                    additional_references={}):
 
     #if type(lengths) is type(None):
     #	lengths = np.arange(0,
@@ -335,7 +339,10 @@ def Ramsey_crosstalk(device,
 
     def set_delay(length):
         #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]
-        delay_seq = [device.pg.pmulti(length)]
+        if delay_seq_generator is None:
+            delay_seq = [device.pg.pmulti(length)]
+        else:
+            delay_seq = delay_seq_generator(length)
         readout_delay_seq = [device.pg.pmulti(readout_delay)]
         readout_trigger_seq = device.trigger_readout_seq
         readout_pulse_seq = readout_pulse.pulse_sequence
@@ -368,11 +375,13 @@ def Ramsey_crosstalk(device,
               'target_offset_freq': str(target_freq_offset),
               'readout_delay':str(readout_delay)}
 
+    references.update(additional_references)
+
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                               *extra_sweep_args,
                                               (lengths, set_delay, 'Delay','s'),
                                               fitter_arguments = fitter_arguments,
-                                              measurement_type='Ramsey_crosstalk',
+                                              measurement_type=measurement_type,
                                               metadata=metadata,
                                               references=references)
 

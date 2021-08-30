@@ -29,24 +29,31 @@ def create_flat_dataset(measurement, dataset_name):
     measurement.datasets[dataset_name+'_flat'] = MeasurementDataset(flat_dataset_parameters, flat_dataset)
 
 
-def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, pause_length=0, random_sequence_num=1, seq_lengths_num=400):
-    max_pulses = []
+def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
+                           pause_length=0, random_sequence_num=1, seq_lengths_num=400):
     channel_amplitudes_ = {}
     pi2_pulses = {}
     generators = {}
+    if max_pulses is None:
+        max_pulses = []
+        for qubit_id in qubit_ids:
+            coherence_measurement = Ramsey.get_Ramsey_coherence_measurement(device, qubit_id)
+            T2 = float(coherence_measurement.metadata['T'])
+            pi2_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2.)
+            pi2_pulse_length = float(pi2_pulses[qubit_id].metadata['length'])
+            max_pulses.append(T2 / pi2_pulse_length)
+
+        if two_qubit_gate is not None:
+            max_pulses = np.asarray(max_pulses)/3.
+
+        max_pulses = min(max_pulses)
+
     for qubit_id in qubit_ids:
-        coherence_measurement = Ramsey.get_Ramsey_coherence_measurement(device, qubit_id)
-        T2 = float(coherence_measurement.metadata['T'])
         pi2_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2.)
-        pi2_pulse_length = float(pi2_pulses[qubit_id].metadata['length'])
         channel_amplitudes_[qubit_id] = channel_amplitudes.channel_amplitudes(
             device.exdir_db.select_measurement_by_id(pi2_pulses[qubit_id].references['channel_amplitudes']))
-        max_pulses.append(T2 / pi2_pulse_length)
 
-    if two_qubit_gate is not None:
-        max_pulses = np.asarray(max_pulses)/3.
-
-    seq_lengths = np.asarray(np.round(np.linspace(0, min(max_pulses), seq_lengths_num)), int)
+    seq_lengths = np.asarray(np.round(np.linspace(0, max_pulses, seq_lengths_num)), int)
 
     def get_pulse_seq_z(z_phase, qubit_id):
         pg = device.pg
@@ -104,6 +111,10 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         found = True
     except IndexError:
         pass
+
+    if random_sequence_num > 1:
+        params = tuple([(random_sequence_ids, pi2_bench.set_interleaved_sequence, 'Random sequence id', '')]+[p for p in params])
+
     if (not found) or (interleaver is None):
         measurement_name = [m for m in pi2_bench.get_points().keys()][0]
         fitter_arguments = (measurement_name, exp.exp_fitter(), 0, np.arange(len(params)).tolist())

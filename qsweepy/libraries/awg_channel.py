@@ -48,6 +48,8 @@ class awg_channel_carrier:
 		#plt.plot(waveform)
 		self.waveform = waveform
 		self.parent.assemble_waveform()
+	def get_phase(self, time):
+		return 2*np.pi*self.frequency*time
 	def freeze(self):
 		''' not implemented yet. Does nothing -- which is OK, but slightly slow.
 		consider replaceing with the logic from awg_iq_multi for faster performance.
@@ -118,6 +120,7 @@ class awg_channel:
 		freeze/unfreeze makes sense only together with each other'''
 		#pass
 		#self.parent.freeze()
+		self.awg.freeze()
 		self.frozen = True
 	def unfreeze(self):
 		''' not implemented yet. Does nothing -- which is OK, but slightly slow.
@@ -125,6 +128,7 @@ class awg_channel:
 		freeze/unfreeze makes sense only together with each other'''
 		#pass
 		#self.parent.unfreeze()
+		self.awg.unfreeze()
 		self.assemble_waveform()
 		self.frozen = False
 	def get_physical_devices(self):

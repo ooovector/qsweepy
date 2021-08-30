@@ -6,7 +6,8 @@ import time
 def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
     try:
         device.hardware.set_cw_mode()
-        device.hardware.lo1.set_status(0)
+        if device.hardware.lo1 is not None:
+            device.hardware.lo1.set_status(0)
 
         power = float(device.get_sample_global(name='single_tone_spectrum_power'))
         bandwidth = float(device.get_sample_global(name='single_tone_spectrum_bandwidth'))
@@ -45,7 +46,8 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, span=None, power
     print ('fr_guess: ', fr_guess)
     try:
         device.hardware.set_cw_mode()
-        device.hardware.lo1.set_status(0)
+        if device.hardware.lo1 is not None:
+            device.hardware.lo1.set_status(0)
 
         if span is None:
             span = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_span'))

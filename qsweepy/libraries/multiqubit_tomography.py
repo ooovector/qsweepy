@@ -107,7 +107,8 @@ class multiqubit_tomography:
 			#obj = cvxpy.Minimize(lstsq_objective)
 			obj = Minimize(lstsq_objective)
 			# Form and solve problem.
-			prob = cvxpy.Problem(obj, constraints)
+			#prob = cvxpy.Problem(obj, constraints)
+			prob = Problem(obj, constraints)
 			try:
 				prob.solve(solver=cvxpy.CVXOPT, verbose=True)
 				reconstruction = {str(k): v for k, v in zip(basis_axes_names, np.asarray(x.value))}

@@ -9,6 +9,42 @@ from qsweepy.qubit_calibrations import channel_amplitudes
 from qsweepy.qubit_calibrations import Ramsey
 from qsweepy.qubit_calibrations import calibrated_readout
 
+def get_iswap_simple_sequence(device,coupler_gate, frequency_delta_gate):
+    amplitude_coupler = float(coupler_gate.metadata['amplitude'])
+    length_coupler = float(coupler_gate.metadata['length'])
+    tail_length_coupler = float(coupler_gate.metadata['tail_length'])
+    pre_pause_coupler = float(coupler_gate.metadata['pre_pause'])
+    post_pause_coupler = float(coupler_gate.metadata['post_pause'])
+    carrier_coupler = coupler_gate.metadata['carrier_name']
+    channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
+                                                                 **{carrier_coupler: amplitude_coupler})
+
+    pulse_seq_coupler = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                              channel_amplitudes=channel_amplitudes1_,
+                                                              tail_length=tail_length_coupler,
+                                                              length=length_coupler,
+                                                              phase=0.0)
+
+
+    carrier_delta = frequency_delta_gate.metadata['carrier_name']
+    amplitude_delta = float(frequency_delta_gate.metadata['amplitude'])
+    frequency_delta = float(frequency_delta_gate.metadata['frequency'])
+    channel_amplitudes_delta = channel_amplitudes.channel_amplitudes(device, **{carrier_delta: amplitude_delta})
+    pulse_seq_delta = []
+    if frequency_delta_gate.metadata['pulse_type'] == 'parametric':
+        pulse_seq_delta = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                          channel_amplitudes=channel_amplitudes_delta,
+                                                                          tail_length=0,
+                                                                          length=length_coupler,
+                                                                          phase=0.0)
+    else:
+        channel_pulses_delta = [(c, device.pg.sin, amplitude_delta, frequency_delta) for c, a in
+                                channel_amplitudes_delta.metadata.items()]
+        pulse_seq_delta = [device.pg.pmulti(length_coupler+2*tail_length_coupler, *tuple(channel_pulses_delta))]
+    pulse_seq = [device.pg.pmulti(pre_pause_coupler)] + device.pg.parallel(pulse_seq_coupler, pulse_seq_delta) + \
+                [device.pg.pmulti(post_pause_coupler)]
+    return pulse_seq
+
 
 def get_zz_from_fsim_pi4_phi_sequence(device, coupler_gate, frequency_delta_gate, x_gate, z_gate,
                                       x_phase = 0.0, virt_phase_z1=0.0, virt_phase_z2=0,  num_pulses=1):
@@ -32,10 +68,14 @@ def get_zz_from_fsim_pi4_phi_sequence(device, coupler_gate, frequency_delta_gate
     post_pause_coupler = float(coupler_gate.metadata['post_pause'])
     carrier_coupler = coupler_gate.metadata['carrier_name']
 
-    channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{carrier_coupler: 1.0})
-    channel_pulses = [(c, device.pg.rect_cos, amplitude_coupler, tail_length_coupler) for c, a in
-                      channel_amplitudes_.metadata.items()]
-    pulse_seq_coupler = [device.pg.pmulti(length_coupler, *tuple(channel_pulses))]
+    channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
+                                                                 **{carrier_coupler: amplitude_coupler})
+
+    pulse_seq_coupler = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                              channel_amplitudes=channel_amplitudes1_,
+                                                              tail_length=tail_length_coupler,
+                                                              length=length_coupler,
+                                                              phase=0.0)
 
     # Frequency_delta_gate for frequency difference compensation
     references['frequency_delta_gate']: frequency_delta_gate.id
@@ -44,18 +84,28 @@ def get_zz_from_fsim_pi4_phi_sequence(device, coupler_gate, frequency_delta_gate
     frequency_delta = float(frequency_delta_gate.metadata['frequency'])
     channel_amplitudes_delta = channel_amplitudes.channel_amplitudes(device, **{carrier_delta: amplitude_delta})
 
-
     if frequency_delta_gate.metadata['pulse_type'] == 'parametric':
         pulse_seq_delta = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                                           channel_amplitudes=channel_amplitudes_delta,
-                                                                          tail_length=tail_length_coupler,
+                                                                          tail_length=0,
                                                                           length=length_coupler,
                                                                           phase=0.0)
     else:
         channel_pulses_delta = [(c, device.pg.sin, amplitude_delta, frequency_delta) for c, a in
                                 channel_amplitudes_delta.metadata.items()]
-        pulse_seq_delta = [device.pg.pmulti(length_coupler, *tuple(channel_pulses_delta))]
-    pulse_seq = device.pg.parallel(pulse_seq_coupler, pulse_seq_delta)
+        pulse_seq_delta = [device.pg.pmulti(length_coupler+2*tail_length_coupler, *tuple(channel_pulses_delta))]
+
+    virt_phsae_q1 = -2 * np.pi * (length_coupler + 2 * tail_length_coupler + post_pause_coupler + pre_pause_coupler)*device.get_qubit_fq(qubit_id1)
+    virtual_Q1 = excitation_pulse.get_s(device=device, qubit_id=qubit_id1, phase=virt_phsae_q1)
+
+    virt_phsae_q2 = -2 * np.pi * (length_coupler + 2 * tail_length_coupler) * device.get_qubit_fq(qubit_id1) - \
+                    2 * np.pi * (post_pause_coupler+ pre_pause_coupler) * device.get_qubit_fq(qubit_id2)
+    virtual_Q2 = excitation_pulse.get_s(device=device, qubit_id=qubit_id2, phase=virt_phsae_q2)
+
+    virtual_Q12 = device.pg.parallel(virtual_Q1, virtual_Q2)
+
+    pulse_seq = [device.pg.pmulti(pre_pause_coupler)] + device.pg.parallel(pulse_seq_coupler, pulse_seq_delta) + \
+                [device.pg.pmulti(post_pause_coupler)] + virtual_Q12
 
     # Gate sequence between two sqrt(fSIM)
     # x_gate
@@ -70,23 +120,31 @@ def get_zz_from_fsim_pi4_phi_sequence(device, coupler_gate, frequency_delta_gate
     z_channel_pulses = [(c, device.pg.sin, z_amplitude, z_frequency) for c, a in
                                    z_channel_amplitudes_.metadata.items()]
     pulse_seq_z = [device.pg.pmulti(z_length, *tuple(z_channel_pulses))]
+
+    virt2_phsae_q1 = -2 * np.pi * (z_length) * device.get_qubit_fq(qubit_id1) -x_phase
+    virtual2_Q1 = excitation_pulse.get_s(device=device, qubit_id=qubit_id1, phase=virt2_phsae_q1)
+    virt2_phsae_q2 = -2 * np.pi * (z_length)  * device.get_qubit_fq(qubit_id2)
+    virtual2_Q2 = excitation_pulse.get_s(device=device, qubit_id=qubit_id2, phase=virt2_phsae_q2)
+    virtual2_Q12 = device.pg.parallel(virtual2_Q1, virtual2_Q2)
+
     #alt_gate = x_gate + pulse_seq_z
-    alt_gate = device.pg.parallel(x_gate_seq, pulse_seq_z)
+    #alt_gate = device.pg.parallel(x_gate_seq, pulse_seq_z)
+    alt_gate = x_gate_seq + virtual2_Q12
 
     #full_length = (float(x_gate.metadata['length']) + length_coupler)*2
-    full_length = float(x_gate.metadata['length']) + length_coupler*2
+    full_length = float(x_gate.metadata['length']) + length_coupler*2+4*tail_length_coupler
     phase_shift_q2 = device.get_qubit_fq(qubit_id1) - device.get_qubit_fq(qubit_id2)
 
     #virtual_gate = excitation_pulse.get_s(device=device, qubit_id='2', phase = 2*np.pi*phase_shift_q2*full_length%2*np.pi*)
     virtual_gate1 = excitation_pulse.get_s(device=device, qubit_id='1', phase= virt_phase_z1)
-    virtual_gate2 = excitation_pulse.get_s(device=device, qubit_id='2', phase= 2 * np.pi * phase_shift_q2 * full_length
-                                                                              + virt_phase_z2)
+    virtual_gate2 = excitation_pulse.get_s(device=device, qubit_id='2', phase= virt_phase_z2)
     virtual_gate = device.pg.parallel(virtual_gate1, virtual_gate2)
     pre_h_pulse = device.pg.parallel(HZ1, HZ2)
     post_h_pulse = device.pg.parallel(HZ1, HZ2)
     #work_sequence = (pulse_seq+alt_gate)*num_pulses
     #work_sequence = (pre_h_pulse + pulse_seq + alt_gate + pulse_seq + alt_gate + virtual_gate + post_h_pulse) * num_pulses
-    work_sequence = (pre_h_pulse + pulse_seq + alt_gate + pulse_seq + virtual_gate + post_h_pulse) * num_pulses
+    #work_sequence = (pre_h_pulse + pulse_seq + alt_gate + pulse_seq + virtual_gate + post_h_pulse) * num_pulses
+    work_sequence = (pulse_seq + alt_gate + pulse_seq + virtual_gate) * num_pulses
 
     return work_sequence
 
@@ -119,7 +177,7 @@ def h_fSIM_h_phase_scan(device, qubit_id, coupler_gate, frequency_delta_gate, x_
         def __init__(self):
             self.x_phase = 0
             self.virt_phase_z1 = 0
-            self.virt_phase_z2 = 3.455
+            self.virt_phase_z2 = 0
         def set_virt_phase_z1(self, virt_phase):
             self.virt_phase_z1 = virt_phase
         def set_virt_phase_z2(self, virt_phase):
@@ -242,9 +300,9 @@ def parametric_confuse_calibration(device, qubit_ids, coupler_gate, frequency_de
         return params[np.argmax(measurement_interpolated_combined)]
         #return params[np.argmax(reduce_data)]
 
-    x_phase_guess = np.pi
-    z1_phase_guess = np.pi
-    z2_phase_guess = np.pi
+    x_phase_guess = 0*np.pi
+    z1_phase_guess = 0*np.pi
+    z2_phase_guess = 0*np.pi
     phase_range = 2*np.pi
     _range = 2
     num_pulses_init = num_pulses
@@ -334,7 +392,7 @@ def parametric_confuse_calibration(device, qubit_ids, coupler_gate, frequency_de
         adaptive_measurements_z2.append(measurement)
         z2_phase_guess = infer_params_from_measurements(adaptive_measurements_z2)
         num_pulses *= int(_range)
-        #phase_range /= int(_range)
+        phase_range /= int(_range)
 
     references = {('confuse_x_phase', measurement.metadata['num_pulses']): measurement.id
                   for measurement in adaptive_measurements_x}
@@ -1011,7 +1069,7 @@ def gate_fSIM_pulse_sequence(device, gate, num_pulses, pause_values, phase_value
         def create_sequence(self):
 
             if gate1 is not None:
-                channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{carrier1: 1.0})
+                channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{carrier1: amplitude1})
                 channel_pulses = [(c, device.pg.rect_cos, amplitude1, tail_length1) for c, a in
                                 channel_amplitudes_.metadata.items()]
                 pulse_seq1 = [device.pg.pmulti(length1, *tuple(channel_pulses))]
@@ -1027,7 +1085,7 @@ def gate_fSIM_pulse_sequence(device, gate, num_pulses, pause_values, phase_value
                 else:
                     channel_pulses2 = [(c, device.pg.sin, amplitude2, frequency2) for c, a in
                                        channel_amplitudes2_.metadata.items()]
-                    pulse_seq2 = [device.pg.pmulti(length1, *tuple(channel_pulses2))]
+                    pulse_seq2 = [device.pg.pmulti(length1+2*tail_length1, *tuple(channel_pulses2))]
                 pulse_seq = device.pg.parallel(pulse_seq1, pulse_seq2)
             else:
                 pulse_seq = pulse_seq1
@@ -1106,43 +1164,49 @@ def gate_fSIM_pulse_sequence2(device, alt_gate1, num_pulses, gate1_amplitude, al
         def create_sequence(self):
 
             if gate1 is not None:
-                channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{carrier1: 1.0})
-                channel_pulses = [(c, device.pg.rect_cos, self.amplitude1, tail_length1) for c, a in
-                                channel_amplitudes_.metadata.items()]
-                pulse_seq1 = [device.pg.pmulti(length1, *tuple(channel_pulses))]
+                #channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{carrier1: 1.0})
+                #channel_pulses = [(c, device.pg.rect_cos, self.amplitude1, tail_length1) for c, a in
+                #                channel_amplitudes_.metadata.items()]
+                #pulse_seq1 = [device.pg.pmulti(length1, *tuple(channel_pulses))]
+
+                channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
+                                                                             **{carrier1: self.amplitude1})
+
+                pulse_seq1 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                          channel_amplitudes=channel_amplitudes1_,
+                                                                          tail_length=tail_length1,
+                                                                          length=length1,
+                                                                          phase=0.0)
             else:
                 pulse_seq1 = []
             if gate2 is not None:
                 if gate2.metadata['pulse_type'] == 'parametric':
                     pulse_seq2 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
-                                                                              channel_amplitudes=channel_amplitudes2_,
-                                                                              tail_length=float(0),
-                                                                              length=length1,
-                                                                              phase=0.0)
+                                                                      channel_amplitudes=channel_amplitudes2_,
+                                                                      tail_length=float(0),
+                                                                      length=length1,
+                                                                      phase=0.0)
                 else:
                     channel_pulses2 = [(c, device.pg.sin, amplitude2, frequency2) for c, a in
                                        channel_amplitudes2_.metadata.items()]
-                    pulse_seq2 = [device.pg.pmulti(length1, *tuple(channel_pulses2))]
-                pulse_seq = device.pg.parallel(pulse_seq1, pulse_seq2)
+                    pulse_seq2 = [device.pg.pmulti((length1+2*tail_length1), *tuple(channel_pulses2))]
+
+                pulse_seq = [device.pg.pmulti(pre_pause1)] + device.pg.parallel(pulse_seq1, pulse_seq2) +\
+                            [device.pg.pmulti(post_pause1)]
             else:
-                pulse_seq = pulse_seq1
+                pulse_seq = [device.pg.pmulti(pre_pause1)] + pulse_seq1 + [device.pg.pmulti(post_pause1)]
 
             alt_gate = alt_gate1.get_pulse_sequence(0.0)
             if alt_gate2 is not None:
                 alt_channel_pulses2 = [(c, device.pg.sin, self.alt_gate2_amplitude, alt_frequency2) for c, a in
                                         alt_channel_amplitudes2_.metadata.items()]
-                pulse_seq2 = [device.pg.pmulti(alt_length2, *tuple(alt_channel_pulses2))]
+                pulse_seq_alt = [device.pg.pmulti(alt_length2, *tuple(alt_channel_pulses2))]
                 #alt_gate = alt_gate+pulse_seq2
-                alt_gate = device.pg.parallel(alt_gate, pulse_seq2)
+                alt_gate = device.pg.parallel(alt_gate, pulse_seq_alt)
 
-            #work_sequence = (pulse_seq+alt_gate)*num_pulses
+
             work_sequence = (alt_gate + pulse_seq) * num_pulses
 
-            #pulse = ([device.pg.pmulti(self.pause_length)] + pulse_seq + [device.pg.pmulti(post_pause1)]) * num_pulses
-            #work_sequence = []
-            #for _i in range(int(num_pulses)):
-            #    x_pre_pulse = gate.get_pulse_sequence(self.phase*_i)
-            #    work_sequence = (work_sequence + x_pre_pulse + pulse)
             device.pg.set_seq(device.pre_pulses + pre_pulse + work_sequence +
                               device.trigger_readout_seq + readout_pulse.get_pulse_sequence())
 
@@ -1197,9 +1261,6 @@ def parametric_adaptive_scan_2d(device, qubit_id, num_seq, x_phase_range, length
         phase_guess, length_guess = infer_parameters_from_measurements()
         num_pulses *= int(_range)
         phase_range /= int(l_range)
-
-
-
 
 
 
@@ -1266,3 +1327,76 @@ def parametric_adaptive_scan(device, gate1, inverse_rotation_cycles, parameter_n
     return device.exdir_db.save(measurement_type='gauss_hd_Rabi_amplitude_adaptive',
                                 references=references,
                                 metadata=metadata)
+
+
+def parametric_bswap_confuse_scan(device, qubit_ids, coupler_gate,
+                                  parameter_name, parameter_values, lengths, pre_pulse = None):
+    #from qsweepy.qubit_calibrations.readout_pulse import get_uncalibrated_measurer
+    from qsweepy.qubit_calibrations import calibrated_readout
+    qubit_readout_pulse, readout_device = calibrated_readout.get_calibrated_measurer(device, qubit_ids)
+
+    qubit_ids = qubit_readout_pulse.metadata['qubit_ids'].split(',')
+    target_qubit_states = [0] * len(qubit_ids)
+    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi) for
+                         qubit_id in qubit_ids}
+    references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
+    references['readout_pulse'] = qubit_readout_pulse.id
+
+    metadata = {'qubit_ids': qubit_ids}
+    references['coupler_gate'] = coupler_gate.id
+
+    if pre_pulse is not None:
+        references['pre_pulse'] = pre_pulse.id
+        pre_pulse_seq = pre_pulse.get_pulse_sequence(0)
+    else:
+        pre_pulse_seq = []
+
+
+    class ParameterSetter:
+        def __init__(self):
+            self.frequency = float(coupler_gate.metadata['frequency'])
+            self.amplitude = float(coupler_gate.metadata['amplitude'])
+            self.length = 0
+            self.parameter_name = parameter_name
+
+        def filler_funct(self):
+
+
+            work_sequence = []
+
+            channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device,
+                                                  **{coupler_gate.metadata['carrier_name']: self.amplitude})
+            frequency_delta = self.frequency
+            #vf_pulse = [device.pg.pmulti(0, (coupler_gate.metadata['carrier_name'], pulses.vf, frequency_delta))]
+            #pulse_seq = vf_pulse + excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+             #                                            channel_amplitudes=channel_amplitudes_,
+             #                                            tail_length=0,
+             #                                            length=self.length,
+            #                                             phase=0.0)
+
+            channel_pulses = [(c, device.pg.sin, self.amplitude, frequency_delta) for c, a in
+                               channel_amplitudes_.metadata.items()]
+            pulse_seq = [device.pg.pmulti(self.length, *tuple(channel_pulses))]
+
+            work_sequence = pre_pulse_seq + pulse_seq
+
+            return work_sequence
+
+        def set_parameter(self, parameter_value):
+            if self.parameter_name == 'amplitude':
+                self.amplitude = parameter_value
+            elif self.parameter_name == 'frequency':
+                self.frequency += parameter_value
+        def set_length(self, length):
+            self.length = length
+
+
+    setter = ParameterSetter()
+    measurement = calibrated_readout.calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse,
+                                                            readout_device,
+                                                            (parameter_values, setter.set_parameter, parameter_name),
+                                                            (lengths, setter.set_length, 'length'),
+                                                            pause_length=0, middle_seq_generator=setter.filler_funct,
+                                                            additional_metadata=metadata,
+                                                            additional_references=references)
+    return measurement

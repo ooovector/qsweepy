@@ -203,7 +203,16 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, transition='01', chan
     '''
     if channel_amplitudes_override is None:
         try:
+            try:
+                return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle,
+                                                                           transition=transition, recalibrate=False)
+                #pass
+            except:
+                pass
             return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition=transition, recalibrate=False)
+            #gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, transition=transition, recalibrate=recalibrate)
+        #gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition=transition, recalibrate=False)
+
         except:
             pass
 

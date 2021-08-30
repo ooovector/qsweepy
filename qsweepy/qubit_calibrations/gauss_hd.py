@@ -283,7 +283,7 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle
                                         references=references)
     return measurement
 
-def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, transition='01'):
+def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None,  transition='01'):
 
     #min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
     scan_points = int(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_alpha_scan_points'))
@@ -308,7 +308,11 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, transition='01'):
     if len(channel_amplitudes.metadata) > 2:
         raise ValueError('Default excitation pulse has more than one excitation channel')
     channel = [channel for channel in channel_amplitudes.metadata.keys()][0]
-    pulse_length = get_preferred_length(device, qubit_id, channel)
+
+    if preferred_length is None:
+        pulse_length = pi2_pulse.metadata['length']
+    else:
+        pulse_length = preferred_length
     amplitude = float(pi2_pulse.metadata['amplitude'])
     sigma = pulse_length / sigmas_in_gauss
 
@@ -588,7 +592,7 @@ class gauss_hd_excitation_pulse(MeasurementState):
         channel_pulses = [(c, self.device.pg.gauss_hd, float(a) * float(self.metadata['amplitude'])*np.exp(1j*phase),
                            float(self.metadata['sigma']), float(self.metadata['alpha']))
                             for c, a in self.channel_amplitudes.metadata.items()]
-
+        '''Warning'''
         pulse = [self.device.pg.pmulti(float(self.metadata['length']), *tuple(channel_pulses))]
         return pulse
         #get_rect_cos_pulse_sequence(device = self.device,

@@ -1,6 +1,7 @@
 import numpy as np
+import copy
 
-def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, cphase=None, cphase_name='CZ', error=1e-3):
+def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit_gate=None, two_qubit_gate_name='fSim', error=1e-3):
 	# see https://arxiv.org/pdf/1210.7011.pdf
 	c_q1 = generate_group(generators_q1)
 	c_q2 = generate_group(generators_q2)
@@ -45,74 +46,27 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, cphase=No
 			if np.abs(np.trace(square @ square)) - clifford['unitary'].shape[0] < 1e-3:  # 4-fold symmetry
 				pi2_q2[name] = clifford
 
-
 	group = {}
 	#tensor product
 	for name1, clifford1 in c_q1.items():
 		for name2, clifford2 in c_q2.items():
-			group[name1+' '+name2] = {'unitary':clifford1['unitary']@clifford2['unitary'],
-									  'pulses':plus_op_parallel(clifford1['pulses'],clifford2['pulses'])}
-
-	if cphase is None:
+			if name1==name2:
+				group[name1] = {'unitary': clifford1['unitary']}
+				#				'pulses': [plus_op_parallel(clifford1['pulses'], clifford2['pulses'])]}
+				#group[name1]['unitary'] = clifford1['unitary']
+				group[name1]['pulses'] = copy.copy(clifford1['pulses'])
+				for j in range(len(group[name1]['pulses'])):
+					group[name1]['pulses'][j] = plus_op_parallel(clifford1['pulses'][j], clifford2['pulses'][j])
+				#group[name1+' '+name2] = {'unitary':clifford1['unitary']@clifford2['unitary'],
+				#					  'pulses':plus_op_parallel(clifford1['pulses'],clifford2['pulses'])}
+	if two_qubit_gate is None:
+		return group
+	else:
+		group[two_qubit_gate_name] = {'unitary': two_qubit_gate['unitary'],
+								'pulses': two_qubit_gate['pulses']}
 		return group
 
-	for name1, clifford1 in c_q1.items():
-		for name2, clifford2 in c_q2.items():
-			# cphase-like
-			for name3, s1 in s_q1.items():
-				for name4, s2 in s_q2.items():
-					print (len(group), name1+' '+name2+' '+cphase_name+' '+name3+' '+name4)
-					group[name1+' '+name2+' '+cphase_name+' '+name3+' '+name4] = {
-						'unitary': clifford1['unitary']@clifford2['unitary']@cphase['unitary']@s1['unitary']@s2['unitary'],
-						'pulses': plus_op_parallel(s2['pulses'],s1['pulses'])+cphase['pulses']+plus_op_parallel(clifford2['pulses']+clifford1['pulses'])}
-
-	# iswap from cnot and iswap-like from cphase
-	for name1, clifford1 in pi2_q1.items():
-		found = False
-		for name2, clifford2 in pi2_q2.items():
-			iswap_candidate_unitary = cphase['unitary'] @ clifford1['unitary'] @ clifford2['unitary'] @ cphase['unitary']
-			found = False
-			for name, element in group.items():
-				if np.abs(np.sum(iswap_candidate_unitary*np.conj(element['unitary']))) > 4-error:
-					found = True
-					break
-			if not found:
-				iswap_name = cphase_name + ' ' + name1 + ' ' + name2 + ' ' + cphase_name
-				iswap = {'pulses': cphase['pulses']+pi2_q2['pulses']+pi2_q1['pulses']+cphase['pulses'],
-						 'unitary': iswap_candidate_unitary}
-				break
-		if not found:
-			break
-
-	for name1, clifford1 in c_q1.items():
-		for name2, clifford2 in c_q2.items():
-			# iswap-like
-			for name3, s1 in s_q1.items():
-				for name4, s2 in s_q2.items():
-					group[name1+' '+name2+' '+iswap_name+' '+name3+' '+name4] = {
-						'unitary': clifford1['unitary']@clifford2['unitary']@iswap['unitary']@s1['unitary']@s2['unitary'],
-						'pulses': s2['pulses']+s1['pulses']+iswap['pulses']+clifford2['pulses']+clifford1['pulses']}
-
-	# swap from cnot-like and iswap-like
-	for name1, clifford1 in pi2_q1.items():
-		for name2, clifford2 in s_q2.items():
-			swap_candidate_unitary = iswap['unitary'] @ clifford1['unitary'] @ clifford2['unitary'] @ cphase['unitary']
-			found = False
-			for name, element in group.items():
-				if np.abs(np.sum(swap_candidate_unitary*np.conj(element['unitary']))) > 4-error:
-					found = True
-					break
-			if not found:
-				swap = {'pulses': cphase['pulses']+clifford2['pulses']+clifford1['pulses']+iswap['pulses'],
-						 'unitary': swap_candidate_unitary}
-				swap_name = iswap_name + ' ' + name1 + ' ' + name2 + ' ' + cphase_name
-
-	for name1, clifford1 in c_q1.items():
-		for name2, clifford2 in c_q2.items():
-			group[name1+' '+name2+' '+swap_name] = {'unitary':clifford1['unitary']@clifford2['unitary']@swap['unitary'],
-									  'pulses':clifford1['pulses']+clifford2['pulses']+swap['pulses']}
-
-	return group
+	#return group
 
 def generate_group(generators, error=1e-3):
 	group = dict(generators)

@@ -83,6 +83,7 @@ class modem_readout(data_reduce.data_reduce):
                                    self.pulse_sequencer.awg, dac_sequence)]
         self.pulse_sequencer.set_seq(seq)
         # readout
+        self.adc.output_raw = True
         meas_result = self.adc.measure()[self.src_meas]
         if meas_result.ndim == 1:  # in case of UHFQA data is already averaged on hardware
             adc_sequence = meas_result
@@ -102,10 +103,11 @@ class modem_readout(data_reduce.data_reduce):
         # plt.plot(xc2)
         # plt.plot(xc3)
         # plt.plot(xc4)
-        # plt.plot(abs_xc)
-        # plt.plot(np.real(adc_sequence))
-        # plt.plot(np.imag(adc_sequence))
-        # plt.plot(dac_sequence_adc_time)
+        plt.plot(abs_xc)
+        plt.figure()
+        plt.plot(np.real(adc_sequence))
+        plt.plot(np.imag(adc_sequence))
+        plt.figure()
         if save:
             self.delay_calibrations[ex_channel_name] = readout_delay
             self.abs_xc = abs_xc

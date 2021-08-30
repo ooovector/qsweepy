@@ -6,7 +6,7 @@
 import numpy as np
 import logging
 from qsweepy import zi_scripts
-#import time
+import time
 
 def get_config_float_fmt():
     return '6.4g'
@@ -40,6 +40,9 @@ class Carrier:
         self.parent = parent
         self.status = 1
         self.waveform = None
+
+    def is_iq(self):
+        return True
 
     def get_nop(self):
         return self.parent.get_nop()
@@ -283,7 +286,16 @@ class AWGIQMulti:
         video_bw = 1e3
 
         sequence = zi_scripts.CWSequence(self.sequencer_id, self.awg)
-        self.awg.set_sequence(sequence)
+        self.awg.set_sequence(self.sequencer_id, sequence)
+        sequence.stop()
+        sequence.set_frequency(np.abs(carrier.get_if()))
+        sequence.set_amplitude_i(0)
+        sequence.set_amplitude_q(0)
+        sequence.set_phase_i(0)
+        sequence.set_phase_q(0)
+        sequence.set_offset_i(0)
+        sequence.set_offset_q(0)
+        sequence.start()
         self.calibration_switch_setter()
 
         if hasattr(sa, 'set_nop') and use_single_sweep:
@@ -308,25 +320,26 @@ class AWGIQMulti:
 
         self.lo.set_status(True)
 
-        sign = 1 if carrier.get_if()>0 else -1
-        solution = [-0.2, 0.5]
+        sign = 1 if carrier.get_if() > 0 else -1
+        solution = [-0.1, 0.1]
 
         def tfunc(x):
             # dc = x[0] + x[1]*1j
             target_sideband_id = 1 if carrier.get_if() > 0 else -1
             sideband_ids = np.asarray(np.linspace(-(num_sidebands - 1) / 2, (num_sidebands - 1) / 2, num_sidebands),
                                       dtype=int)
-            I = 0.5
+            I = 0.3
             Q = x[0] + x[1] * 1j
 
-            self.awg.stop(self.sequencer_id)
+            if np.abs(Q) >= 0.5:
+                Q = Q/np.abs(Q)*0.5
+
             sequence.set_amplitude_i(np.abs(I))
             sequence.set_amplitude_q(np.abs(Q))
             sequence.set_phase_i(np.angle(I)*360/np.pi)
             sequence.set_phase_q(np.angle(Q)*360/np.pi)
             sequence.set_offset_i(np.real(self.calib_dc()['dc']))
             sequence.set_offset_q(np.imag(self.calib_dc()['dc']))
-            self.awg.run(self.sequencer_id)
 
             max_amplitude = np.max([np.abs(I)+np.real(self.calib_dc()['dc']), np.abs(Q)+np.imag(self.calib_dc()['dc'])])
             if max_amplitude < 1:
@@ -335,6 +348,7 @@ class AWGIQMulti:
                 clipping = (max_amplitude - 1)
             # if we can measure all sidebands in a single sweep, do it
             if hasattr(sa, 'set_nop') and use_single_sweep:
+                time.sleep(0.1)
                 result = sa.measure()['Power'].ravel()
             else:
                 # otherwise, sweep through each sideband
@@ -368,9 +382,12 @@ class AWGIQMulti:
             use_central = True
 
             score = tfunc(solution)
+        Q_save = solution[0]+solution[1]*1j
+        if np.abs(Q_save) >= 0.5:
+            Q_save = Q_save / np.abs(Q_save) * 0.5
 
-        self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.5,
-                                                        'Q': solution[0]+solution[1]*1j,
+        self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.3,
+                                                        'Q': Q_save,
                                                         'score': score,
                                                         'num_sidebands': num_sidebands,
                                                         'if': carrier._if,
@@ -386,14 +403,15 @@ class AWGIQMulti:
 
         self.calibration_switch_setter()
         sequence = zi_scripts.CWSequence(self.sequencer_id, self.awg)
-        self.awg.set_sequence(sequence)
-
-        self.awg.stop(self.sequencer_id)
+        self.awg.set_sequence(self.sequencer_id, sequence)
+        sequence.stop()
         sequence.set_amplitude_i(0)
         sequence.set_amplitude_q(0)
         sequence.set_phase_i(0)
         sequence.set_phase_q(0)
-
+        sequence.set_offset_i(0)
+        sequence.set_offset_q(0)
+        sequence.start()
 
         res_bw = 4e6
         video_bw = 2e2
@@ -411,10 +429,8 @@ class AWGIQMulti:
             sa.set_span(res_bw)
         self.lo.set_status(True)
         def tfunc(x):
-            self.awg.stop(self.sequencer_id)
             sequence.set_offset_i(x[0])
             sequence.set_offset_q(x[1])
-            self.awg.run(self.sequencer_id)
             if hasattr(sa, 'set_nop'):
                 result = sa.measure()['Power'].ravel()[0]
             else:

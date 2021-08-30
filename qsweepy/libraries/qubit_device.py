@@ -343,6 +343,16 @@ class QubitDevice:
                 self.awg_channels[carrier_name] = awg_channel.awg_channel_carrier(control,frequency = None)
             #pass
 
+        for gate_id, gate in self.get_zgates().items():
+            if 'pulse_type' in gate.metadata:
+                if gate.metadata['pulse_type'] == 'parametric':
+                    control_name = gate.metadata['control']
+                    control = fast_controls[control_name]
+                    carrier_name = gate.metadata['carrier_name']
+                    assert (carrier_name not in self.awg_channels)
+                    frequency = float(gate.metadata['frequency'])
+                    self.awg_channels[carrier_name] = awg_channel.awg_channel_carrier(control, frequency = frequency)
+
         self.awg_channels.update(extra_channels)
         self.pg = pulses.pulses(self.awg_channels)
         self.update_pulsed_frequencies()
@@ -371,7 +381,10 @@ class QubitDevice:
                 carrier = self.awg_channels[carrier_name]
                 f1 = self.get_qubit_fq(qubit_id=gate.metadata['q1'], transition_name=gate.metadata['transition_q1'])
                 f2 = self.get_qubit_fq(qubit_id=gate.metadata['q2'], transition_name=gate.metadata['transition_q2'])
-                frequency = (f1-f2)*float(gate.metadata['carrier_harmonic'])
+                if gate.metadata['logic_type'] == 'iSWAP':
+                    frequency = (f1 - f2)*float(gate.metadata['carrier_harmonic'])
+                elif gate.metadata['logic_type'] == 'bSWAP':
+                    frequency = (f1 + f2) * float(gate.metadata['carrier_harmonic'])
                 carrier.set_frequency(frequency)
 
         for d in list(set(iq_devices)):
@@ -423,9 +436,9 @@ class QubitDevice:
 
         self.hardware.set_pulsed_mode()
         if self.hardware.adc.devtype == 'SK':
-            # from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
-            # adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device)
-            adc_reducer = self.hardware.adc
+            from qsweepy.instrument_drivers.TSW14J56driver import TSW14J56_evm_reducer
+            adc_reducer = TSW14J56_evm_reducer(self.modem.adc_device.adc)
+            #adc_reducer = self.hardware.adc
             adc_reducer.devtype = 'SK'
             adc_reducer.output_raw = raw
             adc_reducer.last_cov = False
@@ -438,6 +451,9 @@ class QubitDevice:
             adc_reducer.devtype = 'UHF'
             adc_reducer.internal_avg = internal_avg
             adc_reducer.config_iterations(adc_reducer.nsegm, adc_reducer.nres)
+            adc_reducer.output_result = True
+            adc_reducer.output_resnum = False
+            adc_reducer.output_raw = raw
 
         qubit_measurement_dict = {}
 

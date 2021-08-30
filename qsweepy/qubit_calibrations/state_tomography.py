@@ -76,7 +76,7 @@ class ProcessTomography(multiqubit_tomography):
                 multi_qubit_observables[''.join(list(multi_initial)+list(multi_observable))] = {
                     'pulses': [i for i in itertools.chain(*tuple([pulses[qubit_ids[len(qubit_ids)-qubit_id_-1]][cube_face_name] \
                                   for qubit_id_, cube_face_name in enumerate(multi_observable)]))]+ro_seq,
-                    'pre_pulses': [i for i in itertools.chain(*tuple([pulses[qubit_ids[len(qubit_ids)-qubit_id_-1]][cube_face_name] \
+                    'pre_pulses': device.pre_pulses + [i for i in itertools.chain(*tuple([pulses[qubit_ids[len(qubit_ids)-qubit_id_-1]][cube_face_name] \
                                   for qubit_id_, cube_face_name in enumerate(multi_initial)]))],
                     'operators': superoperators }
 

@@ -23,18 +23,33 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
     class ParameterSetter:
         def __init__(self):
             self.amplitude=None
+            self.length = None
 
         def amplitude_setter(self, amplitude):
             self.amplitude = amplitude
 
         def filler_func(self, length):
+            self.length = length
             channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device,
                                                   **{gate.metadata['carrier_name']: self.amplitude})
-            return [device.pg.pmulti(pre_pause)]+excitation_pulse.get_rect_cos_pulse_sequence(device = device,
-                                               channel_amplitudes = channel_amplitudes_,
-                                               tail_length = float(gate.metadata['tail_length']),
-                                               length = length,
-                                               phase = 0.0)+[device.pg.pmulti(post_pause)]
+
+            if 'pulse_type' in gate.metadata:
+                if gate.metadata['pulse_type'] == 'cos':
+                    frequency = float(gate.metadata['frequency'])
+                    #print(frequency)
+                    #print(self.length)
+                    channel_pulses = [(c, device.pg.sin, self.amplitude, frequency) for c, a in
+                                      channel_amplitudes_.metadata.items()]
+                    gate_pulse = [device.pg.pmulti(self.length, *tuple(channel_pulses))]
+            else:
+                gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                              channel_amplitudes=channel_amplitudes_,
+                                                                              tail_length=float(
+                                                                                  gate.metadata['tail_length']),
+                                                                              length=self.length,
+                                                                              phase=0.0)
+
+            return [device.pg.pmulti(pre_pause)]+gate_pulse+[device.pg.pmulti(post_pause)]
     setter = ParameterSetter()
 
     return Ramsey.Ramsey(device, gate.metadata['target_qubit_id'], '01', (amplitudes, setter.amplitude_setter, 'amplitude'),
@@ -43,7 +58,7 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
                            additional_references={'gate':gate.id})
 
 def zgate_amplitude_ramsey_crosstalk(device, gate, target_qubit_id, control_qubit_id, lengths, amplitudes,
-                                     target_freq_offset=100e9, measurement = 'Ramsey'):
+                                     target_freq_offset=100e6, measurement = 'Ramsey'):
     pre_pause = float(gate.metadata['pre_pause'])
     post_pause = float(gate.metadata['post_pause'])
     class ParameterSetter:

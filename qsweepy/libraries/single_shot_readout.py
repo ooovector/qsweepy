@@ -17,23 +17,28 @@ class single_shot_readout:
     """
 
     def __init__(self, adc, prepare_seqs, ro_seq, pulse_generator, ro_delay_seq=None, _readout_classifier=None,
-                 adc_measurement_name='Voltage'):
+                 adc_measurement_name='Voltage', dbg_storage=False):
         self.adc = adc
         self.ro_seq = ro_seq
         self.prepare_seqs = prepare_seqs
 
         self.ro_delay_seq = ro_delay_seq
         self.pulse_generator = pulse_generator
-        self.repeat_samples = 4
+        self.repeat_samples = 3
         self.save_last_samples = False
         self.train_test_split = 0.8
         self.measurement_name = ''
         # self.dump_measured_samples = False
 
         self.measure_avg_samples = True
+        self.dbg_storage = dbg_storage
+        if self.dbg_storage:
+            import pickle as pkl
+            from time import gmtime, strftime
         # self.measure_cov_samples = False
         self.measure_hists = True
         self.measure_feature_w_threshold = True
+        self.return_scores = False
         # self.measure_features = True
 
         # self.cutoff_start = 0
@@ -54,18 +59,30 @@ class single_shot_readout:
                 # pulse sequence to prepare state
                 self.adc.set_internal_avg(True)
                 self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
-                measurement = self.adc.measure()
                 if self.adc.devtype == 'SK':
+                    measurement = self.adc.measure()
                     X.append(measurement[self.adc_measurement_name])
                     y.extend([class_id] * len(self.adc.get_points()[self.adc_measurement_name][0][1]))
                 elif self.adc.devtype == 'UHF':
                     # UHF scenario
-                    X.append(measurement[self.adc_measurement_name])
-                    y.append(class_id)
+                    nums = self.adc.get_nums()
+                    self.adc.set_nums(1024)
+                    repeats = nums // 1024
+                    for inner_repeat_id in range(repeats):
+                        measurement = self.adc.measure()
+                        X.append(measurement[self.adc_measurement_name])
+                        y.append(class_id)
+                    self.adc.set_nums(nums)
 
         # print (np.asarray(X).shape, np.asarray(y).shape)
         X = np.reshape(X, (-1, len(self.adc.get_points()[self.adc_measurement_name][-1][1])))
         y = np.asarray(y)
+
+        if self.dbg_storage:
+            abs_path = "'D:\\qtlab_replacement\\dbg_data"  # TODO make dependent path
+            with open(abs_path + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + '.pkl', 'wb') as f:
+                pkl.dump((X, y), f)
+
         # last dimension is the feature dimension
         # y = np.asarray(y)
         # print(np.asarray(X).shape, np.asarray(y).shape)
@@ -94,7 +111,7 @@ class single_shot_readout:
                     self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
                     # TODO do we need to calibrate for all discriminators?
                     j = self.adc.measure()[self.adc.result_source + str(0)]
-                    x.extend((np.real(j) + np.imag(j)).tolist())
+                    x.extend((np.real(j)+np.imag(j)).tolist())
                     #x.extend((np.real(j)).tolist())
                     y.extend([class_id] * len(j))
 
@@ -102,6 +119,9 @@ class single_shot_readout:
             self.scores = self.readout_classifier.scores
             self.confusion_matrix = readout_classifier.confusion_matrix(np.asarray(y),
                                                                         np.asarray(self.readout_classifier.predict_reduced(x)))
+            self.x = x
+            self.y = y
+            x = (np.real(x)+np.imag(x)).tolist()
 
     def get_opts(self):
         opts = {}
@@ -111,6 +131,8 @@ class single_shot_readout:
         if self.measure_avg_samples:
             avg_samples = {'avg_sample' + str(_class): {'log': False} for _class in self.readout_classifier.class_list}
             # features = {'feature'+str(_class):{'log':False} for _class in self.readout_classifier.class_list}
+            #opts['sigma0'] = {'log': False}
+            #opts['sigma1'] = {'log': False}
             opts.update(avg_samples)
 
         opts['fidelities'] = {'log': False}
@@ -118,6 +140,10 @@ class single_shot_readout:
         if self.measure_feature_w_threshold:
             opts['feature'] = {'log': False}
             opts['threshold'] = {'log': False}
+        if self.adc.devtype == 'UHF' and self.return_scores:
+            opts['x'] = {'log': False}
+            opts['y'] = {'log': False}
+
 
         return opts
 
@@ -131,6 +157,8 @@ class single_shot_readout:
             avg_samples = {'avg_sample' + str(_class): self.readout_classifier.class_averages[_class] for _class in
                            self.readout_classifier.class_list}
             # features = {'feature'+str(_class):self.readout_classifier.class_features[_class] for _class in self.readout_classifier.class_list}
+            #meas['sigma0'] = self.readout_classifier.sigma0
+            #meas['sigma1'] = self.readout_classifier.sigma1
             meas.update(avg_samples)
 
         meas['fidelities'] = self.readout_classifier.fidelities
@@ -138,6 +166,11 @@ class single_shot_readout:
         if self.measure_feature_w_threshold:
             meas['feature'] = self.readout_classifier.feature
             meas['threshold'] = self.readout_classifier.threshold
+
+        if self.adc.devtype == 'UHF' and self.return_scores:
+            meas['x'] = self.x
+            meas['y'] = self.y
+
         return meas
 
     def get_points(self):
@@ -151,6 +184,10 @@ class single_shot_readout:
                 _class in self.readout_classifier.class_list}
             # features = {'feature'+str(_class):[('Time',np.arange(self.adc.get_nop())/self.adc.get_clock(), 's')] for _class in self.readout_classifier.class_list}
             points.update(avg_samples)
+            #points['sigma0'] = [('Time1', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's'),
+            #                    ('Time2', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')]
+            #points['sigma1'] =  [('Time1', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's'),
+            #                    ('Time2', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')]
         # points.update(features)
         # if self.measure_hists:
         #    points['hists'] = [('class', self.readout_classifier.class_list, ''),
@@ -161,6 +198,10 @@ class single_shot_readout:
         if self.measure_feature_w_threshold:
             points['feature'] = [('Time', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')]
             points['threshold'] = []
+        if self.adc.devtype == 'UHF' and self.return_scores:
+            points['x'] = [('bin', np.arange(self.adc.get_adc_nums()*self.repeat_samples*len(self.prepare_seqs)), '')]
+            points['y'] = [('bin', np.arange(self.adc.get_adc_nums()*self.repeat_samples*len(self.prepare_seqs)), '')]
+
         return points
 
     def get_dtype(self):
@@ -175,6 +216,8 @@ class single_shot_readout:
                         self.readout_classifier.class_list}
             dtypes.update(avg_samples)
             dtypes.update(features)
+            #dtypes['sigma0'] = np.complex
+            #dtypes['sigma1'] = np.complex
         # if self.measure_hists:
         #    dtypes['hists'] = float
         #    dtypes['proba_points'] = float
@@ -183,6 +226,11 @@ class single_shot_readout:
         if self.measure_feature_w_threshold:
             dtypes['feature'] = np.complex
             dtypes['threshold'] = float
+
+        if self.adc.devtype == 'UHF' and self.return_scores:
+            dtypes['x'] = np.complex
+            dtypes['y'] = float
+
         return dtypes
 
     # def dump_samples(self, name):

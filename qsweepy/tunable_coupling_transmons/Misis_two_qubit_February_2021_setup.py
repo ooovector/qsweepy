@@ -16,7 +16,7 @@ device_settings = {#'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
                    'adc_timeout': 10,
                    'adc_trig_rep_period': 200 * 125,  # 10 kHz rate period
-                   'adc_trig_width': 4,  # 32 ns trigger length
+                   'adc_trig_width': 2,  # 32 ns trigger length
 
                    }
 
@@ -74,6 +74,7 @@ class hardware_setup():
         self.q1z = None
         self.cz = None
         self.q2z = None
+        self.q3z = None
         self.iq_devices = None
 
     def open_devices(self):
@@ -90,7 +91,9 @@ class hardware_setup():
         if self.device_settings['use_rf_switch']:
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
-        self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2e9, delay_int=0)
+        #self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2e9, delay_int=0)
+        self.hdawg = instruments.zihdawg(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2e9,
+                                          delay_int=0)
         #self.uhfqa = instruments.ziUHF(2, delay_int=0)
         #self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/0/ac', 1)
         #self.uhfqa.daq.setInt('/' + self.uhfqa.device + '/sigins/1/ac', 1)
@@ -121,10 +124,10 @@ class hardware_setup():
         #self.q2x = awg_channel(self.hdawg, 5)
         #self.q3x = awg_channel(self.hdawg, 6)
 
-        self.q3z = awg_channel(self.hdawg, 0)  # coil control
-        self.q2z = awg_channel(self.hdawg, 1)  # coil control
-        self.cz = awg_channel(self.hdawg, 2)  # coil control
-        self.q1z = awg_channel(self.hdawg, 3)  # coil control
+        self.q3z = awg_channel(self.hdawg, 6)  # coil control
+        self.q2z = awg_channel(self.hdawg, 2)  # coil control
+        self.cz = awg_channel(self.hdawg, 7)  # coil control
+        self.q1z = awg_channel(self.hdawg, 0)  # coil control
 
 
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
@@ -158,7 +161,7 @@ class hardware_setup():
             self.hdawg.set_amplitude(amplitude=0.05, channel=channel)
             self.hdawg.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
             self.hdawg.set_output(output=1, channel=channel)
-            self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
+            #self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
         #for channel in range(0, 2):
             #self.uhfqa.set_amplitude(amplitude=0.05, channel=channel)
@@ -320,10 +323,10 @@ class hardware_setup():
                               #'q2x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 5),
                               #'q3x': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
 
-                              'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0),
-                              'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 1),
-                              'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
-                              'q1z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 3)}  # coil control
+                              'q3z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 6),
+                              'q2z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 2),
+                              'cz': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 7),
+                              'q1z': qsweepy.libraries.awg_channel.awg_channel(self.hdawg, 0)}  # coil control
 
     def get_readout_trigger_pulse_length(self):
         return self.pulsed_settings['trigger_readout_length']

@@ -200,6 +200,18 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
         self.X = X
         self.y = y
 
+        #delta0 = X[y==0, :] - np.mean(X[y==0, :], axis=0)
+        #sigma0 = np.einsum('ij,ik->jk', np.conj(delta0), delta0)
+
+        #delta1 = X[y==1, :] - np.mean(X[y==1, :], axis=0)
+        #sigma1 = np.einsum('ij,ik->jk', np.conj(delta1), delta1)
+
+        #self.sigma0 = sigma0
+        #self.sigma1 = sigma1
+        #self.sigma = (sigma0 + sigma1)/X.shape[0]
+        #self.sigma += np.identity(X.shape[1])*np.mean(np.std(delta0, axis=0)+np.std(delta1, axis=0))**2
+        #self.sigma_inv = np.linalg.inv(self.sigma)
+
         self.avg = (self.avg_zero+self.avg_one)/2
         self.diff = (self.avg_one-self.avg_zero)/2
         #self.sigma_0 = np.dot(np.conj(X[y==0,:]-self.avg_zero).T, X[y==0,:]-self.avg_zero)
@@ -207,6 +219,7 @@ class binary_linear_classifier(BaseEstimator, ClassifierMixin):
         #self.Sigma_inv = np.linalg.inv(self.sigma_0+self.sigma_1)
         #self.feature = self.Sigma_inv
         self.feature = self.diff - np.mean(self.diff)#self.diff-np.mean(self.diff)
+        #self.feature = self.sigma_inv @ self.feature
         self.naive_bayes(X, y)
 
     def naive_bayes_reduced(self, x, y):

@@ -80,7 +80,7 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     if not length:
         length = float(device.get_qubit_constant(name='readout_length', qubit_id=qubit_id))
     amplitudes = np.linspace(0, amplitude, points)
-    ignore_other_qubits = bool(device.get_qubit_constant(name='readout_calibration_ignore_other_qubits', qubit_id=qubit_id))
+    ignore_other_qubits = bool(device.get_qubit_constant(name='readout_calibration_ignore_other_qubits', qubit_id=qubit_id) == 'True')
 
     ## identify metadata
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
@@ -201,10 +201,16 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
         adc_reducer.set_adc_nums(int(device.get_sample_global('uncalibrated_readout_nums')))
 
     adc_reducer.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
+    #measurer = adc_reducer
+    #measurer.output_resnum = False
+    #measurer.output_result = True
     measurer = data_reduce.data_reduce(adc_reducer)
     measurer.filters['iq'+qubit_id] = data_reduce.thru(adc_reducer,  mnames[qubit_id],
                                                         background_calibration.datasets['S21'].data, adc_reducer.get_adc_nums())
     if samples:
+        #measurer.output_raw = True
+    #else:
+        #measurer.output_raw = False
         measurer.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc_reducer, 'Voltage', 0)
     # measurer.references = {'readout_background_calibration': background_calibration.id}
     nums = int(device.get_qubit_constant(name='uncalibrated_readout_nums', qubit_id=qubit_id))

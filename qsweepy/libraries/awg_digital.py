@@ -15,6 +15,7 @@ class awg_digital:
         self.measured_delay = None
         self.delay_tolerance = delay_tolerance
         self.adc = None
+        self._last_waveform = None
 
     def get_nop(self):
         return self.awg.get_nop()
@@ -28,9 +29,13 @@ class awg_digital:
     def set_clock(self, clock):
         return self.awg.set_clock(clock)
 
+    def set_delay(self, delay):
+        self.delay = delay
+
     def set_waveform(self, waveform):
         if self.mode == 'waveform':
             self.awg.set_digital(np.roll(waveform, self.delay), channel=self.channel)
+            self._last_waveform = np.roll(waveform, self.delay)
         if self.mode == 'marker':
             delay_tock = np.where(waveform)[0][0]
             delay = int(np.ceil(delay_tock / 10));
@@ -45,6 +50,7 @@ class awg_digital:
             if self.delay > 1020:
                 #logging.warning('delay set to be 1020 adc-cycles instead of {} (can not be bigger)'.format(self.delay))
                 raise ValueError('Calibrated delay larger than 1020')
+                pass
                 #self.delay = 1020
             elif self.delay < 0:
                 raise ValueError('Delay cannot be negative')

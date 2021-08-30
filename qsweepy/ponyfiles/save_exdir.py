@@ -80,6 +80,7 @@ def save_exdir(state: MeasurementState, keep_open: bool = False):
 
 
 def update_exdir(state:MeasurementState, indeces: Iterable[int]):
+
     for dataset in state.datasets.keys():
         state.exdir.attrs.update(state.metadata)
         try:
