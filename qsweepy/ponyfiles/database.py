@@ -70,7 +70,7 @@ class MyDatabase:
         self.Invalidations = Invalidations
 
         class Queries(db.Entity):
-            query_name = Required(str)
+            query_name = PrimaryKey(str)
             query = Required(str)
             query_date = Required(datetime)
         self.Queries = Queries
@@ -153,10 +153,29 @@ class MyDatabase:
         commit()
         return d.id
 
-    def get_from_database(self, filename = ''):
+    def get_from_database(self, filename=''):
         # print(select(i for i in self.Data))
         id = get(i.id for i in self.Data if (i.filename == filename))
         # print(id)
         # d = self.Data[id]
         # state = read_exdir_new(d.filename)
         return id  # tate
+
+    def delete_from_database(self, indexes: list=[]):
+        """
+        Delete measurement from tables: Data, Metadata, Reference and Linear_sweep
+        usege: put list of measurements indexes to delete from database
+
+        :param indexes: list of indexes
+        """
+        try:
+            for idx in set(indexes):
+                delete(i for i in self.Data if i.id == idx)
+                delete(i for i in self.Metadata if i.data_id.id == idx)
+                delete(i for i in self.Reference if i.this.id == idx)
+                delete(i for i in self.Reference if i.that.id == idx)
+                delete(i for i in self.Linear_sweep if i.data_id.id == idx)
+            commit()
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (indexes, e))
+            raise e

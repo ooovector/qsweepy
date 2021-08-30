@@ -8,6 +8,7 @@ import os.path
 from pony.orm import get, select
 from qsweepy.libraries.config import get_config
 from collections import OrderedDict
+import os, shutil
 
 from .database import MyDatabase
 from .data_structures import MeasurementState
@@ -87,6 +88,28 @@ def update_exdir(state:MeasurementState, indeces: Iterable[int]):
         except Exception as e:
             state.datasets[dataset].data_exdir[...] = state.datasets[dataset].data[...]
 
+def get_filename(db:MyDatabase, idx: int):
+    """
+    Get filename by given index
+    :param idx: index
+    :return: path
+    """
+    filename = select(measurement.filename for measurement in db.Data if measurement.id == idx)[:][0] + ".exdir"
+    return filename
+
+def delete_exdir(db:MyDatabase = None, indexes: list = []):
+    """
+    Delete exdir directory from disk
+    :param ids: list of measurements indexes to delet
+    """
+    if db:
+        folders = [get_filename(db,idx) for idx in set(indexes)]
+        for folder in folders:
+            try:
+                shutil.rmtree(folder)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (folder, e))
+                raise e
 
 def close_exdir(state:MeasurementState):
     if hasattr(state, 'exdir'):
