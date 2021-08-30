@@ -55,6 +55,7 @@ def add_default_traces(loaded_measurements, db, old_traces=[], conditional_dropd
 	:param conditional_dropdowns: list of conditional dropdown filter queries
 	:return: data and list of conditional dropdowns for x-axis and y-axis
 	'''
+
 	data = old_traces.copy()
 	measurement_signatures_list = list(set([(d['dataset'], d['x-axis'], d['y-axis'], d['op']) for d in old_traces]))
 	measurement_signatures = {measurement_signature:[d for d in old_traces if (d['dataset'], d['x-axis'], d['y-axis'], d['op']) == measurement_signature] for measurement_signature in measurement_signatures_list}

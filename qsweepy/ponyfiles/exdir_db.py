@@ -178,3 +178,12 @@ class Exdir_db:
             print('reference:',  k, ':', v)
 
         return q2
+
+    def delete_measurements(self, indexes: list = []):
+        """
+        Delete measurements by list of indexes from database and from disk
+        """
+        save_exdir.delete_exdir(self.db, indexes)
+        MyDatabase.delete_from_database(self.db, indexes)
+        for idx in indexes:
+            print('Measurement with id %s has been succedfully deleted' %(idx))
