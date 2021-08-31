@@ -188,7 +188,7 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
 
         return definition_fragment, play_fragment
 
-    def rect_cos(self, channel, length, amp, length_tail, fast_control=False):
+    def rect_cos(self, channel, length, amp, length_tail, fast_control=False, control_frequency=0):
         # this part is necessary for accurate length setter and fast control
         # for example: rabi sequence
         # for fast control you can use "variable_register" defined in the beginning of the sequencer play program
@@ -221,9 +221,10 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
             ex_channel.parent.awg.set_register(control_seq_id, var_reg1, pause_cycles % 8)
             definition_fragment += textwrap.dedent('''
 const tail_samp = {tail_samp};
+control_frequency = {control_frequency};
 
 // Waveform definition
-wave tail_wave_0 = hann(2*tail_samp, 1);'''.format(tail_samp=tail_samp))
+wave tail_wave_0 = hann(2*tail_samp, 1);'''.format(tail_samp=tail_samp, control_frequency=control_frequency))
             # It's a trick how to set Rabi pulse length with precision corresponded to awg.clock (2.4GHz)
             for wave_length in range(0, n_samp+1):
                 if tail_samp > 2:
@@ -329,7 +330,7 @@ wave rect_cos_{length_samp} = rect({length_samp}, {amp});'''.format(tail_samp=ta
     waitWave();'''.format(length_samp=length_samp))
         return definition_fragment, play_fragment
 
-    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 8):
+    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 6):
         '''
         Parameters
         :param channel: channel name
@@ -347,19 +348,19 @@ cvar resolution = {resolution};
 '''.format(resolution=resolution)
             play_fragment +=textwrap.dedent('''
 //
-    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
+//    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
             for bit in range(resolution):
                 bitval = 1 << bit
                 play_fragment += textwrap.dedent('''
 //
     if (variable_register2 & {bitval}) {{
         incrementSinePhase(0, {increment});
-        //waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+        waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 if ex_channel.is_iq():
                     play_fragment += textwrap.dedent('''
 //
         incrementSinePhase(1, {increment});
-        //waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+        waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 play_fragment += '''
         wait(1);
 //
@@ -374,7 +375,7 @@ var i;
 var j;'''
             play_fragment += textwrap.dedent('''
 //
-    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
+//    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
             play_fragment += '''
 //
     i=0;
@@ -409,20 +410,20 @@ var j;'''
     incrementSinePhase(0,{phase2});
     waitWave();'''.format(phase2=64*phase))
         else:
-            play_fragment += textwrap.dedent('''
-//
-    playWave(zeros({length_samp}))'''.format(length_samp=length_samp))
+#             play_fragment += textwrap.dedent('''
+# //
+#     playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
             if ex_channel.is_iq():
                 play_fragment += textwrap.dedent('''
 //
-    playWave(zeros({length_samp}));
+//    playWave(zeros({length_samp}));
     incrementSinePhase(0,{phase});
     incrementSinePhase(1,{phase});
     waitWave();'''.format(phase=phase, length_samp=length_samp))
             else:
                 play_fragment += textwrap.dedent('''
 //
-    playWave(zeros({length_samp}));
+//    playWave(zeros({length_samp}));
     incrementSinePhase({channel}, {phase});
     waitWave();'''.format(channel=ex_channel.channel % 2, phase=phase, length_samp=length_samp))
 
@@ -469,7 +470,7 @@ var j;'''
         nrOfsampl = int(length * ex_channel.get_clock())
         nrOfPeriods = int(length * np.abs(freq))
         definition_fragment += textwrap.dedent('''
-wave sine_wawe_{samples} = sine({samples}, 1, 0, {nrOfPeriods});'''.format(name=channel, samples=nrOfsampl, nrOfPeriods=nrOfPeriods))
+wave sine_wave_{samples} = sine({samples}, 1, 0, {nrOfPeriods});'''.format(name=channel, samples=nrOfsampl, nrOfPeriods=nrOfPeriods))
 
         if ex_channel.is_iq():
             calib_dc = ex_channel.parent.calib_dc()
@@ -481,17 +482,17 @@ wave sine_wawe_{samples} = sine({samples}, 1, 0, {nrOfPeriods});'''.format(name=
             ex_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
             play_fragment += textwrap.dedent('''
 //
-    playWave(1, {ampI}*sine_wawe_{samples}, 2, {ampQ}*sine_wawe_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp)*np.abs(calib_rf['I']), ampQ=np.imag(amp)*np.abs(calib_rf['Q'])))
+    playWave(1, {ampI}*sine_wave_{samples}, 2, {ampQ}*sine_wave_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp)*np.abs(calib_rf['I']), ampQ=np.imag(amp)*np.abs(calib_rf['Q'])))
         else:
             control_channel_id = ex_channel.channel % 2
             if control_channel_id == 0:
                 play_fragment += textwrap.dedent('''
 //
-    playWave(1, {ampI}*sine_wawe_{samples}, 1, {ampQ}*sine_wawe_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp), ampQ=np.imag(amp)))
+    playWave(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp), ampQ=np.imag(amp)))
             elif control_channel_id == 1:
                 play_fragment += textwrap.dedent('''
 //
-    playWave(2, {ampI}*sine_wawe_{samples}, 2, {ampQ}*sine_wawe_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp), ampQ=np.imag(amp)))
+    playWave(2, {ampI}*sine_wave_{samples}, 2, {ampQ}*sine_wave_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp), ampQ=np.imag(amp)))
 
         return definition_fragment, play_fragment
 

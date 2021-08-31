@@ -219,25 +219,25 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, transition='01', chan
             pass
     '''
     #TODO: revert gauss pulses
-    #if channel_amplitudes_override is None:
-         #try:
-             #try:
+    if channel_amplitudes_override is None:
+         try:
+             try:
                  ##TODO
                  ##'''Warning'''
-                 #return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle,
-                 #                                                              transition=transition, recalibrate=False)
+                 return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle,
+                                                                               transition=transition, recalibrate=False)
                  ##pass
-             #except:
-             #    pass
+             except:
+                 pass
              # TODO
     #         '''Warning'''
-             #return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle,
-             #                                                                  transition=transition, recalibrate=False)
+             return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle,
+                                                                               transition=transition, recalibrate=False)
              ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, transition=transition, recalibrate=recalibrate)
          ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition=transition, recalibrate=False)
 
-         #except:
-             #pass
+         except:
+             pass
 
     return get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition=transition,
                                      channel_amplitudes_override=channel_amplitudes_override, recalibrate=recalibrate)

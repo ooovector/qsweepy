@@ -11,7 +11,7 @@ def echo_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None
     '''
     :param device QubitDevice:
     '''
-    from .readout_pulse import get_uncalibrated_measurer
+    from .readout_pulse2 import get_uncalibrated_measurer
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id2) # we want to measure qubit 2 because otherwise wtf are we are doing the second pi/2 pulse for
     phase_scan_points = int(device.get_sample_global(name='process_phase_scan_points'))
     phases = np.linspace(0, 2*np.pi, phase_scan_points, endpoint=False)
@@ -46,7 +46,8 @@ def echo_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=None
                                                             fitter_arguments = fitter_arguments,
                                                             measurement_type='echo_process',
                                                             metadata=metadata,
-                                                            references=references)
+                                                            references=references,
+                                                            on_update_divider=10)
 
     return measurement
 
@@ -55,7 +56,7 @@ def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
                    channel_amplitudes1=None, channel_amplitudes_pi=None, channel_amplitudes2=None, lengths=None,
                    target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='echo_crosstalk',
                    additional_references = {}, additional_metadata = {}):
-    from .readout_pulse import get_uncalibrated_measurer
+    from .readout_pulse2 import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=target_qubit_id, name='Ramsey_length')),
@@ -190,7 +191,8 @@ def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
                                               fitter_arguments = fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,
-                                              references=references)
+                                              references=references,
+                                              on_update_divider=10)
 
     return measurement
 
@@ -198,7 +200,7 @@ def echo_crosstalk(device, target_qubit_id, control_qubit_id, *extra_sweep_args,
 def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes_pi=None, channel_amplitudes2=None, lengths=None,
            target_freq_offset=None, readout_delay=0, delay_seq_generator=None, measurement_type='echo',
            additional_references = {}, additional_metadata = {}):
-    from .readout_pulse import get_uncalibrated_measurer
+    from .readout_pulse2 import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
@@ -330,7 +332,8 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
                                               fitter_arguments = fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,
-                                              references=references)
+                                              references=references,
+                                              on_update_divider=10)
 
     return measurement
 

@@ -29,7 +29,8 @@ const pre_amp{index} = {pre_amp_0};
 const pre_tail{index} = {pre_tail_0};
 wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
 wave pre_tail_wave_{index} = hann(2*pre_tail{index}, pre_amp{index});
-wave pre_wawe_{index}=join(cut(pre_tail_wave_{index}, 0, pre_tail{index}), plato_wawe_{index}, cut(pre_tail_wave_{index}, pre_tail{index}, 2*pre_tail{index}-1));
+//wave pre_wawe_{index}=join(cut(pre_tail_wave_{index}, 0, pre_tail{index}), plato_wawe_{index}, cut(pre_tail_wave_{index}, pre_tail{index}, 2*pre_tail{index}-1));
+wave pre_wawe_{index}=join(zeros(31-pre_tail{index}%32), cut(pre_tail_wave_{index}, 0, pre_tail{index}));
 '''.format(index= index, pre_samp_0=int(self.length * clock), pre_tail_0=int(self.length_tail * clock), pre_amp_0=self.amp))
         else:
             self.definition_fragments += textwrap.dedent('''
@@ -47,21 +48,17 @@ wave pre_wawe_{index} = plato_wawe_{index};
             self.play_fragment += textwrap.dedent('''
 //
     playWave(2, 0*pre_wawe_{index}, 1, pre_wawe_{index});
+    wait(pre_samp{index});
+    playWave(2, 0*flip(pre_wawe_{index}), 1, flip(pre_wawe_{index}));
     playWave(zeros({wait_after}));
-    resetOscPhase();
-    setSinePhase(0, 0);
-    setSinePhase(1, 90);
-    wait(10);
 '''.format(index = index, wait_after=int(self.wait_after * clock)))
         elif channel == 1:
             self.play_fragment += textwrap.dedent('''
 //
     playWave(2, pre_wawe_{index}, 1, 0*pre_wawe_{index});
+    wait(pre_samp{index});
+    playWave(2, flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
     playWave(zeros({wait_after}));
-    resetOscPhase();
-    setSinePhase(0, 0);
-    setSinePhase(1, 90);
-    wait(10);
 '''.format(index=index, wait_after=int(self.wait_after * clock)))
 
         return self.play_fragment
@@ -199,6 +196,9 @@ class SIMPLESequence:
 // Device settings
 setInt('sines/{ic}/oscselect', {nco_id});
 setInt('sines/{qc}/oscselect', {nco_id}+1);
+cvar control_frequency = {control_frequency};
+setDouble('oscs/{nco_id}/freq', {frequency});
+setDouble('oscs/{nco_control_id}/freq', control_frequency);
 
 // Constant's and variables definition
 const readout_delay = {readout_delay};
@@ -236,13 +236,22 @@ var variable_register3 = getUserReg(var_reg3);
             for _i in range(len(self.pre_pulses)):
                 definition_pre_pulses += self.pre_pulses[_i].get_definition_fragment(self.clock, _i)
                 play_pre_pulses += self.pre_pulses[_i].get_play_fragment(self.params['qubit_channel'], _i)
-
+        play_pre_pulses+=textwrap.dedent('''
+//    
+    setDouble('oscs/{nco_control_id}/freq', control_frequency);
+    resetOscPhase();
+    setSinePhase(0, 0);
+    setSinePhase(1, 90);
+    wait(10);
+    '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
-while (true) {{
-    
+while (true) {{''')
+        play_fragment1 += textwrap.dedent('''
+//    
     // Wait trigger and reset 
     waitDIOTrigger();
+    setDouble('oscs/{nco_control_id}/freq', {control_frequency});
     variable_register0 = getUserReg(var_reg0);
     variable_register1 = getUserReg(var_reg1);
     variable_register2 = getUserReg(var_reg2);
@@ -250,7 +259,7 @@ while (true) {{
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
-    ''')
+    '''.format(**self.params))
         # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
         # There is initial delay between readout trigger and and readout waveform generation around 140 ns.
         if self.control:
@@ -294,8 +303,9 @@ while (true) {{
 // Device settings
 setInt('sines/{ic}/oscselect', {nco_id});
 setInt('sines/{qc}/oscselect', {nco_id}+1);
+cvar control_frequency = {control_frequency};
 setDouble('oscs/{nco_id}/freq', {frequency});
-setDouble('oscs/{nco_control_id}/freq', {control_frequency});
+setDouble('oscs/{nco_control_id}/freq', control_frequency);
 
 
 // Constant's and variables definition

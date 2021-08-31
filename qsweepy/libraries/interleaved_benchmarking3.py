@@ -26,8 +26,9 @@ class interleaved_benchmarking:
 
         self.seeds = seeds
         self.seq_lengths = np.asarray(seq_lengths)
-        assert seeds.shape[0] == random_gate_num, 'seeds.shape[0] != random_gate_num'
+        assert seeds.shape[2] == random_sequence_num, 'seeds.shape[2] != random_sequence_num'
         assert seeds.shape[1] == len(ex_sequencers), 'seeds.shape[1] != len(ex_sequencers)'
+        assert seeds.shape[0] == len(self.seq_lengths), 'seeds.shape[0] != len(self.seq_lengths)'
 
         self.seed_register = 1
         self.sequence_length_register = 0
@@ -68,6 +69,7 @@ class interleaved_benchmarking:
 
         self.final_ground_state_rotation = True
         self.prepare_random_sequence_before_measure = True
+        self.seq_id = 0
 
 
     def return_hdawg_program(self, ex_seq):
@@ -92,36 +94,36 @@ void clifford_switch(argument1) {
             switch(rand_value) {{'''.format(range=random_gate_num))
         i = 0;
         for name, gate in self.interleavers.items():
-            if name != self.two_qubit_name:
-                play_part += textwrap.dedent('''
+            #if name != self.two_qubit_name:
+            play_part += textwrap.dedent('''
 //
-                case {index}://'''.format(index=i))
-                i += 1
-                for j in range(len(gate['pulses'])):
-                    for seq_id, part in gate['pulses'][j][0].items():
-                        if seq_id == ex_seq.params['sequencer_id']:
-                            if part[0] not in definition_part:
-                                definition_part += part[0]
-                            play_part += textwrap.indent(part[1], '                 ')
-                            if i==random_gate_num:
-                                play_part += '''
-//
-            }}
-        }}'''
-            else:
-                for seq_id, part in gate['pulses'][0][0].items():
+            case {index}://'''.format(index=i))
+            i += 1
+            for j in range(len(gate['pulses'])):
+                for seq_id, part in gate['pulses'][j][0].items():
                     if seq_id == ex_seq.params['sequencer_id']:
-                        definition_part += part[0]
-                        play_part += textwrap.dedent('''
-//
-        repeat (variable_register2){{:'''.format())
-                        play_part += textwrap.indent(part[1],'  ')
-                        play_part += '''
-//
-        }}'''
+                        if part[0] not in definition_part:
+                            definition_part += part[0]
+                        play_part += textwrap.indent(part[1], '                 ')
+                        #if i==random_gate_num:
         play_part += '''
 //
-    }}'''
+            }
+        }'''
+#             else:
+#                 for seq_id, part in gate['pulses'][0][0].items():
+#                     if seq_id == ex_seq.params['sequencer_id']:
+#                         definition_part += part[0]
+#                         play_part += textwrap.dedent('''
+# //
+#         repeat (variable_register2){:''')
+#                         play_part += textwrap.indent(part[1],'  ')
+#                         play_part += '''
+# //
+#         }'''
+        play_part += '''
+//
+    }'''
 
         return definition_part, play_part
     #def create_program_command_table(self, ):
@@ -138,12 +140,12 @@ void clifford_switch(argument1) {
             pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
             control_seq_ids.append(ex_seq.params['sequencer_id'])
 
-        return [pulses, control_seq_ids]
+        return [[pulses, control_seq_ids]]
 
     #for _i in group
 
     # used to transformed any of the |0>, |1>, |+>, |->, |i+>, |i-> states into the |0> state
-    # low-budget function only appropiate for clifford benchmarking
+    # low-budget function only appropriate for clifford benchmarking
     # higher budget functions require arbitrary rotation pulse generator
     # which we unfortunately don't have (yet)
     # maybe Chernogolovka control experiment will do this
@@ -165,8 +167,11 @@ void clifford_switch(argument1) {
 
     def set_sequence_length(self, sequence_length):
         self.sequence_length = sequence_length
+        for i, ex_seq in enumerate(self.ex_sequencers):
+            ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
 
     def set_sequence_length_and_regenerate(self, sequence_length):
+        print('Bull happens')
         self.sequence_length = sequence_length
         self.set_interleaved_sequence()
         self.prepare_random_interleaving_sequences()
@@ -272,18 +277,18 @@ void clifford_switch(argument1) {
 
     def get_dtype(self):
         dtypes = self.measurer.get_dtype()
-        # dtypes['Sequence'] = object
+        dtypes['seed'] = int
         return dtypes
 
     def get_opts(self):
         opts = self.measurer.get_opts()
-        # opts['Sequence'] = {}
+        opts['seed'] = {}
         return opts
 
     def get_points(self):
-        # points = tuple([])
+        points = (('sequencer_id', np.arange(len(self.ex_sequencers)), ''),)
         _points = {keys: values for keys, values in self.measurer.get_points().items()}
-        # _points['Sequence'] = points
+        _points['seed'] = points
         return _points
 
 
@@ -294,21 +299,23 @@ void clifford_switch(argument1) {
         # self.set_seq(seq['Pulse sequence'])
         # self.current_seq = seq
         #TODO set seed for PRNG
+        self.seq_id = seq_id
         for i, ex_seq in enumerate(self.ex_sequencers):
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
-                                    self.seeds[np.where(self.seq_lengths, self.sequence_length), i, seq_id])
+                                    self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, seq_id])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
 
 
     def measure(self):
-        if self.prepare_random_sequence_before_measure:
-            print('Some bullshit happens(')
+        # if self.prepare_random_sequence_before_measure:
+        #     print('Some bullshit happens(')
             # self.prepare_random_interleaving_sequences()
             # self.set_interleaved_sequence(0)
         measurement = self.measurer.measure()
 
         # measurement['Pulse sequence'] = np.array([object()])
-        # measurement['Sequence'] = self.current_seq['Gate names']
+        for i, ex_seq in enumerate(self.ex_sequencers):
+            measurement['seed'] = self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, self.seq_id]
 
         return measurement

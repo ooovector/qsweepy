@@ -331,8 +331,8 @@ class AWGIQMulti:
             I = 0.3
             Q = x[0] + x[1] * 1j
 
-            if np.abs(Q) >= 0.5:
-                Q = Q/np.abs(Q)*0.5
+            if np.abs(Q) >= 0.45:
+                Q = Q/np.abs(Q)*0.45
 
             sequence.set_amplitude_i(np.abs(I))
             sequence.set_amplitude_q(np.abs(Q))
@@ -383,8 +383,8 @@ class AWGIQMulti:
 
             score = tfunc(solution)
         Q_save = solution[0]+solution[1]*1j
-        if np.abs(Q_save) >= 0.5:
-            Q_save = Q_save / np.abs(Q_save) * 0.5
+        if np.abs(Q_save) >= 0.45:
+            Q_save = Q_save / np.abs(Q_save) * 0.45
 
         self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.3,
                                                         'Q': Q_save,

@@ -111,6 +111,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
             control_sequence = ex_seq
+            print('control_sequence=',control_sequence)
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         #device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
@@ -153,7 +154,8 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             if self.delay_seq_generator is None:
                 for ex_seq in self.ex_sequencers:
                     ex_seq.set_length(length)
-                self.control_sequence.set_phase(int(phase/360*(2**8)))
+                    #ex_seq.set_phase(int(phase / 360 * (2 ** 8)))
+                self.control_sequence.set_phase(int(phase/360*(2**6)))
             else:
                 if length == self.lengths[0]:
                     self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
@@ -165,13 +167,13 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
                     for ex_seq in self.ex_sequencers:
                         ex_seq.set_length(length)
-                    self.control_sequence.set_phase(int(phase/360*(2**8)))
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
                     self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
                 else:
                     for ex_seq in self.ex_sequencers:
                         ex_seq.set_length(length)
-                    self.control_sequence.set_phase(int(phase/360*(2**8)))
+                    self.control_sequence.set_phase(int(phase/360*(2**6)))
 
         def set_delay1(self, length):
             self.prepare_seq[-2] = excitation_pulse.get_s(device, qubit_id,
