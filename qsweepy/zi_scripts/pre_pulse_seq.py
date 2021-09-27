@@ -25,13 +25,15 @@ class Prepulse:
         if self.length_tail * clock > 2:
             self.definition_fragments += textwrap.dedent('''
 const pre_samp{index} = {pre_samp_0};
+setUserReg(15, pre_samp{index});
+var variable_register15;
 const pre_amp{index} = {pre_amp_0};
 const pre_tail{index} = {pre_tail_0};
 wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
 wave pre_tail_wave_{index} = hann(2*pre_tail{index}, pre_amp{index});
 //wave pre_wawe_{index}=join(cut(pre_tail_wave_{index}, 0, pre_tail{index}), plato_wawe_{index}, cut(pre_tail_wave_{index}, pre_tail{index}, 2*pre_tail{index}-1));
 wave pre_wawe_{index}=join(zeros(31-pre_tail{index}%32), cut(pre_tail_wave_{index}, 0, pre_tail{index}));
-'''.format(index= index, pre_samp_0=int(self.length * clock), pre_tail_0=int(self.length_tail * clock), pre_amp_0=self.amp))
+'''.format(index= index, pre_samp_0=int(self.length * clock/8), pre_tail_0=int(self.length_tail * clock), pre_amp_0=self.amp))
         else:
             self.definition_fragments += textwrap.dedent('''
 const pre_samp{index} = {pre_samp_0};
@@ -48,7 +50,7 @@ wave pre_wawe_{index} = plato_wawe_{index};
             self.play_fragment += textwrap.dedent('''
 //
     playWave(2, 0*pre_wawe_{index}, 1, pre_wawe_{index});
-    wait(pre_samp{index});
+    wait(variable_register15);
     playWave(2, 0*flip(pre_wawe_{index}), 1, flip(pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index = index, wait_after=int(self.wait_after * clock)))
@@ -56,7 +58,7 @@ wave pre_wawe_{index} = plato_wawe_{index};
             self.play_fragment += textwrap.dedent('''
 //
     playWave(2, pre_wawe_{index}, 1, 0*pre_wawe_{index});
-    wait(pre_samp{index});
+    wait(variable_register15);
     playWave(2, flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index=index, wait_after=int(self.wait_after * clock)))
@@ -178,7 +180,7 @@ class SIMPLESequence:
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
-                           var_reg3=int(var_reg3),
+                           var_reg3=int(var_reg3), var_reg15=int(15),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
                            frequency=frequency, control_frequency=0,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
@@ -246,16 +248,19 @@ var variable_register3 = getUserReg(var_reg3);
     '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
+setDIO(0); 
 while (true) {{''')
         play_fragment1 += textwrap.dedent('''
 //    
-    // Wait trigger and reset 
+    // Wait trigger and reset
+    //
     waitDIOTrigger();
     setDouble('oscs/{nco_control_id}/freq', {control_frequency});
     variable_register0 = getUserReg(var_reg0);
     variable_register1 = getUserReg(var_reg1);
     variable_register2 = getUserReg(var_reg2);
     variable_register3 = getUserReg(var_reg3);
+    variable_register15 = getUserReg(15);
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
@@ -384,6 +389,10 @@ var variable_register3 = getUserReg(var_reg3);
     def set_offset(self, channel, offset):
         #assert (np.abs(offset) <= 0.5)
         self.awg.set_offset(channel, offset)
+
+    def set_prepulse_delay(self, delay):
+        delay_cycles = int(np.round(delay * self.awg._clock/8))
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg15'], delay_cycles)
 
     def set_length(self, length):
         # length in seconds

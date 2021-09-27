@@ -796,7 +796,7 @@ class gauss_hd_excitation_pulse(MeasurementState):
     def get_pulse_sequence(self, phase):
         channel_pulses = [
             (c, self.device.pg.gauss_hd, float(a) * float(self.metadata['amplitude']) * np.exp(1j * phase),
-             float(self.metadata['sigma']), float(self.metadata['alpha']),float(self.metadata['phase']))
+             float(self.metadata['sigma']), float(self.metadata['alpha']), float(self.metadata['phase']))
             for c, a in self.channel_amplitudes.metadata.items()]
         '''Warning'''
         pulse = [self.device.pg.pmulti(self.device, float(self.metadata['length']), *tuple(channel_pulses))]

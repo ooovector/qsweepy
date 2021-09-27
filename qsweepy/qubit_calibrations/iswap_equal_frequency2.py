@@ -10,6 +10,166 @@ from qsweepy import zi_scripts
 from qsweepy.qubit_calibrations import Ramsey2 as Ramsey
 from qsweepy.qubit_calibrations import calibrated_readout2 as calibrated_readout
 
+
+
+
+
+
+def iswap_rabi(device, qubit_id,  gate, frequencies, amplitudes, lengths,
+               gate2=None, pre_pulse = None, filter_parameters = None, gate_nums = 1):
+    from .calibrated_readout import get_calibrated_measurer
+    pre_pause = float(gate.metadata['pre_pause'])
+    post_pause = float(gate.metadata['post_pause'])
+
+    readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
+
+    #sequence difinition
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    ex_channel = device.awg_channels[exitation_channel]
+    if ex_channel.is_iq():
+        control_seq_id = ex_channel.parent.sequencer_id
+    else:
+        control_seq_id = ex_channel.channel//2
+    ex_sequencers = []
+
+    for seq_id in device.pre_pulses.seq_in_use:
+        if seq_id != control_seq_id:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses = [])
+        else:
+            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+            control_sequence = ex_seq
+            print('control_sequence=',control_sequence)
+        device.pre_pulses.set_seq_offsets(ex_seq)
+        device.pre_pulses.set_seq_prepulses(ex_seq)
+        #device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+        ex_seq.start()
+        ex_sequencers.append(ex_seq)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer.start()
+
+
+
+    class ParameterSetter:
+        def __init__(self):
+
+            self.lengths = lengths
+            self.amplitudes = amplitudes
+
+            self.amplitude = 0
+            self.frequency = 0
+            self.length = 0
+
+            self.ex_sequencers = ex_sequencers
+            self.prepare_seq = []
+            self.readout_sequencer = readout_sequencer
+            self.prepare_seq.extend(pre_pulse.get_pulse_sequence(0))
+
+            if self.delay_seq_generator is None:
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+                self.prepare_seq.extend([device.pg.pmulti(device, self.lengths)])
+                self.prepare_seq.extend([device.pg.pmulti(device, 0)])
+            else:
+                self.pre_pause, self.delay_sequence, self.post_pause = self.delay_seq_generator(self.lengths)
+                self.prepare_seq.extend(self.pre_pause)
+                self.prepare_seq.extend(self.delay_sequence)
+                self.prepare_seq.extend(self.post_pause)
+            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+                                                           phase=(64/self.control_sequence.clock)*target_freq_offset*360 % 360,
+                                                           fast_control='quasi-binary'))
+            self.prepare_seq.extend(ex_pulse2.get_pulse_sequence(0))
+            # Set preparation sequence
+            sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+            self.readout_sequencer.start()
+
+
+        def frequency_setter(self, frequency):
+            self.frequency = frequency
+            #self.filler_func()
+
+        def amplitude_setter(self, amplitude):
+            self.amplitude = amplitude
+            self.filler_func()
+
+        def length_setter(self, length):
+            self.length = length
+            #self.filler_func()
+
+
+        def filler_func(self):
+
+            channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
+                                                  **{gate.metadata['carrier_name']: self.amplitude})
+            #print(channel_amplitudes1_)
+            #vf_pulse = [device.pg.pmulti(0, (gate.metadata['carrier_name'], pulses.vf, self.frequency))]
+
+            pre_sequence = [] #vf_pulse
+            if pre_pulse is not None:
+                pre_sequence = pre_sequence + pre_pulse.get_pulse_sequence(0)
+            sequence=[]
+            pulse_seq1 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                      channel_amplitudes=channel_amplitudes1_,
+                                                                      tail_length=float(gate.metadata['tail_length']),
+                                                                      length=self.length,
+                                                                      phase=0.0)
+
+            if filter_parameters is not None:
+                pass
+
+            if gate2 is not None:
+                carrier2 = gate2.metadata['carrier_name']
+                amplitude2 = float(gate2.metadata['amplitude'])
+                frequency2 = float(gate2.metadata['frequency'])
+                #frequency2 = self.frequency
+                channel_amplitudes2_ = channel_amplitudes.channel_amplitudes(device, **{carrier2: amplitude2})
+                if gate2.metadata['pulse_type'] == 'parametric':
+                    pulse_seq2 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                              channel_amplitudes=channel_amplitudes2_,
+                                                                              tail_length=float(0),
+                                                                              length=self.length,
+                                                                              phase=0.0)
+                else:
+                    #amplitude2 = -0.410 - self.amplitude
+                    #channel_pulses2_1 = [(c, device.pg.sin, 0, frequency2) for c, a in
+                    #                   channel_amplitudes2_.metadata.items()]
+                    #pulse_seq2 = [device.pg.pmulti((float(gate.metadata['tail_length'])),*tuple(channel_pulses2_1))]
+                    channel_pulses2 = [(c, device.pg.sin, amplitude2, frequency2) for c, a in
+                                       channel_amplitudes2_.metadata.items()]
+                    pulse_seq2 = [device.pg.pmulti((self.length+2*float(gate.metadata['tail_length'])), *tuple(channel_pulses2))]
+                    #channel_pulses2_1 = [(c, device.pg.sin, 0, frequency2) for c, a in
+                    #                     channel_amplitudes2_.metadata.items()]
+                    #pulse_seq2 += [device.pg.pmulti((float(gate.metadata['tail_length'])), *tuple(channel_pulses2_1))]
+
+                sequence = sequence + [device.pg.pmulti(pre_pause)] + device.pg.parallel(pulse_seq1, pulse_seq2) + [
+                    device.pg.pmulti(post_pause)]
+            else:
+                sequence = sequence + [device.pg.pmulti(pre_pause)] + pulse_seq1 + [device.pg.pmulti(post_pause)]
+
+
+            #raise ValueError('fallos')
+            #device.pg.set_seq(device.pre_pulses + pre_sequence + sequence*gate_nums + readout_trigger_seq + readout_pulse_seq)
+
+    setter = ParameterSetter()
+
+
+
+    references = {'long_process': gate.id,
+                  'readout_pulse': readout_pulse.id}
+    if gate2 is not None:
+        references['gate2'] = gate2.id
+    if pre_pulse is not None:
+        references['pre_pulse'] = pre_pulse.id
+    measurement_type = 'iswap_rabi'
+    measurement = device.sweeper.sweep(measurer,
+                                       #*extra_sweep_args,
+                                       (lengths, setter.length_setter, 'Delay', 's'),
+                                       (frequencies, setter.frequency_setter, 'Frequency', 'Hz'),
+                                       (amplitudes, setter.amplitude_setter, 'Amplitude', ''),
+                                       measurement_type = measurement_type,
+                                       references=references)
+
+
 def get_iswap_simple_sequence(device,coupler_gate, frequency_delta_gate):
     amplitude_coupler = float(coupler_gate.metadata['amplitude'])
     length_coupler = float(coupler_gate.metadata['length'])
@@ -423,149 +583,7 @@ def parametric_confuse_calibration(device, qubit_ids, coupler_gate, frequency_de
                                 references=references,
                                 metadata=metadata)
 
-def iswap_rabi(device, qubit_id,  gate, frequencies, amplitudes, lengths,
-               gate2=None, pre_pulse = None, filter_parameters = None, gate_nums = 1):
-    from .calibrated_readout import get_calibrated_measurer
-    pre_pause = float(gate.metadata['pre_pause'])
-    post_pause = float(gate.metadata['post_pause'])
 
-    readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
-
-    class ParameterSetter:
-        def __init__(self):
-            self.amplitude = 0
-            self.frequency = 0
-            self.length = 0
-
-        def frequency_setter(self, frequency):
-            self.frequency = frequency
-            #self.filler_func()
-
-        def amplitude_setter(self, amplitude):
-            self.amplitude = amplitude
-            self.filler_func()
-
-        def length_setter(self, length):
-            self.length = length
-            #self.filler_func()
-
-        def filter_function(self, x, param):
-            sign = np.sign(x)
-            x_new = np.abs(x/1e9)
-            delay_part = np.exp(-1j*2*np.pi*sign*x_new*param[0])
-            attenuation_part = np.exp(-x_new**(param[1])*param[2])
-            phase_part = np.exp(1j*sign*x_new**(param[1])*param[3])
-            S21 = delay_part*attenuation_part*phase_part
-            S21_new = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(S21), norm='ortho'))
-            #S21_new[:(len(x_new) // 2 - len(x_new) // 4)] = 0
-            S21_new = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(S21_new), norm='ortho'))
-            return S21_new
-
-        def filter_correction(self, sig, param, freq_cut_off = 0.5):
-
-            pre_sig = np.zeros(len(sig) // 4)
-            sig_full_1 = np.append(pre_sig, sig / 2)
-            sig_full_1 = np.append(sig_full_1, pre_sig)
-            sig_full_1 = np.append(sig_full_1, pre_sig)
-            sig_full_1 = np.append(sig_full_1, sig / 2)
-            sig_full_1 = np.append(sig_full_1, pre_sig)
-
-            sig_full_2 = np.append(pre_sig, -sig / 2)
-            sig_full_2 = np.append(sig_full_2, pre_sig)
-            sig_full_2 = np.append(sig_full_2, pre_sig)
-            sig_full_2 = np.append(sig_full_2, sig / 2)
-            sig_full_2 = np.append(sig_full_2, pre_sig)
-
-            x = np.linspace(-1 / 2, 1 / 2, len(sig_full_1)) * 2.4e9
-            function = self.filter_function(x, param)
-
-            function_zero = np.zeros((len(sig_full_2) - int(freq_cut_off*len(sig_full_2))) // 2, dtype='complex')
-            function_zero = np.append(function_zero, np.ones(int(freq_cut_off*len(sig_full_2))))
-            function_zero = np.append(function_zero, np.zeros((len(sig_full_2) - len(function_zero)), dtype='complex'))
-
-            fft_sig_filt_1 = (np.fft.fftshift(np.fft.fft(sig_full_1))) / (function) * function_zero
-            fft_sig_filt_2 = (np.fft.fftshift(np.fft.fft(sig_full_2))) / (function) * function_zero
-
-            sig_filt1 = np.fft.ifft(np.fft.fftshift((fft_sig_filt_1)))
-            sig_filt2 = np.fft.ifft(np.fft.fftshift((fft_sig_filt_2)))
-            sig_filt = (sig_filt1) + (sig_filt2)
-
-            return sig_filt[len(sig)*7//4:len(sig)*11//4]
-
-        def filler_func(self):
-
-            channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
-                                                  **{gate.metadata['carrier_name']: self.amplitude})
-            #print(channel_amplitudes1_)
-            #vf_pulse = [device.pg.pmulti(0, (gate.metadata['carrier_name'], pulses.vf, self.frequency))]
-
-            pre_sequence = [] #vf_pulse
-            if pre_pulse is not None:
-                pre_sequence = pre_sequence + pre_pulse.get_pulse_sequence(0)
-            sequence=[]
-            pulse_seq1 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
-                                                                      channel_amplitudes=channel_amplitudes1_,
-                                                                      tail_length=float(gate.metadata['tail_length']),
-                                                                      length=self.length,
-                                                                      phase=0.0)
-
-            if filter_parameters is not None:
-                sig_filt = self.filter_correction(pulse_seq1[0][gate.metadata['carrier_name']], filter_parameters)
-
-                pulse_seq1[0][gate.metadata['carrier_name']] = sig_filt
-
-            if gate2 is not None:
-                carrier2 = gate2.metadata['carrier_name']
-                amplitude2 = float(gate2.metadata['amplitude'])
-                frequency2 = float(gate2.metadata['frequency'])
-                #frequency2 = self.frequency
-                channel_amplitudes2_ = channel_amplitudes.channel_amplitudes(device, **{carrier2: amplitude2})
-                if gate2.metadata['pulse_type'] == 'parametric':
-                    pulse_seq2 = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
-                                                                              channel_amplitudes=channel_amplitudes2_,
-                                                                              tail_length=float(0),
-                                                                              length=self.length,
-                                                                              phase=0.0)
-                else:
-                    #amplitude2 = -0.410 - self.amplitude
-                    #channel_pulses2_1 = [(c, device.pg.sin, 0, frequency2) for c, a in
-                    #                   channel_amplitudes2_.metadata.items()]
-                    #pulse_seq2 = [device.pg.pmulti((float(gate.metadata['tail_length'])),*tuple(channel_pulses2_1))]
-                    channel_pulses2 = [(c, device.pg.sin, amplitude2, frequency2) for c, a in
-                                       channel_amplitudes2_.metadata.items()]
-                    pulse_seq2 = [device.pg.pmulti((self.length+2*float(gate.metadata['tail_length'])), *tuple(channel_pulses2))]
-                    #channel_pulses2_1 = [(c, device.pg.sin, 0, frequency2) for c, a in
-                    #                     channel_amplitudes2_.metadata.items()]
-                    #pulse_seq2 += [device.pg.pmulti((float(gate.metadata['tail_length'])), *tuple(channel_pulses2_1))]
-
-                sequence = sequence + [device.pg.pmulti(pre_pause)] + device.pg.parallel(pulse_seq1, pulse_seq2) + [
-                    device.pg.pmulti(post_pause)]
-            else:
-                sequence = sequence + [device.pg.pmulti(pre_pause)] + pulse_seq1 + [device.pg.pmulti(post_pause)]
-
-            readout_trigger_seq = device.trigger_readout_seq
-            readout_pulse_seq = readout_pulse.pulse_sequence
-            #raise ValueError('fallos')
-            device.pg.set_seq(device.pre_pulses + pre_sequence + sequence*gate_nums + readout_trigger_seq + readout_pulse_seq)
-    setter = ParameterSetter()
-
-    #readout_pulse, measurer = get_calibrated_measurer(device, [gate.metadata['q1'], gate.metadata['q2']])
-    #readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition='01')
-
-    references = {'long_process': gate.id,
-                  'readout_pulse': readout_pulse.id}
-    if gate2 is not None:
-        references['gate2'] = gate2.id
-    if pre_pulse is not None:
-        references['pre_pulse'] = pre_pulse.id
-    measurement_type = 'iswap_rabi'
-    measurement = device.sweeper.sweep(measurer,
-                                       #*extra_sweep_args,
-                                       (lengths, setter.length_setter, 'Delay', 's'),
-                                       (frequencies, setter.frequency_setter, 'Frequency', 'Hz'),
-                                       (amplitudes, setter.amplitude_setter, 'Amplitude', ''),
-                                       measurement_type = measurement_type,
-                                       references=references)
 
 def filter_param_scan(device, qubit_id, gate1, gate2, parameter_name, parameter_values, lengths, amplitudes,
                       pre_pulse = None, init_filter_param = None, gate_nums=1):

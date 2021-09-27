@@ -77,7 +77,7 @@ class hardware_setup():
         if self.device_settings['use_rf_switch']:
             self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
 
-        self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2e9, delay_int=0)
+        self.hdawg = instruments.ZIDevice(self.device_settings['hdawg_address'], devtype='HDAWG', clock=2.4e9, delay_int=0)
 
         for channel_id in range(8):
             self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/range' % channel_id, 1)

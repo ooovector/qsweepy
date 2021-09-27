@@ -37,7 +37,7 @@ var delay = getUserReg({trig_delay_reg});
 
 while (true) {{
    // Wait trigger from adc. The same trigger channel as for qubit control sequence.
-   wait(10000);
+   wait(3000);
    waitDigTrigger(1);
    //resetOscPhase();
    //wait(10);
