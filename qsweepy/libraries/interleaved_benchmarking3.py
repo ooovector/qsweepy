@@ -3,6 +3,7 @@ import numpy as np
 import textwrap
 import copy
 import matplotlib.pyplot as plt
+import time
 
 class HDAWG_PRNG:
     def __init__(self, seed=0xcafe, lower=0, upper=2**16-1):
@@ -22,7 +23,7 @@ class HDAWG_PRNG:
 class interleaved_benchmarking:
     #def __init__(self, measurer, set_seq, interleavers=None, random_sequence_num=8):
     def __init__(self, measurer, ex_sequencers, seeds, seq_lengths, interleavers=None, random_sequence_num=8,
-                 two_qubit_num=1, random_gate_num=1, two_qubit_name='fSIM'):
+                 two_qubit_num=1, random_gate_num=1, readout_sequencer=None, two_qubit_name='fSIM'):
 
         self.seeds = seeds
         self.seq_lengths = np.asarray(seq_lengths)
@@ -34,6 +35,7 @@ class interleaved_benchmarking:
         self.sequence_length_register = 0
         self.two_qubit_gate_register = 2
         self.random_gate_register = 3
+        self.readout_sequencer = readout_sequencer
 
         self.measurer = measurer
         self.ex_sequencers = ex_sequencers
@@ -73,9 +75,10 @@ class interleaved_benchmarking:
 
 
     def return_hdawg_program(self, ex_seq):
-        random_gate_num=24
+        random_gate_num = len(self.interleavers)
         definition_part =  textwrap.dedent('''
 const random_gate_num = {random_gate_num};
+setPRNGRange(0, random_gate_num-1);
 var i;
 var rand_value;'''.format(random_gate_num=random_gate_num))
 
@@ -86,7 +89,8 @@ void clifford_switch(argument1) {
         play_part = textwrap.dedent('''
 // Clifford play part
     setPRNGSeed(variable_register1);
-    setPRNGRange(0, random_gate_num-1);
+    
+    wait(5);
     for (i = 0; i < variable_register0; i = i + 1) {{
         
         repeat(variable_register3){{
@@ -166,9 +170,14 @@ void clifford_switch(argument1) {
         return name, self.interleavers[name]
 
     def set_sequence_length(self, sequence_length):
+        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
         self.sequence_length = sequence_length
         for i, ex_seq in enumerate(self.ex_sequencers):
+            ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
+            ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+
+        #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
     def set_sequence_length_and_regenerate(self, sequence_length):
         print('Bull happens')
@@ -300,11 +309,23 @@ void clifford_switch(argument1) {
         # self.current_seq = seq
         #TODO set seed for PRNG
         self.seq_id = seq_id
+        self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
         for i, ex_seq in enumerate(self.ex_sequencers):
+            ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
                                     self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, seq_id])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
+            ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+        #time.sleep(0.001)
+
+        #time.sleep(0.01)
+        #for i, ex_seq in enumerate(self.ex_sequencers):
+            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+        time.sleep(0.01)
+        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
 
     def measure(self):
@@ -312,10 +333,17 @@ void clifford_switch(argument1) {
         #     print('Some bullshit happens(')
             # self.prepare_random_interleaving_sequences()
             # self.set_interleaved_sequence(0)
+        self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        time.sleep(0.01)
+        self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
         measurement = self.measurer.measure()
 
         # measurement['Pulse sequence'] = np.array([object()])
-        for i, ex_seq in enumerate(self.ex_sequencers):
-            measurement['seed'] = self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, self.seq_id]
+
+        #for i, ex_seq in enumerate(self.ex_sequencers):
+        measurement['seed'] = self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], :, self.seq_id]
+
+        #print(measurement['seed'])
+
 
         return measurement

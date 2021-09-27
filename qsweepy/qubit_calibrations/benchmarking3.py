@@ -33,7 +33,7 @@ def create_flat_dataset(measurement, dataset_name):
 
 def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
                            pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0,
-                           random_gate_num=1):
+                           random_gate_num=1, seeds = None, shuffle=False):
     channel_amplitudes_ = {}
     pi2_pulses = {}
     pi_pulses = {}
@@ -79,7 +79,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
 
     generators = {}
     for qubit_id in qubit_ids:
-        HZ = {'X': {'pulses': pi_pulses[qubit_id].get_pulse_sequence(0),
+        HZ1 = {'X': {'pulses': pi_pulses[qubit_id].get_pulse_sequence(0),
                     'unitary':  tensor_product(np.asarray([[0, 1], [1, 0]]), qubit_id), 'price': 1.0},
               'X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(0),
                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id), 'price': 1.0},
@@ -89,6 +89,22 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
               'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, 0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price': 0.1},
               '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., 0,qubit_id), 'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price': 0.1},
               'I': {'pulses': get_pulse_seq_z(0,0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id), 'price': 0.1}
+              }
+        HZ = {
+              'X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(0),
+                      'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id),
+                      'price': 1.0},
+              '-X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(np.pi),
+                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, 1j], [1j, 1]]), qubit_id),
+                       'price': 1.0},
+              'Z': {'pulses': get_pulse_seq_z(np.pi, 0, qubit_id),
+                    'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price': 0.1},
+              'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, 0, qubit_id),
+                      'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price': 0.1},
+              '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., 0, qubit_id),
+                       'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price': 0.1},
+              'I': {'pulses': get_pulse_seq_z(0, 0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id),
+                    'price': 0.1}
               }
 
         generators[qubit_id] = HZ
@@ -100,6 +116,16 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         HZ_group = clifford.generate_group(generators[qubit_ids[0]])
     else:
         raise ValueError ('More than two qubits are unsupported')
+    HZ_group2 =  {
+              'X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(0),
+                      'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id), 'price': 1.0},
+              '-X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(np.pi),
+                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, 1j], [1j, 1]]), qubit_id), 'price': 1.0},
+              'Z': {'pulses': get_pulse_seq_z(np.pi, 0, qubit_id),
+                    'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price': 0.1},
+              'I': {'pulses': get_pulse_seq_z(0,0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id), 'price': 0.1}
+              }
+    HZ_group = HZ
 
     print ('group length:', len(HZ_group))
 
@@ -124,18 +150,25 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-
-    seeds = np.random.randint(65536, size=(len(seq_lengths), len(ex_sequencers), random_sequence_num))
+    if seeds is None:
+        seeds = np.random.randint(65536, size=(len(seq_lengths), len(ex_sequencers), random_sequence_num))
     references = {'readout_pulse': qubit_readout_pulse.id}
+
+    #TODO readout sequence
+    #ro_seq = [device.pg.pmulti(pause_length)]+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence()
+    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+    # Readout sequence
+    readout_sequencer.start()
 
     pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device, ex_sequencers, seeds, seq_lengths,
                                                                   interleavers=HZ_group,
                                                                   random_sequence_num=random_sequence_num,
                                                                   two_qubit_num=two_qubit_num,
-                                                                  random_gate_num=random_gate_num)
+                                                                  random_gate_num=random_gate_num,
+                                                                  readout_sequencer = readout_sequencer)
     gates=[]
     for name, gate in HZ_group.items():
-        #print(name)
+        print(name)
         #print(gate['unitary'])
         gates.append(gate['unitary'])
 
@@ -145,10 +178,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     prepare_seq = pi2_bench.create_hdawg_generator()
     sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
 
-    #TODO readout sequence
-    #ro_seq = [device.pg.pmulti(pause_length)]+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence()
-    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
-    readout_sequencer.start()
+
 
     pi2_bench.random_sequence_num = random_sequence_num
     seeds_ids = np.arange(seeds.shape[2])
@@ -182,7 +212,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     #fitter_arguments=fitter_arguments,
                                     measurement_type='clifford_bench',
                                     metadata={'qubit_ids': ','.join(qubit_ids)},
-                                    shuffle=True,
+                                    shuffle=shuffle,
                                     references=references)
 
     ## interleaver measurement is found, bench "interleaver" gate

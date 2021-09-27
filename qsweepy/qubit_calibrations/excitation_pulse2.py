@@ -232,7 +232,7 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, transition='01', chan
              # TODO
     #         '''Warning'''
              return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle,
-                                                                               transition=transition, recalibrate=False)
+                                                                              transition=transition, recalibrate=False)
              ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, transition=transition, recalibrate=recalibrate)
          ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition=transition, recalibrate=False)
 

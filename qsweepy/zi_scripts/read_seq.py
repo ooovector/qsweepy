@@ -49,8 +49,10 @@ var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
         play_fragment = self.play_fragment
 
         play_fragment1 = '''
+
 while (true) {{
     // Wait DIO trigger from qubit control sequencer.
+    setDIO(0);
     wait(3000);
     waitDigTrigger(1);
     setDIO(1);
