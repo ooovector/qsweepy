@@ -522,6 +522,7 @@ def get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_ang
 
 def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, preferred_length=None, transition='01',
                                      alpha=0, phase=0):
+    from .excitation_pulse2 import get_rect_excitation_pulse
     # max_num_pulses =
     # get T2 result
     # coherence_measurement = get_Ramsey_coherence_measurement(device=device, qubit_id=qubit_id)

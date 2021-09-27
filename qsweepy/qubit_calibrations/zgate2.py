@@ -3,6 +3,7 @@ from qsweepy.qubit_calibrations import Ramsey2 as Ramsey
 from qsweepy.qubit_calibrations import relaxation2 as relaxation
 from qsweepy.qubit_calibrations import echo2 as echo
 from qsweepy.qubit_calibrations import channel_amplitudes
+import numpy as np
 #from qsweepy.qubit_calibrations import sequence_control
 #from qsweepy import zi_scripts
 
@@ -43,10 +44,15 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
             if 'pulse_type' in gate.metadata:
                 if gate.metadata['pulse_type'] == 'cos':
                     frequency = float(gate.metadata['frequency'])
+                    tail_length = float(gate.metadata['tail_length'])
+                    phase = 0.0
                     #print(frequency)
                     #print(self.length)
-                    channel_pulses = [(c, device.pg.sin, self.amplitude, frequency) for c, a in
-                                      channel_amplitudes_.metadata.items()]
+                    #channel_pulses = [(c, device.pg.sin, self.amplitude, frequency) for c, a in
+                    #                  channel_amplitudes_.metadata.items()]
+                    fast_control = True
+                    channel_pulses = [(c, device.pg.rect_cos, a * np.exp(1j * phase), tail_length, fast_control, frequency) for
+                                      c, a in  channel_amplitudes_.items()]
                     gate_pulse = [device.pg.pmulti(device, self.length, *tuple(channel_pulses))]
             else:
                 gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
@@ -133,6 +139,7 @@ def zgate_amplitude_relaxation(device, gate, lengths, amplitudes):
             self.length = length
             channel_amplitudes_ = channel_amplitudes.channel_amplitudes(device, **{gate.metadata[
                                                                                       'carrier_name']: self.amplitude})
+
 
             gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                                       channel_amplitudes=channel_amplitudes_,

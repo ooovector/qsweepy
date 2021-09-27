@@ -12,7 +12,7 @@ device_settings = {
                    'hdawg_address': 'hdawg-dev8108',
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
                    'adc_timeout': 10,
-                   'adc_trig_rep_period': 20,  #10 -  12.5 MHz rate period
+                   'adc_trig_rep_period': 10,  #10 -  12.5 MHz rate period
                    'adc_trig_width': 2,  # 32 ns trigger length
                    }
 
@@ -31,7 +31,7 @@ pulsed_settings = {#'lo1_power': 18,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
                    'lo1_freq': 3.70e9,
-                   'pna_freq': 7.258e9, #7.2111e9 7.257e9 7.232e9 7.2275e9 7.1e9
+                   'pna_freq': 7.195e9, #7.258e9 7.2111e9 7.257e9 7.232e9 7.2275e9 7.1e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,
@@ -191,8 +191,8 @@ class hardware_setup():
         self.hdawg.set_clock(self.pulsed_settings['ex_clock'])
         self.hdawg.set_clock_source(0)
 
-        #self.hdawg.set_trigger_impedance_1e3()
-        self.hdawg.set_trigger_impedance_50()
+        self.hdawg.set_trigger_impedance_1e3()
+        #self.hdawg.set_trigger_impedance_50()
         self.hdawg.set_dig_trig1_source([4, 4, 4, 4])
         self.hdawg.set_dig_trig1_slope([1, 1, 1, 1])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
                                                       # 2 - Falling edge trigger, 3 - Rising or falling edge trigger
