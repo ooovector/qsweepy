@@ -13,6 +13,24 @@ import numpy as np
 from qsweepy.libraries.pulses import *
 
 
+def create_gates_dataset(device, gates):
+    gate_ids = np.arange(len(gates))
+    state_ids = np.arange(gates[0]['unitary'].shape[0])
+    gate_id_parameter = MeasurementParameter(gate_ids, None, 'gate_id', '')
+    state_ids_in = MeasurementParameter(state_ids, None, 'state_id_in', '')
+    state_ids_out = MeasurementParameter(state_ids, None, 'state_id_out', '')
+
+    measurement = MeasurementState(sample_name=device.exdir_db.sample_name, measurement_type='gate_unitaries')
+
+    gates_array = np.asarray([g['unitary'] for g in gates.values()])
+
+    dataset = MeasurementDataset(parameters=(gate_id_parameter, state_ids_out, state_ids_in), data=gates_array)
+    measurement.datasets['gate_unitaries'] = dataset
+
+    device.exdir_db.save_measurement(measurement)
+    return measurement
+
+
 def create_flat_dataset(measurement, dataset_name):
     dataset = measurement.datasets[dataset_name]
     averaging_parameter_name = 'Random sequence id'
@@ -172,7 +190,10 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         #print(gate['unitary'])
         gates.append(gate['unitary'])
 
-    np.savez('HZ_group',np.asarray(gates))
+    np.savez('HZ_group', np.asarray(gates))
+
+    gates_dataset = create_gates_dataset(device, HZ_group)
+    references['gate_unitaries'] = gates_dataset.id
 
     #TODO prepare_seq
     prepare_seq = pi2_bench.create_hdawg_generator()
