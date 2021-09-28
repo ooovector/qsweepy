@@ -261,6 +261,7 @@ while (true) {{''')
     variable_register2 = getUserReg(var_reg2);
     variable_register3 = getUserReg(var_reg3);
     variable_register15 = getUserReg(15);
+    setPRNGSeed(variable_register1);
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);

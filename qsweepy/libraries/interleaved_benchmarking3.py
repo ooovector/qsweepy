@@ -78,17 +78,14 @@ class interleaved_benchmarking:
         random_gate_num = len(self.interleavers)
         definition_part =  textwrap.dedent('''
 const random_gate_num = {random_gate_num};
+//setPRNGSeed(variable_register1);
 setPRNGRange(0, random_gate_num-1);
 var i;
 var rand_value;'''.format(random_gate_num=random_gate_num))
 
-        procedure_part = '''
-//void definition
-void clifford_switch(argument1) {
-    switch(argument1){'''
         play_part = textwrap.dedent('''
 // Clifford play part
-    setPRNGSeed(variable_register1);
+    //setPRNGSeed(variable_register1);
     
     wait(5);
     for (i = 0; i < variable_register0; i = i + 1) {{
@@ -173,9 +170,9 @@ void clifford_switch(argument1) {
         #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
         self.sequence_length = sequence_length
         for i, ex_seq in enumerate(self.ex_sequencers):
-            ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
-            ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
 
         #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
@@ -309,23 +306,23 @@ void clifford_switch(argument1) {
         # self.current_seq = seq
         #TODO set seed for PRNG
         self.seq_id = seq_id
-        self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
         for i, ex_seq in enumerate(self.ex_sequencers):
-            ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
                                     self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, seq_id])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
-            ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
         #time.sleep(0.001)
 
         #time.sleep(0.01)
         #for i, ex_seq in enumerate(self.ex_sequencers):
             #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
-        time.sleep(0.01)
+        #time.sleep(0.01)
         #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-        self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+        #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
 
     def measure(self):
@@ -333,9 +330,9 @@ void clifford_switch(argument1) {
         #     print('Some bullshit happens(')
             # self.prepare_random_interleaving_sequences()
             # self.set_interleaved_sequence(0)
-        self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-        time.sleep(0.01)
-        self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        #time.sleep(0.01)
+        #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
         measurement = self.measurer.measure()
 
         # measurement['Pulse sequence'] = np.array([object()])
