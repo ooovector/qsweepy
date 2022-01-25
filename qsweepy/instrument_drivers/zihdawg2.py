@@ -24,8 +24,7 @@ class ZIDevice():
 
         # Settings
         apilevel_example = 6  # The API level supported by this example.
-        (self.daq, self.device, _) = zhinst.utils.create_api_session(device_id, apilevel_example,
-                                                                     required_devtype=devtype)
+        (self.daq, self.device, _) = zhinst.utils.create_api_session(device_id, apilevel_example)
         zhinst.utils.api_server_version_check(self.daq)
         self.device_id = device_id
         zhinst.utils.disable_everything(self.daq, self.device)
@@ -128,9 +127,6 @@ class ZIDevice():
         self.set_dig_trig2_slope(slope=self.slope_dig_trig_2)
         self.known_programs = {}  # dictionary of AWG pograms for each sequencer
 
-        self.awgModule = self.daq.awgModule()
-        self.awgModule.set('awgModule/device', self.device)
-        self.awgModule.execute()
 
     def set_sequence(self, sequencer_id, sequence):
         #awg_program = self.current_programs[sequencer_id]
@@ -139,19 +135,25 @@ class ZIDevice():
 
         if (sequencer_id > (self.num_seq - 1)):
             print('Sequencer #{}: awg_config={}. Max sequencer number ={}'.format(sequencer_id, self.awg_config, (self.num_seq - 1)))
-        self.awgModule.set('awgModule/index', sequencer_id)
-        self.awgModule.set('awgModule/compiler/sourcestring', awg_program)
+        self.awgModule = self.daq.awgModule()
+        self.awgModule.set('device', self.device)
+        self.awgModule.set('index', sequencer_id)
+        self.awgModule.execute()
+        self.awgModule.set('awg/enable', 1);
+        self.awgModule.set('awg/enable', 0);
+        self.awgModule.set('compiler/sourcestring', awg_program)
+
         start = timeit.default_timer()
-        while self.awgModule.getInt('awgModule/compiler/status') == -1:
+        while self.awgModule.getInt('compiler/status') == -1:
             time.sleep(0.1)
-        if self.awgModule.getInt('awgModule/compiler/status') == 1:
+        if self.awgModule.getInt('compiler/status') == 1:
             # compilation failed, raise an exceptionawg
-            raise Exception(self.awgModule.getString('awgModule/compiler/statusstring'))
-        if self.awgModule.getInt('awgModule/compiler/status') == 0:
+            raise Exception(self.awgModule.getString('compiler/statusstring'))
+        if self.awgModule.getInt('compiler/status') == 0:
             print("Sequencer #{}: Compilation successful with no warnings, will upload the program to the instrument.".format(sequencer_id))
-        if self.awgModule.getInt('awgModule/compiler/status') == 2:
+        if self.awgModule.getInt('compiler/status') == 2:
             print("Sequencer #{}: Compilation successful with warnings, will upload the program to the instrument.")
-            print("Sequencer #{}: Compiler warning: ", self.awgModule.getString('awgModule/compiler/statusstring'))
+            print("Sequencer #{}: Compiler warning: ", self.awgModule.getString('compiler/statusstring'))
         # Wait for the waveform upload to finish
         time.sleep(0.1)
         i = 0
@@ -190,8 +192,10 @@ class ZIDevice():
         self.daq.sync()
 
     def load_instructions(self, sequencer_id, json_str):
+        if not len(json_str) % 2:
+            json_str += '\n'
         self.daq.setVector('/' + self.device + '/awgs/{}/commandtable/data'.format(sequencer_id), json_str)
-        #self.daq.sync()
+        self.daq.sync()
         return
 
     def programs(self):

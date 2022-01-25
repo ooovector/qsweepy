@@ -194,7 +194,6 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
     # We neet to set readout sequence to awg readout channel
     # readout pulse parameters ('length' and 'amplitude') we get from qubit_readout_pulse.metadata
-    # device.pg.set_seq(device.pre_pulses + excitation_pulse_sequence + device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence())
     re_channel = device.awg_channels[readout_channel]
     sequence = zi_scripts.READSequence(re_channel.parent.sequencer_id, device.modem.awg)
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel,

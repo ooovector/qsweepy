@@ -1,6 +1,6 @@
 from qsweepy.qubit_calibrations import calibrated_readout2 as calibrated_readout
 from qsweepy.libraries import clifford
-from qsweepy.libraries import interleaved_benchmarking3 as interleaved_benchmarking
+from qsweepy.libraries import interleaved_benchmarking4 as interleaved_benchmarking
 from qsweepy.qubit_calibrations import Ramsey2 as Ramsey
 from qsweepy.qubit_calibrations import excitation_pulse2 as excitation_pulse
 from qsweepy.qubit_calibrations import channel_amplitudes
@@ -51,7 +51,7 @@ def create_flat_dataset(measurement, dataset_name):
 
 def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
                            pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0,
-                           random_gate_num=1, seeds = None, shuffle=False):
+                           random_gate_num=1, seeds = None, shuffle=False, min_pulses=0, seq_lengths=None, additional_metadata=None):
     channel_amplitudes_ = {}
     pi2_pulses = {}
     pi_pulses = {}
@@ -77,11 +77,14 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
         pi_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi)
         channel_amplitudes_[qubit_id] = channel_amplitudes.channel_amplitudes(
             device.exdir_db.select_measurement_by_id(pi2_pulses[qubit_id].references['channel_amplitudes']))
-
-    seq_lengths = np.asarray(np.round(np.linspace(0, max_pulses, seq_lengths_num)), int)
+    if seq_lengths is None:
+        seq_lengths = np.asarray(np.round(np.linspace(min_pulses, max_pulses, seq_lengths_num)), int)
+    else:
+        seq_lengths = seq_lengths
 
     def get_pulse_seq_z(z_phase, length, qubit_id):
         fast_control = False
+        length = float(pi2_pulses[qubit_id].metadata['length'])
         z_pulse = [(c, device.pg.virtual_z, z_phase * 360 / 2 / np.pi, fast_control) for c, a in
                    channel_amplitudes_[qubit_id].items()]
         sequence_z = [device.pg.pmulti(device, length, *tuple(z_pulse))]
@@ -97,17 +100,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
 
     generators = {}
     for qubit_id in qubit_ids:
-        HZ1 = {'X': {'pulses': pi_pulses[qubit_id].get_pulse_sequence(0),
-                    'unitary':  tensor_product(np.asarray([[0, 1], [1, 0]]), qubit_id), 'price': 1.0},
-              'X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(0),
-                      'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id), 'price': 1.0},
-              '-X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(np.pi),
-                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, 1j], [1j, 1]]), qubit_id), 'price': 1.0},
-              'Z': {'pulses': get_pulse_seq_z(np.pi, 0, qubit_id), 'unitary': tensor_product([[1, 0], [0, -1]], qubit_id), 'price': 0.1},
-              'Z/2': {'pulses': get_pulse_seq_z(np.pi / 2, 0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1j]], qubit_id), 'price': 0.1},
-              '-Z/2': {'pulses': get_pulse_seq_z(-np.pi / 2., 0,qubit_id), 'unitary': tensor_product([[1, 0], [0, -1j]], qubit_id), 'price': 0.1},
-              'I': {'pulses': get_pulse_seq_z(0,0, qubit_id), 'unitary': tensor_product([[1, 0], [0, 1]], qubit_id), 'price': 0.1}
-              }
+
         HZ = {
               'X/2': {'pulses': pi2_pulses[qubit_id].get_pulse_sequence(0),
                       'unitary': np.sqrt(0.5) * tensor_product(np.asarray([[1, -1j], [-1j, 1]]), qubit_id),
@@ -126,18 +119,21 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
               }
 
         generators[qubit_id] = HZ
-
+    if two_qubit_gate is not None:
+        for name, i in two_qubit_gate.items():
+            two_qubit_name = name
+    else:
+        two_qubit_name = 'None'
     if len(qubit_ids) == 2:
         #TODO
         HZ_group = clifford.two_qubit_clifford(*tuple([g for g in generators.values()]),
-                                               plus_op_parallel=device.pg.parallel, two_qubit_gate=two_qubit_gate)
+                                               plus_op_parallel=device.pg.parallel, two_qubit_gate=two_qubit_gate, two_qubit_gate_name=two_qubit_name)
     elif len(qubit_ids) == 1:
         HZ_group = clifford.generate_group(generators=generators[qubit_ids[0]], Clifford_group=False)
     else:
         raise ValueError ('More than two qubits are unsupported')
 
     #HZ_group = HZ
-
     print ('group length:', len(HZ_group))
 
     # TODO qubit sequencer
@@ -170,13 +166,13 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
     # Readout sequence
 
-
-    pi2_bench = interleaved_benchmarking.interleaved_benchmarking(readout_device, ex_sequencers, seeds, seq_lengths,
+    pi2_bench = interleaved_benchmarking.interleaved_benchmarking(device, readout_device, ex_sequencers, seeds, seq_lengths,
                                                                   interleavers=HZ_group,
                                                                   random_sequence_num=random_sequence_num,
                                                                   two_qubit_num=two_qubit_num,
                                                                   random_gate_num=random_gate_num,
-                                                                  readout_sequencer = readout_sequencer)
+                                                                  readout_sequencer = readout_sequencer,
+                                                                  two_qubit=two_qubit_gate)
     gates=[]
     for name, gate in HZ_group.items():
         print(name)
@@ -189,17 +185,20 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     references['gate_unitaries'] = gates_dataset.id
 
     #TODO prepare_seq
-    prepare_seq = pi2_bench.create_hdawg_generator()
-    sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
-
-    readout_sequencer.start()
+    #prepare_seq = pi2_bench.create_hdawg_generator()
+    #sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
+    #readout_sequencer.start()
 
     pi2_bench.random_sequence_num = random_sequence_num
     seeds_ids = np.arange(seeds.shape[2])
 
     references.update({('pi2_pulse', qubit_id): pi2_pulses[qubit_id].id for qubit_id in qubit_ids})
     #references = references.update({('pi_pulse', qubit_id): pi_pulses[qubit_id].id for qubit_id in qubit_ids})
-
+    metadata = {'qubit_ids': ','.join(qubit_ids),
+                'two_qubit_name': two_qubit_name,
+                'two_qubit_num': two_qubit_num}
+    if additional_metadata is not None:
+        metadata.update(additional_metadata)
     # TODO
     # pi2_bench.prepare_random_interleaving_sequences()
 
@@ -207,7 +206,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     found = False
     try:
         clifford_bench = device.exdir_db.select_measurement(measurement_type='clifford_bench',
-                                    metadata={'qubit_ids': ','.join(qubit_ids)},
+                                    metadata=metadata,
                                     references_that=references)
         found = True
     except IndexError:
@@ -225,7 +224,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     *params,
                                     #fitter_arguments=fitter_arguments,
                                     measurement_type='clifford_bench',
-                                    metadata={'qubit_ids': ','.join(qubit_ids)},
+                                    metadata=metadata,
                                     shuffle=shuffle,
                                     references=references)
 
@@ -245,7 +244,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                     *params,
                                     fitter_arguments=fitter_arguments,
                                     measurement_type='interleaved_bench',
-                                    metadata={'qubit_ids': ','.join(qubit_ids)},
+                                    metadata=metadata,
                                     shuffle=shuffle,
                                     references=references)
 

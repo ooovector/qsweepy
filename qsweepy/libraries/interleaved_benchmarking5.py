@@ -1,12 +1,16 @@
 from qsweepy.libraries import sweep
 import numpy as np
 import textwrap
+from qsweepy.qubit_calibrations import sequence_control
+import json
 import copy
 import matplotlib.pyplot as plt
 import time
 
+
+
 class HDAWG_PRNG:
-    def __init__(self, seed=0xcafe, lower=0, upper=2**16-1):
+    def __init__(self, seed=0xcafe, lower=0, upper=2 ** 16 - 1):
         self.lsfr = seed
         self.lower = lower
         self.upper = upper
@@ -16,14 +20,14 @@ class HDAWG_PRNG:
         self.lsfr = self.lsfr >> 1
         if (lsb):
             self.lsfr = 0xb400 ^ self.lsfr
-        rand = ((self.lsfr * (self.upper-self.lower+1) >> 16) + self.lower) & 0xffff
+        rand = ((self.lsfr * (self.upper - self.lower + 1) >> 16) + self.lower) & 0xffff
         return rand
 
 
 class interleaved_benchmarking:
-    #def __init__(self, measurer, set_seq, interleavers=None, random_sequence_num=8):
-    def __init__(self, measurer, ex_sequencers, seeds, seq_lengths, interleavers=None, random_sequence_num=8,
-                 two_qubit_num=1, random_gate_num=1, readout_sequencer=None, two_qubit_name='fSIM'):
+    # def __init__(self, measurer, set_seq, interleavers=None, random_sequence_num=8):
+    def __init__(self, device, measurer, ex_sequencers, seeds, seq_lengths, interleavers=None, random_sequence_num=8,
+                 two_qubit_num=1, random_gate_num=1, readout_sequencer=None, two_qubit = None):
 
         self.seeds = seeds
         self.seq_lengths = np.asarray(seq_lengths)
@@ -37,12 +41,14 @@ class interleaved_benchmarking:
         self.random_gate_register = 3
         self.readout_sequencer = readout_sequencer
 
+        self.device = device
         self.measurer = measurer
         self.ex_sequencers = ex_sequencers
         self.two_qubit_num = two_qubit_num
-        self.two_qubit_name = two_qubit_name
+        self.two_qubit = two_qubit
         self.random_gate_num = random_gate_num
         self.interleavers = {}
+        self.instructions = []
 
         if interleavers is not None:
             for name, gate in interleavers.items():
@@ -73,77 +79,170 @@ class interleaved_benchmarking:
         self.prepare_random_sequence_before_measure = True
         self.seq_id = 0
 
+    def command_table_entry_creation(self, part, definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=0, phase1=0):
+        table_entry = {'index': random_command_id}
+        random_command_id += 1
 
-    def return_hdawg_program(self, ex_seq):
-        random_gate_num = len(self.interleavers)
-        definition_part =  textwrap.dedent('''
+        entry_table_index_constant = part[2][0]
+
+        if entry_table_index_constant not in assign_waveform_indexes.keys():
+            waveform_id += 1
+            assign_waveform_indexes[entry_table_index_constant] = waveform_id
+            if part[0] not in definition_part:
+                definition_part += part[0]
+            definition_part += 'const ' + entry_table_index_constant + '={_id};'.format(_id=waveform_id)
+            definition_part += part[3]
+            table_entry['waveform'] = {'index': waveform_id}
+        else:
+            table_entry['waveform'] = {'index': assign_waveform_indexes[entry_table_index_constant]}
+
+        random_pulse = part[4]
+        table_entry['phase0'] = {'value': random_pulse['phase0']['value']+phase0, 'increment': random_pulse['phase0']['increment']}
+        table_entry['phase1'] = {'value': random_pulse['phase1']['value']+phase1, 'increment': random_pulse['phase1']['increment']}
+        return table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id
+
+
+    def return_hdawg_program(self, ex_seq, seq_len=0):
+        random_gate_num = 24 #len(self.interleavers)
+        if self.two_qubit is not None:
+            definition_part = textwrap.dedent('''
 const random_gate_num = {random_gate_num};
-//setPRNGSeed(variable_register1);
 setPRNGRange(0, random_gate_num-1);
-var i;
-var rand_value;'''.format(random_gate_num=random_gate_num))
+//const sequence_len = {sequence_len};'''.format(random_gate_num=random_gate_num, sequence_len=seq_len))
+        else:
+            definition_part = textwrap.dedent('''
+const random_gate_num = {random_gate_num};
+setPRNGRange(0, random_gate_num-1);
+//const sequence_len = {sequence_len};'''.format(random_gate_num=random_gate_num, sequence_len=seq_len))
 
-        play_part = textwrap.dedent('''
-// Clifford play part
-    //setPRNGSeed(variable_register1);
-    
-    wait(5);
-    for (i = 0; i < variable_register0; i = i + 1) {{
-        
-        repeat(variable_register3){{
-            rand_value = getPRNGValue(); 
-            switch(rand_value) {{'''.format(range=random_gate_num))
-        i = 0;
-        for name, gate in self.interleavers.items():
-            #if name != self.two_qubit_name:
-            play_part += textwrap.dedent('''
-//
-            case {index}://'''.format(index=i))
-            i += 1
+        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                         "header": { "version": "0.2" },
+                         "table": [] }
+        assign_waveform_indexes = {}
+
+        random_command_id = 0
+        waveform_id = -1
+        # First gate
+        for _i in range(24):
+            phase0 = 0
+            phase0 = (_i%4) * 90
+
+            gate = self.interleavers['X/2']
             for j in range(len(gate['pulses'])):
                 for seq_id, part in gate['pulses'][j][0].items():
                     if seq_id == ex_seq.params['sequencer_id']:
-                        if part[0] not in definition_part:
-                            definition_part += part[0]
-                        play_part += textwrap.indent(part[1], '                 ')
-                        #if i==random_gate_num:
-        play_part += '''
-//
-            }
-        }'''
-#             else:
-#                 for seq_id, part in gate['pulses'][0][0].items():
-#                     if seq_id == ex_seq.params['sequencer_id']:
-#                         definition_part += part[0]
-#                         play_part += textwrap.dedent('''
-# //
-#         repeat (variable_register2){:''')
-#                         play_part += textwrap.indent(part[1],'  ')
-#                         play_part += '''
-# //
-#         }'''
-        play_part += '''
-//
-    }'''
+                        # table_entry, definition_part, random_command_id, waveform_id = self.command_table_entry_creation(part,
+                        #                             definition_part, random_command_id, waveform_id, phase0=phase0, phase1=0)
+                        table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
+                                            definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=phase0, phase1=0)
+                        # table_entry['waveform'] = {'index': 0}
 
+                        command_table['table'].append(table_entry)
+        # Second gate
+        for _i in range(24):
+            phase0 = 0
+            if _i<20:
+                phase0 = ((_i//4)%4) * 90
+            else:
+                phase0 = 180
+            if _i<16:
+                gate = self.interleavers['I']
+            else:
+                gate = self.interleavers['X/2']
+            for j in range(len(gate['pulses'])):
+                for seq_id, part in gate['pulses'][j][0].items():
+                    if seq_id == ex_seq.params['sequencer_id']:
+                        table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
+                                            definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=phase0, phase1=0)
+                        # if _i<16:
+                        #     table_entry['waveform'] = {'index': 1}
+                        # else:
+                        #     table_entry['waveform'] = {'index': 0}
+                        command_table['table'].append(table_entry)
+
+        if self.two_qubit is not None:
+            gate = [v for v in self.two_qubit.values()][0]
+            for j in range(len(gate['pulses'])):
+                for seq_id, part in gate['pulses'][j][0].items():
+                    if seq_id == ex_seq.params['sequencer_id']:
+                        table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
+                                            definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=0, phase1=0)
+                        command_table['table'].append(table_entry)
+            two_qubit_gate_index = random_command_id-1
+
+
+        table_entry = {'index': random_command_id}
+        #table_entry['amplitude0'] = {'value': 1}
+        table_entry['phase0'] = {'value': 0.0, 'increment': False}
+        #table_entry['amplitude1'] = {'value': 1}
+        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        command_table['table'].append(table_entry)
+        random_command_id += 1
+        table_entry = {'index': random_command_id}
+        # table_entry['amplitude0'] = {'value': 1}
+        table_entry['phase0'] = {'value': 0.0, 'increment': True}
+        # table_entry['amplitude1'] = {'value': 1}
+        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        command_table['table'].append(table_entry)
+        if self.two_qubit is not None:
+            play_part = textwrap.dedent('''
+// Clifford play part
+//setPRNGSeed(variable_register1);
+    //resetOscPhase();
+    executeTableEntry({random_gate_num});
+    wait(5);
+    repeat (variable_register0) {{
+        //repeat(1){{
+            var rand_value1 = getPRNGValue();
+            var rand_value2 = rand_value1+24;
+            executeTableEntry({random_gate_num}+1);
+            executeTableEntry(rand_value1);
+            executeTableEntry({random_gate_num}+1);
+            executeTableEntry(rand_value2);//}}
+        repeat ({two_qubit_num}){{
+            executeTableEntry({random_gate_num}+1);
+            executeTableEntry({two_qubit_gate_index});
+            }}
+    }}    
+    executeTableEntry({random_gate_num});
+    resetOscPhase();
+    '''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num = random_command_id-1,
+                  two_qubit_num=self.two_qubit_num, sequence_len=seq_len))
+        else:
+            play_part = textwrap.dedent('''
+// Clifford play part
+//setPRNGSeed(variable_register1);
+    //resetOscPhase();
+    executeTableEntry({random_gate_num});
+    wait(5);
+    repeat (variable_register0) {{
+        //repeat(1){{
+            var rand_value1 = getPRNGValue();
+            var rand_value2 = rand_value1+24;
+            executeTableEntry({random_gate_num}+1);
+            executeTableEntry(rand_value1);
+            executeTableEntry({random_gate_num}+1);
+            executeTableEntry(rand_value2);//}}
+    }} 
+    executeTableEntry({random_gate_num});
+    resetOscPhase();
+    '''.format(random_gate_num=random_command_id-1, sequence_len=seq_len))
+        self.instructions.append(command_table)
+        # print(command_table)
         return definition_part, play_part
-    #def create_program_command_table(self, ):
 
 
     def create_hdawg_generator(self):
-        # variable_register0 corresponds to the length of random sequence
-        # variable_register1 corresponds to the seed of random generator PRNG
-        # variable_register2 corresponds to the repetition number of the two qubit gate
-        prepare_seq = []
         pulses = {}
-        control_seq_ids=[]
+        control_seq_ids = []
+        self.instructions=[]
         for ex_seq in self.ex_sequencers:
-            pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
+            pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq, self.sequence_length)
             control_seq_ids.append(ex_seq.params['sequencer_id'])
 
         return [[pulses, control_seq_ids]]
 
-    #for _i in group
+    # for _i in group
 
     # used to transformed any of the |0>, |1>, |+>, |->, |i+>, |i-> states into the |0> state
     # low-budget function only appropriate for clifford benchmarking
@@ -167,16 +266,26 @@ var rand_value;'''.format(random_gate_num=random_gate_num))
         return name, self.interleavers[name]
 
     def set_sequence_length(self, sequence_length):
-        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        # self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
         self.sequence_length = sequence_length
-        #for i, ex_seq in enumerate(self.ex_sequencers):
-            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
-            #                        self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, self.seq_id])
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
+        for i, ex_seq in enumerate(self.ex_sequencers):
+            ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
+        #if sequence_length
+        # self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        # #if self.sequence_length==self.seq_lengths[0]:
+        # prepare_seq = self.create_hdawg_generator()
+        # #raise ValueError('fallos')
+        # sequence_control.set_preparation_sequence(self.device, self.ex_sequencers, prepare_seq, instructions=self.instructions)
+        # self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
-        #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+        # for i, ex_seq in enumerate(self.ex_sequencers):
+        # ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+        # ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
+        # ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
+        #                        self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, self.seq_id])
+        # ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
+
+        # self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
     def set_sequence_length_and_regenerate(self, sequence_length):
         print('Bull happens')
@@ -299,57 +408,27 @@ var rand_value;'''.format(random_gate_num=random_gate_num))
         _points['seed'] = points
         return _points
 
-
     def set_interleaved_sequence(self, seq_id):
-
-        # seq = self.interleave(self.interleaving_sequences[seq_id]['Gate names'], self.target_gate,
-        #                       self.target_gate_unitary, self.target_gate_name)
-        # self.set_seq(seq['Pulse sequence'])
-        # self.current_seq = seq
-        #TODO set seed for PRNG
+        # TODO set seed for PRNG
         self.seq_id = seq_id
-        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-        #for i, ex_seq in enumerate(self.ex_sequencers):
-            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
-            #                        self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, seq_id])
-            #ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg2'], self.two_qubit_num)
-            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
-        #time.sleep(0.001)
 
-        #time.sleep(0.01)
-        #for i, ex_seq in enumerate(self.ex_sequencers):
-            #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
-            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
-        #time.sleep(0.01)
-        #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-        #self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
-
+    def pre_sweep(self):
+        self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+        prepare_seq = self.create_hdawg_generator()
+        sequence_control.set_preparation_sequence(self.device, self.ex_sequencers, prepare_seq, instructions=self.instructions)
+        self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
     def measure(self):
-        # if self.prepare_random_sequence_before_measure:
-        #     print('Some bullshit happens(')
-            # self.prepare_random_interleaving_sequences()
-            # self.set_interleaved_sequence(0)
         self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-        #time.sleep(0.01)
-
         for i, ex_seq in enumerate(self.ex_sequencers):
             #ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg0'], self.sequence_length)
             ex_seq.awg.set_register(ex_seq.params['sequencer_id'], ex_seq.params['var_reg1'],
-                                    self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], i, self.seq_id])
+                                    self.seeds[np.where(self.seq_lengths == self.sequence_length)[0], i, self.seq_id])
+            #ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
         time.sleep(0.1)
         self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
         measurement = self.measurer.measure()
-
-        # measurement['Pulse sequence'] = np.array([object()])
-
-        #for i, ex_seq in enumerate(self.ex_sequencers):
-        measurement['seed'] = self.seeds[np.where(self.seq_lengths==self.sequence_length)[0], :, self.seq_id]
-
-        #print(measurement['seed'])
-
+        measurement['seed'] = self.seeds[np.where(self.seq_lengths == self.sequence_length)[0], :, self.seq_id]
 
         return measurement

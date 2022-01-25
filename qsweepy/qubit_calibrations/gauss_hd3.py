@@ -3,7 +3,9 @@ from qsweepy.qubit_calibrations.Ramsey2 import *
 from qsweepy.qubit_calibrations.channel_amplitudes import channel_amplitudes
 from qsweepy.qubit_calibrations.readout_pulse2 import *
 from qsweepy.qubit_calibrations import sequence_control
+
 from qsweepy import zi_scripts
+import textwrap
 import time
 
 
@@ -93,71 +95,151 @@ def gauss_hd_ape_alpha(device, qubit_id, alphas, num_pulses, ex_sequencers, cont
     control_sequence.awg.set_register(control_sequence.params['sequencer_id'], control_sequence.params['var_reg0'],
                                       int(num_pulses))
 
-    def set_alphas1(alpha):
-        channel_pulses_xp = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha)
-                             for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_xm = [(c, device.pg.gauss_hd, -float(a) * amplitude, sigma, alpha)
-                             for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_yp = [(c, device.pg.gauss_hd, float(a) * amplitude * 1j, sigma, alpha)
-                             for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_ym = [(c, device.pg.gauss_hd, -float(a) * amplitude * 1j, sigma, alpha)
-                             for c, a in channel_amplitudes_.metadata.items()]
-        if phase_sign == '+':
-            pulse = [device.pg.pmulti(device, length, *tuple(channel_pulses_xp))] + \
-                    ([device.pg.pmulti(device, length, *tuple(channel_pulses_xp))] +
-                     [device.pg.pmulti(device, length, *tuple(channel_pulses_xm))]) * num_pulses + \
-                    [device.pg.pmulti(device, length, *tuple(channel_pulses_xm))]
-        elif phase_sign == '-':
-            pulse = [device.pg.pmulti(device, length, *tuple(channel_pulses_xp))] + \
-                    ([device.pg.pmulti(device, length, *tuple(channel_pulses_xp))] +
-                     [device.pg.pmulti(device, length, *tuple(channel_pulses_xm))]) * num_pulses + \
-                    [device.pg.pmulti(device, length, *tuple(channel_pulses_yp))]
+    class ParameterSetter:
+        def __init__(self):
+            self.device = device
+            self.num_pulses = int(num_pulses)
+            self.ex_sequencers = ex_sequencers
+            self.readout_sequencer = readout_sequencer
+            self.prepare_seq = []
+            self.instructions = []
 
-        device.pg.set_seq(device.pre_pulses + pulse + device.trigger_readout_seq + readout_pulse.get_pulse_sequence())
         #TODO
-    def set_phase(phase):
+        def set_phase(self, phase):
 
-
-        fast_control = False
-        alpha1 = alpha
-
-        channel_pulses_xp = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha1, phase, fast_control)
+            fast_control = False
+            alpha1 = alpha
+            channel_pulses_xp = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha1, phase, fast_control)
                              for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_xm = [(c, device.pg.gauss_hd, -float(a) * amplitude, sigma, alpha1, phase, fast_control)
+            channel_pulses_xm = [(c, device.pg.gauss_hd, -float(a) * amplitude, sigma, alpha1, phase, fast_control)
                              for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_yp = [(c, device.pg.gauss_hd, float(a) * amplitude*1j, sigma, alpha1, phase, fast_control)
+            channel_pulses_yp = [(c, device.pg.gauss_hd, float(a) * amplitude*1j, sigma, alpha1, phase, fast_control)
                              for c, a in channel_amplitudes_.metadata.items()]
-        channel_pulses_ym = [(c, device.pg.gauss_hd, -float(a) * amplitude*1j, sigma, alpha1, phase, fast_control)
+            channel_pulses_ym = [(c, device.pg.gauss_hd, -float(a) * amplitude*1j, sigma, alpha1, phase, fast_control)
                              for c, a in channel_amplitudes_.metadata.items()]
 
-        fast_control = 'phase_correction'
-        channel_pulses = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha1, phase, fast_control)
+            fast_control = 'phase_correction'
+            channel_pulses = [(c, device.pg.gauss_hd, float(a) * amplitude, sigma, alpha1, phase, fast_control)
                           for c, a in channel_amplitudes_.metadata.items()]
-        if phase_sign == '+':
-            prepare_seq = []
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xp)))
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses)))
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xm)))
-        elif phase_sign == '-':
-            prepare_seq = []
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xp)))
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses)))
-            prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_yp)))
 
-        if phase==alphas[0]:
+            if phase_sign == '+':
+                self.prepare_seq = []
+                self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xp)))
+                #self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses)))
+                self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xm)))
+            elif phase_sign == '-':
+                self.prepare_seq = []
+                self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xp)))
+                #self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses)))
+                self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_yp)))
 
-            sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq, None)
-            readout_sequencer.awg.stop_seq(readout_sequencer.params['sequencer_id'])
+            self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+            prepare_seq = self.create_hdawg_generator()
+            sequence_control.set_preparation_sequence(self.device, self.ex_sequencers, prepare_seq,
+                                                      instructions=self.instructions)
             time.sleep(0.1)
-            readout_sequencer.awg.start_seq(readout_sequencer.params['sequencer_id'])
-        else:
+            self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
 
-            sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq, control_sequence)
-            readout_sequencer.awg.stop_seq(readout_sequencer.params['sequencer_id'])
-            time.sleep(0.1)
-            readout_sequencer.awg.start_seq(readout_sequencer.params['sequencer_id'])
+
+        def return_hdawg_program(self, ex_seq):
+
+            definition_part = ''''''
+            command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                             "header": { "version": "0.2" },
+                             "table": [  ] }
+            assign_waveform_indexes = {}
+            random_command_id = 0
+            waveform_id = -1
+            for prep_seq in self.prepare_seq:
+                for seq_id, single_sequence in prep_seq[0].items():
+                    if seq_id == ex_seq.params['sequencer_id']:
+                        # if single_sequence[0] not in definition_part:
+                        #     definition_part += single_sequence[0]
+                        table_entry = {'index': random_command_id}
+                        random_command_id += 1
+
+                        entry_table_index_constant = single_sequence[2][0]
+                        # if entry_table_index_constant not in definition_part:
+                        #     waveform_id += 1
+                        #     definition_part += 'const ' + entry_table_index_constant + '={_id};'.format(_id=waveform_id)
+                        #     definition_part += single_sequence[3]
+                        if entry_table_index_constant not in assign_waveform_indexes.keys():
+                            waveform_id += 1
+                            assign_waveform_indexes[entry_table_index_constant] = waveform_id
+                            if single_sequence[0] not in definition_part:
+                                definition_part += single_sequence[0]
+                            definition_part += 'const ' + entry_table_index_constant + '={_id};'.format(
+                                _id=waveform_id)
+                            definition_part += single_sequence[3]
+                            table_entry['waveform'] = {'index': waveform_id}
+                        else:
+                            table_entry['waveform'] = {'index': assign_waveform_indexes[entry_table_index_constant]}
+
+                        table_entry['waveform'] = {'index': waveform_id}
+                        random_pulse = single_sequence[4]
+                        #if 'amplitude0' in random_pulse:
+                        #    table_entry['amplitude0'] = random_pulse['amplitude0']
+                        if 'phase0' in random_pulse:
+                            table_entry['phase0'] = random_pulse['phase0']
+                        #if 'amplitude1' in random_pulse:
+                        #    table_entry['amplitude1'] = random_pulse['amplitude1']
+                        if 'phase1' in random_pulse:
+                            table_entry['phase1'] = random_pulse['phase1']
+
+                        command_table['table'].append(table_entry)
+
+            table_entry = {'index': 2}
+            table_entry['phase0'] = {'value': 0.0, 'increment': False}
+            table_entry['phase1'] = {'value': 90.0, 'increment': False}
+            #table_entry['amplitude0'] = {'value': 1.0, 'increment': False}
+            #table_entry['amplitude1'] = {'value': 1.0, 'increment': False}
+            command_table['table'].append(table_entry)
+
+            table_entry = {'index': 3}
+            # table_entry['amplitude0'] = {'value': 1}
+            table_entry['phase0'] = {'value': 0.0, 'increment': True}
+            # table_entry['amplitude1'] = {'value': 1}
+            table_entry['phase1'] = {'value': 90.0, 'increment': False}
+            command_table['table'].append(table_entry)
+
+            play_part = textwrap.dedent('''
+// Clifford play part
+    executeTableEntry(2);
+    wait(5);
+    executeTableEntry(3);
+    executeTableEntry(0);
+    cvar j;
+    for (j=0;j<{num_pulses}; j++){{
+    //repeat({num_pulses}){{
+        //repeat(1){{
+            //executeTableEntry(3);
+            executeTableEntry(0);
+            //executeTableEntry(3);
+            executeTableEntry(1);
+        //}}
+    }}
+    executeTableEntry(3); 
+    executeTableEntry(1);
+    executeTableEntry(2);
+    resetOscPhase();'''.format(num_pulses = self.num_pulses))
+
+            self.instructions.append(command_table)
+            print(command_table)
+
+            return definition_part, play_part
+
+        def create_hdawg_generator(self):
+            pulses = {}
+            control_seq_ids = []
+            self.instructions = []
+            for ex_seq in self.ex_sequencers:
+                pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
+                control_seq_ids.append(ex_seq.params['sequencer_id'])
+            return [[pulses, control_seq_ids]]
+
+    setter = ParameterSetter()
     measurement = device.sweeper.sweep(measurer,
-                                       (alphas, set_phase, 'alpha'),
+                                       (alphas, setter.set_phase, 'alpha'),
                                        measurement_type='gauss_hd_ape_alpha',
                                        metadata=metadata,
                                        references=references)
@@ -330,8 +412,8 @@ def per_amplitude_angle_guess(length, sigma):
     return result
 
 
-def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha,
-                            num_pulses, control_sequence):
+def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha, phase,
+                            num_pulses, inverse_rotation_cycles, control_sequence, ex_sequencers, readout_sequencer):
     # readout_pulse = get_qubit_readout_pulse(device, qubit_id)
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
 
@@ -343,13 +425,129 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle
     references = {'channel_amplitudes': channel_amplitudes.id}
 
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
-    control_sequence.awg.set_register(control_sequence.params['sequencer_id'], control_sequence.params['var_reg0'], num_pulses)
+    for ex_sequence in ex_sequencers:
+        ex_sequence.awg.set_register(ex_sequence.params['sequencer_id'], ex_sequence.params['var_reg0'], num_pulses)
 
-    def set_amplitude(amplitude):
-        control_sequence.set_awg_amp(amplitude*float(channel_amplitudes.metadata[exitation_channel]))
-        #raise ValueError('fallos')
+    class ParameterSetter:
+        def __init__(self):
+            self.device = device
+            self.num_pulses = int(num_pulses)
+            self.ex_sequencers = ex_sequencers
+            self.readout_sequencer = readout_sequencer
+            self.control_sequence = control_sequence
+            self.inverse_rotation_cycles = inverse_rotation_cycles
+            self.instructions = []
+
+            fast_control = False
+            channel_pulses = [(c, self.device.pg.gauss_hd, 1, sigma, alpha, phase, fast_control)
+                              for c, a in channel_amplitudes.metadata.items()]
+            self.prepare_seq = []
+            self.prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses)))
+
+        def set_amplitude(self, amplitude):
+            #raise ValueError('fallos')
+            if amplitude==amplitudes[0]:
+                self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+                prepare_seq = self.create_hdawg_generator()
+                sequence_control.set_preparation_sequence(self.device, self.ex_sequencers, prepare_seq,
+                                                  instructions=self.instructions)
+                time.sleep(0.1)
+                self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+            self.control_sequence.set_awg_amp(amplitude * float(channel_amplitudes.metadata[exitation_channel]))
+
+        def return_hdawg_program(self, ex_seq):
+
+            definition_part = ''''''
+            command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                         "header": {"version": "0.2"},
+                         "table": []}
+            assign_waveform_indexes = {}
+            random_command_id = 0
+            waveform_id = -1
+            for prep_seq in self.prepare_seq:
+                for seq_id, single_sequence in prep_seq[0].items():
+                    if seq_id == ex_seq.params['sequencer_id']:
+                        # if single_sequence[0] not in definition_part:
+                        #     definition_part += single_sequence[0]
+                        table_entry = {'index': random_command_id}
+                        random_command_id += 1
+
+                        entry_table_index_constant = single_sequence[2][0]
+                        # if entry_table_index_constant not in definition_part:
+                        #     waveform_id += 1
+                        #     definition_part += 'const ' + entry_table_index_constant + '={_id};'.format(_id=waveform_id)
+                        #     definition_part += single_sequence[3]
+                        if entry_table_index_constant not in assign_waveform_indexes.keys():
+                            waveform_id += 1
+                            assign_waveform_indexes[entry_table_index_constant] = waveform_id
+                            if single_sequence[0] not in definition_part:
+                                definition_part += single_sequence[0]
+                            definition_part += 'const ' + entry_table_index_constant + '={_id};'.format(
+                                _id=waveform_id)
+                            definition_part += single_sequence[3]
+                            table_entry['waveform'] = {'index': waveform_id}
+                        else:
+                            table_entry['waveform'] = {'index': assign_waveform_indexes[entry_table_index_constant]}
+
+                        table_entry['waveform'] = {'index': waveform_id}
+                        random_pulse = single_sequence[4]
+                        #if 'amplitude0' in random_pulse:
+                        #    table_entry['amplitude0'] = random_pulse['amplitude0']
+                        if 'phase0' in random_pulse:
+                            table_entry['phase0'] = random_pulse['phase0']
+                        #if 'amplitude1' in random_pulse:
+                        #    table_entry['amplitude1'] = random_pulse['amplitude1']
+                        if 'phase1' in random_pulse:
+                            table_entry['phase1'] = random_pulse['phase1']
+
+                        command_table['table'].append(table_entry)
+
+            table_entry = {'index': 1}
+            table_entry['phase0'] = {'value': 0.0, 'increment': False}
+            table_entry['phase1'] = {'value': 90.0, 'increment': False}
+            # table_entry['amplitude0'] = {'value': 1.0, 'increment': False}
+            # table_entry['amplitude1'] = {'value': 1.0, 'increment': False}
+            command_table['table'].append(table_entry)
+
+            table_entry = {'index': 2}
+            # table_entry['amplitude0'] = {'value': 1}
+            table_entry['phase0'] = {'value': 0.0, 'increment': True}
+            # table_entry['amplitude1'] = {'value': 1}
+            table_entry['phase1'] = {'value': 90.0, 'increment': False}
+            command_table['table'].append(table_entry)
+
+            play_part = textwrap.dedent('''
+// Clifford play part
+    executeTableEntry(1);
+    wait(5);
+    cvar j;
+    for (j=0;j<{num_pulses}; j++){{
+    //repeat({num_pulses}){{
+        repeat({invert_rotation_pulses}){{
+            executeTableEntry(2);
+            executeTableEntry(0);
+        }}
+    }} 
+    executeTableEntry(1);
+    resetOscPhase();'''.format(num_pulses=self.num_pulses, invert_rotation_pulses = self.inverse_rotation_cycles))
+
+            self.instructions.append(command_table)
+            print(command_table)
+
+            return definition_part, play_part
+
+        def create_hdawg_generator(self):
+            pulses = {}
+            control_seq_ids = []
+            self.instructions = []
+            for ex_seq in self.ex_sequencers:
+                pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
+                control_seq_ids.append(ex_seq.params['sequencer_id'])
+            return [[pulses, control_seq_ids]]
+
+    setter = ParameterSetter()
     measurement = device.sweeper.sweep(measurer,
-                                       (amplitudes, set_amplitude, 'Amplitude'),
+                                       (amplitudes, setter.set_amplitude, 'Amplitude'),
                                        measurement_type='gauss_hd_Rabi_amplitude',
                                        metadata=metadata,
                                        references=references)
@@ -390,16 +588,9 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None, transi
         pulse_length = float(pi2_pulse.metadata['length'])
     else:
         pulse_length = preferred_length
-    #amplitude = float(pi2_pulse.metadata['amplitude'])
-    #sigma = pulse_length / sigmas_in_gauss
 
     max_num_pulses = max_scan_length / pulse_length/2
     num_pulses = 1
-    #alpha_guess = 0.0  # np.pi
-    #alpha_range = 1e-8  # 2*np.pi
-    #alphas = np.linspace(alpha_guess - 0.5 * alpha_range, alpha_guess + 0.5 * alpha_range, scan_points)
-    #measurement = gauss_hd_ape_alpha(device, qubit_id, alphas, 0, phase_sign='+')
-    #adaptive_measurements.append(measurement)
 
     amplitude = float(pi2_pulse.metadata['amplitude'])
     sigma = float(pi2_pulse.metadata['sigma'])
@@ -442,12 +633,12 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None, transi
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-    control_sequence.awg.set_register(control_sequence.params['sequencer_id'],
-                                      control_sequence.params['var_reg1'], int(1))
-
-    sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
+    # control_sequence.awg.set_register(control_sequence.params['sequencer_id'],
+    #                                   control_sequence.params['var_reg1'], int(1))
+    #
+    # sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
-    readout_sequencer.start()
+    # readout_sequencer.start()
 
     alpha_guess = 0
     alpha_range = 2*np.pi
@@ -585,9 +776,6 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     amplitude_guess = float(rect_pulse.metadata['length']) / per_amplitude_angle_guess(pulse_length,
                                                                                        pulse_length / sigmas_in_gauss)
     amplitude_range = 1.0*amplitude_guess
-    # print ('rect_pulse.metadata[length]:', rect_pulse.metadata['length'])
-    # print ('rotation_angle: ', rotation_angle)
-    # print ('amplitude_guess: ', amplitude_guess)
     sigma = pulse_length / sigmas_in_gauss
 
     #TODO
@@ -612,24 +800,26 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
         #device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-    fast_control = True
-    channel_pulses = [(c, device.pg.gauss_hd, 1, sigma, alpha, phase, fast_control)
-                      for c, a in channel_amplitudes.metadata.items()]
-    prepare_seq = []
-    prepare_seq.append(device.pg.pmulti(device, pulse_length, *tuple(channel_pulses)))
-    sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
+    #fast_control = True
+    #channel_pulses = [(c, device.pg.gauss_hd, 1, sigma, alpha, phase, fast_control)
+                      #for c, a in channel_amplitudes.metadata.items()]
+    #prepare_seq = []
+    #prepare_seq.append(device.pg.pmulti(device, pulse_length, *tuple(channel_pulses)))
+    #sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
-    readout_sequencer.start()
+    #readout_sequencer.start()
 
 
     while (num_pulses <= max_num_pulses):
         amplitudes = np.linspace(amplitude_guess - 0.5 * amplitude_range, amplitude_guess + 0.5 * amplitude_range,
                                  scan_points)
-
-        control_sequence.awg.set_register(control_sequence.params['sequencer_id'], control_sequence.params['var_reg1'],
+        for ex_sequence in ex_sequencers:
+            ex_sequence.awg.set_register(ex_sequence.params['sequencer_id'], ex_sequence.params['var_reg1'],
                                           int(inverse_rotation_cycles))
         measurement = gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes,
-                                              pulse_length, sigma, alpha, int(num_pulses/int(inverse_rotation_cycles)), control_sequence)
+                                              pulse_length, sigma, alpha, phase, int(num_pulses/int(inverse_rotation_cycles)),
+                                              int(inverse_rotation_cycles),
+                                              control_sequence, ex_sequencers, readout_sequencer)
 
         adaptive_measurements.append(measurement)
         amplitude_guess = infer_amplitude_from_measurements()
@@ -674,6 +864,7 @@ def get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation
                                                             'inverse_rotation_cycles': int(np.round(2*np.pi/rotation_angle)),
                                                             'transition': transition,  # this is crap
                                                             })
+
         return gauss_hd_excitation_pulse(device, qubit_id=qubit_id, transition='01', rotation_angle=rotation_angle,
                                          length=meas.metadata['length'], sigma=meas.metadata['sigma'],
                                          alpha=meas.metadata['alpha'], amplitude=meas.metadata['amplitude_guess'],

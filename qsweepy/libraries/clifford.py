@@ -2,7 +2,7 @@ import numpy as np
 import copy
 
 def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit_gate=None,
-					   two_qubit_gate_name='fSim', error=1e-3, Clifford_group=False):
+					   two_qubit_gate_name='fSIM', error=1e-3, Clifford_group=False):
 	# see https://arxiv.org/pdf/1210.7011.pdf
 	c_q1 = generate_group(generators=generators_q1, Clifford_group=Clifford_group)
 	c_q2 = generate_group(generators=generators_q2, Clifford_group=Clifford_group)
@@ -63,11 +63,11 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit
 	if two_qubit_gate is None:
 		return group
 	else:
-		group[two_qubit_gate_name] = {'unitary': two_qubit_gate['unitary'],
-								'pulses': two_qubit_gate['pulses']}
+		group[two_qubit_gate_name] = {'unitary': two_qubit_gate[two_qubit_gate_name]['unitary'],
+								'pulses': two_qubit_gate[two_qubit_gate_name]['pulses']}
 		return group
 
-	#return group
+	return group
 
 def generate_group(generators, error=1e-3, Clifford_group=True):
 
@@ -109,3 +109,52 @@ def generate_group(generators, error=1e-3, Clifford_group=True):
 					break
 			#print (found)
 		return group
+
+
+def generate_group2(generators):
+	group = dict(generators)
+
+	I = generators['I']
+	S = generators['Z/2']
+	S2 = generators['Z']
+	S3 = generators['-Z/2']
+	X = generators['X/2']
+
+	t1 = [I, S, S2, S3] * 6
+	t2 = [X] * 24
+	t3 = [I] * 4 + [S] * 4 + [S2] * 4 + [S3] * 4 + [I] * 4 + [S2] * 4
+	t4 = [I] * 16 + [X] * 8
+
+	group = {}
+
+	for r in np.arange(24):
+		result = {'unitary':  t4[r]['unitary'] @ t3[r]['unitary'] @ t2[r]['unitary'] @ t1[r]['unitary'],
+				  'price': 2.0,
+				  'pulses': t1[r]['pulses']+t2[r]['pulses']+t3[r]['pulses']+t4[r]['pulses']}
+
+		group[str(r)] = result
+
+	return group
+
+def generate_group3(generators):
+	group = dict(generators)
+
+	I = generators['I']
+	S = generators['Z/2']
+	S2 = generators['Z']
+	S3 = generators['-Z/2']
+	X = generators['X/2']
+	Xm = generators['-X/2']
+
+	t1 = [I, S, S2, S3, I, S]
+	t2 = [X, X, Xm, Xm, I, I]
+	group = {}
+
+	for r in np.arange(5):
+		result = {'unitary':  t2[r]['unitary'] @ t1[r]['unitary'],
+				  'price': 2.0,
+				  'pulses': t1[r]['pulses']+t2[r]['pulses']}
+
+		group[str(r)] = result
+
+	return group

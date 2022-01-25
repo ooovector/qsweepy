@@ -86,13 +86,6 @@ class modem_readout(data_reduce.data_reduce):
         sequence.set_delay(self.trigger_channel.delay)
         sequence.start()
 
-        # set sequence in sequencer
-        #seq = self.trigger_daq_seq + [
-        #    self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
-        #                           self.pulse_sequencer.awg, dac_sequence)]
-        #self.pulse_sequencer.set_seq(seq)
-        # readout
-
         self.adc.output_raw = True
         meas_result = self.adc.measure()[self.src_meas]
         if meas_result.ndim == 1:  # in case of UHFQA data is already averaged on hardware
@@ -182,11 +175,12 @@ class modem_readout(data_reduce.data_reduce):
     def calibrate_dc_bg(self):
         # send nothing
         self.hardware.set_pulsed_mode()
+
         #self.pulse_sequencer.set_seq(self.trigger_daq_seq)
-        #ex_channel = self.readout_channels[ex_channel_name]
-        #sequence = zi_scripts.DCSequence(ex_channel.parent.sequencer_id, self.awg)
-        sequence = zi_scripts.DCSequence(2, self.awg) #kostyl podumoti
-        self.awg.set_sequence(2, sequence) #kostyl podumoti
+        ex_channel_name = [channel_name for channel_name in self.readout_channels.keys()][0]
+        ex_channel = self.readout_channels[ex_channel_name]
+        sequence = zi_scripts.DCSequence(ex_channel.parent.sequencer_id, self.awg)
+        self.awg.set_sequence(ex_channel.parent.sequencer_id, sequence) #kostyl podumoti
         sequence.stop()
         sequence.start()
 
@@ -238,12 +232,6 @@ class modem_readout(data_reduce.data_reduce):
         sequence.set_delay(self.trigger_channel.delay)
         sequence.start()
 
-        #seq = self.trigger_daq_seq + [
-        #    self.pulse_sequencer.p(ex_channel_name, len(dac_sequence) / ex_channel.get_clock(),
-        #                           self.pulse_sequencer.awg, dac_sequence)]
-        # seq_Q = self.trigger_daq_seq+[self.pulse_sequencer.p(ex_channel_name, sequence_length/ex_channel.get_clock(), self.pulse_sequencer.awg, 1j*dac_sequence)]
-        # measure response on I sequence
-        #self.pulse_sequencer.set_seq(seq)
         calibration_measurement = self.adc.measure()
         meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean))[
                  :len(dac_sequence_adc_time)]

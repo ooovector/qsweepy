@@ -52,6 +52,9 @@ wave pre_wawe_{index} = plato_wawe_{index};
     playWave(2, 0*pre_wawe_{index}, 1, pre_wawe_{index});
     wait(variable_register15);
     playWave(2, 0*flip(pre_wawe_{index}), 1, flip(pre_wawe_{index}));
+    playWave(2, 0*pre_wawe_{index}, 1, -0.1*pre_wawe_{index});
+    wait(40);
+    playWave(2, 0*flip(pre_wawe_{index}), 1, -0.1*flip(pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index = index, wait_after=int(self.wait_after * clock)))
         elif channel == 1:
@@ -60,6 +63,9 @@ wave pre_wawe_{index} = plato_wawe_{index};
     playWave(2, pre_wawe_{index}, 1, 0*pre_wawe_{index});
     wait(variable_register15);
     playWave(2, flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
+    playWave(2, -0.1*pre_wawe_{index}, 1, 0*pre_wawe_{index});
+    wait(40);
+    playWave(2, -0.1*flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index=index, wait_after=int(self.wait_after * clock)))
 
@@ -159,7 +165,8 @@ class PrepulseSetter:
 
 class SIMPLESequence:
     def __init__(self, sequencer_id, awg, readout_delay=0, awg_amp=1, pre_pulses = [],
-                 use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, var_reg3 =3, control=False, is_iq = False):
+                 use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, var_reg3 =3,
+                 var_reg4 =4, var_reg5 =5, control=False, is_iq = False):
         """
         Pre pulses settings.
         Parameters
@@ -180,7 +187,7 @@ class SIMPLESequence:
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
-                           var_reg3=int(var_reg3), var_reg15=int(15),
+                           var_reg3=int(var_reg3), var_reg4=int(var_reg4), var_reg5=int(var_reg5), var_reg15=int(15),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
                            frequency=frequency, control_frequency=0,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
@@ -208,11 +215,15 @@ const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
 const var_reg2 = {var_reg2};
 const var_reg3 = {var_reg3};
+const var_reg4 = {var_reg4};
+const var_reg5 = {var_reg5};
 var wave_ind=0;
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
 var variable_register2 = getUserReg(var_reg2);
 var variable_register3 = getUserReg(var_reg3);
+var variable_register4 = getUserReg(var_reg4);
+var variable_register5 = getUserReg(var_reg5);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -249,7 +260,8 @@ var variable_register3 = getUserReg(var_reg3);
 
         play_fragment1 += textwrap.dedent('''
 setDIO(0); 
-while (true) {{''')
+while (true) {{
+//repeat(8192){{''')
         play_fragment1 += textwrap.dedent('''
 //    
     // Wait trigger and reset
@@ -260,6 +272,8 @@ while (true) {{''')
     variable_register1 = getUserReg(var_reg1);
     variable_register2 = getUserReg(var_reg2);
     variable_register3 = getUserReg(var_reg3);
+    variable_register4 = getUserReg(var_reg4);
+    variable_register5 = getUserReg(var_reg5);
     variable_register15 = getUserReg(15);
     setPRNGSeed(variable_register1);
     resetOscPhase();
@@ -320,11 +334,15 @@ const var_reg0 = {var_reg0};
 const var_reg1 = {var_reg1};
 const var_reg2 = {var_reg2};
 const var_reg3 = {var_reg3};
+const var_reg4 = {var_reg4};
+const var_reg5 = {var_reg5};
 var wave_ind=0;
 var variable_register0 = getUserReg(var_reg0);
 var variable_register1 = getUserReg(var_reg1);
 var variable_register2 = getUserReg(var_reg2);
 var variable_register3 = getUserReg(var_reg3);
+var variable_register4 = getUserReg(var_reg4);
+var variable_register5 = getUserReg(var_reg5);
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -417,7 +435,7 @@ var variable_register3 = getUserReg(var_reg3);
 
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg2'], phase)
 
-    def start(self):
+    def start(self, holder=0):
         #self.awg.start_seq(self.params['sequencer_id'])
         self.awg.set_sin_enable(self.params['ic'], 0, 0)
         self.awg.set_sin_enable(self.params['qc'], 1, 0)
@@ -432,7 +450,7 @@ var variable_register3 = getUserReg(var_reg3);
         else:
             self.awg.set_modulation(self.params['ic'], 0)
             self.awg.set_modulation(self.params['qc'], 0)
-        self.awg.set_holder(self.params['ic'], 1)
+        self.awg.set_holder(self.params['ic'], holder)
         self.awg.set_holder(self.params['qc'], 1)
         self.awg.set_output(self.params['ic'], 1)
         self.awg.set_output(self.params['qc'], 1)

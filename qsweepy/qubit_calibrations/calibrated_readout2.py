@@ -27,9 +27,9 @@ def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, fo
     except:
         if not recalibrate:
             raise
-        confusion_matrix = calibrate_preparation_and_readout_confusion(device =device, qubit_readout_pulse = qubit_readout_pulse,
-                                                                       readout_device = readout_device,
-                                                                       pause_length = pause_length)
+        confusion_matrix = calibrate_preparation_and_readout_confusion(device=device, qubit_readout_pulse=qubit_readout_pulse,
+                                                                       readout_device=readout_device,
+                                                                       pause_length=pause_length)
 
     return qubit_readout_pulse, readout_device, confusion_matrix
 
@@ -41,7 +41,7 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
     target_qubit_states = [0] * len(qubit_ids)
     # TODO
     '''Warning'''
-    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi) for
+    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2) for
                          qubit_id in qubit_ids}
     ''''''
     references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
@@ -71,10 +71,6 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
         ex_seq.start()
         ex_sequencers.append(ex_seq)
 
-    #sequence_control.set_preparation_sequence(device, ex_sequencers, [other_qubit_pulse_sequence+
-    #                                                                   qubit_excitation_pulse.get_pulse_sequence(0)])
-
-
     def set_target_state(state):
         re_sequence.awg.stop_seq(re_sequence.params['sequencer_id'])
         preparation_sequence = []
@@ -83,6 +79,7 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
             if qubit_state:
                 # TODO
                 '''Warning'''
+                preparation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
                 preparation_sequence.extend(excitation_pulses[qubit_id].get_pulse_sequence(0))
         if middle_seq_generator is not None:
             # TODO
@@ -171,7 +168,8 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                 other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0))
     # TODO
     '''Warning'''
-    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi)
+    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2)
+    #qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi)
     metadata = {'qubit_id': qubit_id,
                 'averages': nums,
                 'ignore_other_qubits': ignore_other_qubits}
@@ -202,7 +200,8 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
         ex_seq.start()
         ex_sequencers.append(ex_seq)
     sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
-                                                                       qubit_excitation_pulse.get_pulse_sequence(0))
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0)+
+                                                                        qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     #readout_sequencer = sequence_control.define_readout_control_seq(device, readout_channel)
@@ -215,6 +214,7 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                                                          adc=adc,
                                                          prepare_seqs=[other_qubit_pulse_sequence,
                                                                        other_qubit_pulse_sequence +
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0)+
                                                                        qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,
@@ -319,8 +319,12 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
 
     '''Warning'''
     # TODO
-    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi, channel_amplitudes_override=channel_amplitudes,
+    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2,
+                                                                   channel_amplitudes_override=channel_amplitudes,
                                                                    recalibrate=recalibrate_excitation)
+    #qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,
+    #                                                               channel_amplitudes_override=channel_amplitudes,
+     #                                                              recalibrate=recalibrate_excitation)
     metadata = {'qubit_id': qubit_id,
                 'averages': nums,
                 'channel': readout_channel,
@@ -355,6 +359,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
         ex_seq.start()
         ex_sequencers.append(ex_seq)
     sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0)+
                                                                        qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
@@ -375,6 +380,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                                                          adc=adc,
                                                          prepare_seqs=[other_qubit_pulse_sequence,
                                                                        other_qubit_pulse_sequence +
+                                                                       qubit_excitation_pulse.get_pulse_sequence(0)+
                                                                        qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,

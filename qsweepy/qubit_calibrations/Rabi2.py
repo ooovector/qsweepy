@@ -25,17 +25,6 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         exp_sin_fitter_mode = 'unsync'
         exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
 
-    #pre_pulse_sequences = []
-    #for pulse in pre_pulses:
-    #    if hasattr(pulse, 'get_pulse_sequence'):
-    #        pre_pulse_sequences += pulse.get_pulse_sequence(0.0)
-    #    else:
-    #        pre_pulse_sequences += pulse
-
-    #pre_pulse_sequences = [p for pulse in pre_pulses for p in pulse.get_pulse_sequence(0)]
-    # Exitation sequencer
-    # Nado zagrusit pre rulse vo vse sequencery
-    #print(qubit_id)
 
     ex_channel = device.awg_channels[exitation_channel]
     if ex_channel.is_iq():
@@ -48,9 +37,9 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     for a, c in channel_amplitudes.items():
         if a == exitation_channel:
             exitation_amplitude = np.abs(c)
-    def_frag, play_frag = device.pg.rect_cos(channel=exitation_channel,
+    def_frag, play_frag, entry_table_index_constants, assign_fragment, table_entry = device.pg.rect_cos(channel=exitation_channel,
                                              length=0, amp=exitation_amplitude,
-                                             length_tail=tail_length, fast_control=True)
+                                             length_tail=tail_length, fast_control=True, control_frequency=0)
 
     for seq_id in device.pre_pulses.seq_in_use:
         if seq_id != control_seq_id:
@@ -70,7 +59,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         device.pre_pulses.set_seq_offsets(sequence)
         device.pre_pulses.set_seq_prepulses(sequence)
         device.modem.awg.set_sequence(sequence.params['sequencer_id'], sequence)
-        sequence.start()
+        sequence.start(holder=1)
 
     '''#There is no more special delay_seq and special readout_trigger_seq due to the new pulse generation structure
     #Now delay_seq and special readout_trigger_seq replace with new sequencer READSequence

@@ -9,7 +9,7 @@ device_settings = {
                    'vna_address': 'TCPIP0::10.20.61.68::inst0::INSTR', #ZVB
                    'rf_switch_address': '10.20.61.91',
                    'use_rf_switch': False,
-                   'hdawg_address': 'hdawg-dev8108',
+                   'hdawg_address': 'hdawg-dev8250', #8108
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
                    'adc_timeout': 10,
                    'adc_trig_rep_period': 20,  #10 -  12.5 MHz rate period
@@ -104,7 +104,7 @@ class hardware_setup():
         self.q1z = awg_channel(self.hdawg, 0)  # coil control
 
 
-        self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
+        #self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
 
         self.adc_device = instruments.TSW14J56_evm()
         self.adc_device.timeout = self.device_settings['adc_timeout']
@@ -221,6 +221,20 @@ class hardware_setup():
         # We need to set DIO valid polarity as  None (0- none, 1 - low, 2 - high, 3 - both )
         self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/valid/polarity' % read_seq_id, 0)
         self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/strobe/index' % read_seq_id, 3)
+
+        for ex_seq_id in [0,2,6,7]:
+            self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/0/timeconstant' % ex_seq_id, 25e-9)
+            self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/1/timeconstant' % ex_seq_id, 400e-9)
+
+            self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/0/amplitude' % ex_seq_id,-0.030)
+            self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/1/amplitude' % ex_seq_id, -0.010)
+
+            self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/0/enable' % ex_seq_id, 1)
+            self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/1/enable' % ex_seq_id, 1)
+
+            self.hdawg.daq.setInt('/' + self.hdawg.device + '/sigouts/%d/precompensation/enable' % ex_seq_id, 1)
+
+
         #self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/mask/value' % read_seq_id, 2)
         #self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/mask/shift' % read_seq_id, 1)
         # For readout channels
