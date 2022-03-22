@@ -107,28 +107,31 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     ## strategy: if we have a ready readout pulse, use it.
     ## otherwise, try to calibrate a readout pulse. If that fails,
     ## jump to passthrough measurements
-    try:
-        measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata_fidelity_scan, references_that=references)
-        pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
-    except Exception as e:
-        #print (type(e), str(e))
-        traceback.print_exc()
-        # if there is no passthrough, calibrate passthrough
+    use_calibrated_measurer = bool(device.get_qubit_constant(name='use_calibrated_measurer', qubit_id=qubit_id) == 'True')
+    if use_calibrated_measurer:
         try:
-            measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False, ignore_other_qubits=ignore_other_qubits)
+            measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata_fidelity_scan, references_that=references)
             pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
         except Exception as e:
-            print ('Failed to get readout pulse from fidelity scan, fall back to passthrough')
+            #print (type(e), str(e))
             traceback.print_exc()
+            # if there is no passthrough, calibrate passthrough
             try:
-                measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata_passthrough, references_that=references)
-                pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+                measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False, ignore_other_qubits=ignore_other_qubits)
+                pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
             except Exception as e:
-                print (type(e), str(e))
-                traceback.print_exc()
-                # if there is no passthrough, calibrate passthrough
-                measurement = readout_passthrough(device, qubit_id, length=length, amplitudes=amplitudes)
-                pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+               print ('Failed to get readout pulse from fidelity scan, fall back to passthrough')
+               traceback.print_exc()
+    else:
+        try:
+            measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata_passthrough, references_that=references)
+            pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+        except Exception as e:
+            print (type(e), str(e))
+            traceback.print_exc()
+            # if there is no passthrough, calibrate passthrough
+            measurement = readout_passthrough(device, qubit_id, length=length, amplitudes=amplitudes)
+            pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
     return pulse
 
 

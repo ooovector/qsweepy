@@ -451,6 +451,8 @@ var variable_register5 = getUserReg(var_reg5);
             self.awg.set_modulation(self.params['ic'], 0)
             self.awg.set_modulation(self.params['qc'], 0)
         self.awg.set_holder(self.params['ic'], holder)
+        #if self.params['sequencer_id']==3:
+        #    self.awg.set_holder(self.params['ic'], 1)
         self.awg.set_holder(self.params['qc'], 1)
         self.awg.set_output(self.params['ic'], 1)
         self.awg.set_output(self.params['qc'], 1)

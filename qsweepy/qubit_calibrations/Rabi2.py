@@ -11,7 +11,7 @@ import time
 def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0,
               pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}):
     from .readout_pulse2 import get_uncalibrated_measurer
-    from .calibrated_readout import get_calibrated_measurer
+    from .calibrated_readout2 import get_calibrated_measurer
 
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
         readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples)

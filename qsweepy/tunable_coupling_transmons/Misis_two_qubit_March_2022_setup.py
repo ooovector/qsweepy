@@ -11,6 +11,7 @@ device_settings = {
                    'use_rf_switch': False,
                    'hdawg_address': 'hdawg-dev8250', #8108
                    'sa_address': 'TCPIP0::10.20.61.56::inst0::INSTR',
+                   'lo1_address': 'TCPIP0::10.20.61.116::inst0::INSTR',
                    'adc_timeout': 10,
                    'adc_trig_rep_period': 20,  #10 -  12.5 MHz rate period
                    'adc_trig_width': 2,  # 32 ns trigger length
@@ -18,7 +19,7 @@ device_settings = {
 
 cw_settings = { 'mixer_thru': 0.5 }
 
-pulsed_settings = {#'lo1_power': 18,
+pulsed_settings = {'lo1_power': 18,
                    'vna_power': 16,
                    'ex_clock': 2400e6,  # 1 GHz - clocks of some devices
                    'ro_clock': 1000e6,
@@ -30,7 +31,7 @@ pulsed_settings = {#'lo1_power': 18,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq': 3.70e9,
+                   'lo1_freq': 3.20e9,
                    'pna_freq': 7.195e9, #7.258e9 7.2111e9 7.257e9 7.232e9 7.2275e9 7.1e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
@@ -67,7 +68,7 @@ class hardware_setup():
         # RF switch for making sure we know what sample we are measuring
         self.pna = instruments.RS_ZVB20('pna', address=self.device_settings['vna_address'])
         #self.pna = instruments.Agilent_N5242A('pna', address=self.device_settings['vna_address'])
-        #self.lo1 = Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
+        self.lo1 = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
         #self.lo1 = instruments.SignalCore_5502a()
@@ -98,9 +99,9 @@ class hardware_setup():
         self.coil_device = self.hdawg
 
         # Qubit lines should be connected with even channels
-        self.q3z = awg_channel(self.hdawg, 6)  # coil control
+        #self.q3z = awg_channel(self.hdawg, 6)  # coil control
         self.q2z = awg_channel(self.hdawg, 2)  # coil control
-        self.cz = awg_channel(self.hdawg, 7)  # coil control
+        self.cz = awg_channel(self.hdawg, 3)  #7 coil control
         self.q1z = awg_channel(self.hdawg, 0)  # coil control
 
 
@@ -159,8 +160,8 @@ class hardware_setup():
         self.hdawg.set_output(output=1, channel=3)
         self.hdawg.set_output(output=1, channel=4)
         self.hdawg.set_output(output=1, channel=5)
-        self.hdawg.set_output(output=0, channel=6)
-        self.hdawg.set_output(output=0, channel=7)
+        self.hdawg.set_output(output=1, channel=6)
+        self.hdawg.set_output(output=1, channel=7)
         if channels_off is not None:
             for channel_off in channels_off:
                 self.hdawg.set_output(output=0, channel=channel_off)
@@ -173,9 +174,9 @@ class hardware_setup():
             return
         self.hardware_state = 'undefined'
 
-        #self.lo1.set_status(1)  # turn on lo1 output
-        #self.lo1.set_power(self.pulsed_settings['lo1_power'])
-        #self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
+        self.lo1.set_status(1)  # turn on lo1 output
+        self.lo1.set_power(self.pulsed_settings['lo1_power'])
+        self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
         self.pna.set_power(self.pulsed_settings['vna_power'])
 
@@ -222,7 +223,7 @@ class hardware_setup():
         self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/valid/polarity' % read_seq_id, 0)
         self.hdawg.daq.setInt('/' + self.hdawg.device + '/awgs/%d/dio/strobe/index' % read_seq_id, 3)
 
-        for ex_seq_id in [0,2,6,7]:
+        for ex_seq_id in [0,2,3]: #6,7
             self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/0/timeconstant' % ex_seq_id, 25e-9)
             self.hdawg.daq.setDouble('/' + self.hdawg.device + '/sigouts/%d/precompensation/exponentials/1/timeconstant' % ex_seq_id, 400e-9)
 
@@ -247,15 +248,24 @@ class hardware_setup():
 
     def setup_iq_channel_connections(self, exdir_db):
         # промежуточные частоты для гетеродинной схемы new:
+
         self.iq_devices = {'iq_ro':  qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=2,
-                                                                                  lo=self.pna, exdir_db=exdir_db)}
+                                                                                  lo=self.pna, exdir_db=exdir_db),
+                           'iq_ex': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=3,
+                                                                                  lo=self.lo1,
+                                                                                  exdir_db=exdir_db),
+                           }
         self.iq_devices['iq_ro'].name = 'ro'
         self.iq_devices['iq_ro'].calibration_switch_setter = lambda: None
         self.iq_devices['iq_ro'].sa = self.sa
 
-        self.fast_controls = {'q3z': awg_channel(self.hdawg, 6),
+        self.iq_devices['iq_ex'].name = 'ex'
+        self.iq_devices['iq_ex'].calibration_switch_setter = lambda: None
+        self.iq_devices['iq_ex'].sa = self.sa
+
+        self.fast_controls = {#'q3z': awg_channel(self.hdawg, 6),
                               'q2z':awg_channel(self.hdawg, 2),
-                              'cz': awg_channel(self.hdawg, 7),
+                              'cz': awg_channel(self.hdawg, 3),
                               'q1z': awg_channel(self.hdawg, 0)}  # coil control
 
     def get_modem_dc_calibration_amplitude(self):

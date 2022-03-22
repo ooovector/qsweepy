@@ -52,12 +52,15 @@ def iswap_rabi(device, qubit_id,  gate, amplitudes, lengths, gate2=None, pre_pul
     class ParameterSetter:
         def __init__(self):
 
+            self.fast_control=True
+
             self.lengths = lengths
             self.amplitudes = amplitudes
 
             self.amplitude = 0
             self.frequency = 0
             self.length = 0
+            self.full_length=0
 
             self.ex_sequencers = ex_sequencers
             self.readout_sequencer = readout_sequencer
@@ -82,15 +85,18 @@ def iswap_rabi(device, qubit_id,  gate, amplitudes, lengths, gate2=None, pre_pul
             #self.filler_func()
 
         def amplitude_setter(self, amplitude):
-            self.amplitude = amplitude
+            if self.fast_control:
+                self.amplitude = amplitude
+            else:
+                self.amplitude = amplitude
+                self.length_setter(self.length)
             #self.filler_func()
 
         def length_setter(self, length):
             self.length = length
-            if length == self.lengths[0]:
+            #if length == self.lengths[0]:
+            if not self.fast_control:
                 self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
-                #self.pre_pause, self.delay_sequence, self.post_pause = self.filler_func(self.lengths[0])
-                #self.prepare_seq[-2] = self.delay_sequence[0]
                 self.prepare_seq = []
                 self.prepare_seq.extend(pre_pulse.get_pulse_sequence(0))
                 self.pre_pause, self.delay_sequence, self.post_pause = self.filler_func(self.lengths[0])
@@ -106,14 +112,31 @@ def iswap_rabi(device, qubit_id,  gate, amplitudes, lengths, gate2=None, pre_pul
                     ex_seq.set_length(self.length)
                 self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
             else:
-                for ex_seq in self.ex_sequencers:
-                    ex_seq.set_length(self.length)
+                if length == self.lengths[0]:
+                    self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
+                    self.prepare_seq = []
+                    self.prepare_seq.extend(pre_pulse.get_pulse_sequence(0))
+                    self.pre_pause, self.delay_sequence, self.post_pause = self.filler_func(self.lengths[0])
+                    for i in range(gate_nums):
+                        if not Naxuy:
+                            self.prepare_seq.extend(self.pre_pause)
+                            self.prepare_seq.extend(self.delay_sequence)
+                            self.prepare_seq.extend(self.post_pause)
+                        else:
+                            self.prepare_seq.extend(self.delay_sequence)
+                    sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(self.length)
+                    self.readout_sequencer.awg.start_seq(self.readout_sequencer.params['sequencer_id'])
+                else:
+                    for ex_seq in self.ex_sequencers:
+                        ex_seq.set_length(self.length)
 
         def filler_func(self, length):
             self.length = length
             #Gate 1
             channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
-                                                  **{gate.metadata['carrier_name']: self.amplitude})
+                                                  **{gate.metadata['carrier_name']: 1j*self.amplitude})
             gate1_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                                       channel_amplitudes=channel_amplitudes1_,
                                                                       tail_length=float(gate.metadata['tail_length']),
@@ -127,12 +150,22 @@ def iswap_rabi(device, qubit_id,  gate, amplitudes, lengths, gate2=None, pre_pul
             if 'pulse_type' in gate2.metadata:
                 if gate2.metadata['pulse_type'] == 'cos':
                     frequency2 = float(gate2.metadata['frequency'])
-                    tail_length = float(gate2.metadata['tail_length'])
+                    tail_length = float(gate.metadata['tail_length'])
                     phase = 0.0
-                    fast_control = True
-                    channel_pulses = [(c, device.pg.rect_cos, a * np.exp(1j * phase), tail_length, fast_control, frequency2) for
+                    self.fast_control = True #True
+                    channel_pulses = [(c, device.pg.rect_cos, a * np.exp(1j * phase), tail_length, self.fast_control, frequency2) for
                                       c, a in  channel_amplitudes2_.items()]
                     gate2_pulse = [device.pg.pmulti(device, self.length+2*tail_length, *tuple(channel_pulses))]
+                elif gate2.metadata['pulse_type'] == 'sin':
+                    frequency2 = float(gate2.metadata['frequency'])
+                    tail_length = float(gate.metadata['tail_length'])
+                    phase = 0.0
+                    initial_phase = 0
+                    self.fast_control = False
+                    channel_pulses = [(c, device.pg.sin, a * np.exp(1j * phase), frequency2, initial_phase, self.fast_control) for
+                                      c, a in channel_amplitudes2_.items()]
+                    gate2_pulse = [device.pg.pmulti(device, self.length+2*tail_length, *tuple(channel_pulses))]
+
             else:
                 gate2_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                                         channel_amplitudes=channel_amplitudes2_,
