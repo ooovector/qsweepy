@@ -7,23 +7,26 @@ def pre_pulse_set(device, qubit_id):
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
 
-    if ex_channel.is_iq():
-        control_seq_id = ex_channel.parent.sequencer_id
-    else:
-        control_seq_id = ex_channel.channel // 2
+    # if ex_channel.is_iq():
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.parent.sequencer_id
+    # else:
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.channel // 2
+
+    control_awg, control_seq_id = device.pre_pulses.seq_in_use[0]
+
     ex_sequencers = []
-    for seq_id in device.pre_pulses.seq_in_use:
-        if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+    for awg, seq_id in device.pre_pulses.seq_in_use:
+        if [awg, seq_id] != [control_awg, control_seq_id]:
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[])
         else:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
         ex_seq.stop()
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_sequencers.append(ex_seq)
-        device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+        awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
         ex_seq.start()
 
 
@@ -44,7 +47,8 @@ def readout_passthrough(device, qubit_id, length, amplitudes):
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel, length=float(length), amplitude=0)
     sequence.add_readout_pulse(def_frag, play_frag)
     sequence.stop()
-    device.modem.awg.set_sequence(sequence.params['sequencer_id'], sequence)
+    #device.modem.awg.set_sequence(sequence.params['sequencer_id'], sequence)
+    sequence.awg.set_sequence(sequence.params['sequencer_id'], sequence)
     sequence.set_delay(device.modem.trigger_channel.delay)
     sequence.start()
 

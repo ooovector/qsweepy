@@ -59,10 +59,13 @@ class multiqubit_tomography:
 
         random_command_id = 0
         waveform_id = -1
+
         for name, gate in self.interleavers.items():
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0].items():
+                for seq_id, part in gate['pulses'][j][0][ex_seq.awg.device_id].items():
                     if seq_id == ex_seq.params['sequencer_id']:
+                        phase0 = ex_seq.phaseI
+                        phase1 = ex_seq.phaseQ
                         if part[0] not in definition_part:
                             definition_part += part[0]
                             # for entry_table_index_constant in part[2]:
@@ -94,16 +97,16 @@ class multiqubit_tomography:
 
         table_entry = {'index': random_gate_num}
         # table_entry['amplitude0'] = {'value': 1}
-        table_entry['phase0'] = {'value': 0.0, 'increment': False}
+        table_entry['phase0'] = {'value': phase0, 'increment': False}
         # table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        table_entry['phase1'] = {'value': phase1, 'increment': False}
         command_table['table'].append(table_entry)
 
         table_entry = {'index': random_gate_num + 1}
         # table_entry['amplitude0'] = {'value': 1}
-        table_entry['phase0'] = {'value': 0.0, 'increment': True}
+        table_entry['phase0'] = {'value': 0, 'increment': True}
         # table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        table_entry['phase1'] = {'value': 0, 'increment': True}
         command_table['table'].append(table_entry)
 
         two_qubit_gate_index = random_command_id - 1
@@ -115,21 +118,21 @@ class multiqubit_tomography:
     wait(5);
 
     //Pre pulses
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register0);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register1);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register2);
     
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry({two_qubit_gate_index});
     //Pulses
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register3);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register4);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register5);
 
     executeTableEntry({random_gate_num});
@@ -141,19 +144,19 @@ class multiqubit_tomography:
     wait(5);
     
     //Pre pulses
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register0);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register1);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register2);
 
     //Pulses
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register3);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register4);
-    executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register5);
 
     executeTableEntry({random_gate_num});
@@ -167,12 +170,19 @@ resetOscPhase();'''.format(random_gate_num=random_gate_num))
     def create_hdawg_generator(self):
         pulses = {}
         control_seq_ids = []
-        self.instructions=[]
-        for ex_seq in self.ex_sequencers:
-            pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
-            control_seq_ids.append(ex_seq.params['sequencer_id'])
+        control_awg_ids = []
+        self.instructions = []
 
-        return [[pulses, control_seq_ids]]
+        for name, gate in self.interleavers.items():
+            for j in range(len(gate['pulses'])):
+                for device_id in gate['pulses'][j][0].keys():
+                    pulses.update({device_id: {}})
+
+        for ex_seq in self.ex_sequencers:
+            pulses[ex_seq.awg.device_id][ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq)
+            control_seq_ids.append(ex_seq.params['sequencer_id'])
+            control_awg_ids.append(ex_seq.awg.device_id)
+        return [[pulses, control_seq_ids, control_awg_ids]]
 
     def add_interleaver(self, name, pulse_seq, unitary):
         self.d = unitary.shape[0]
@@ -291,9 +301,10 @@ resetOscPhase();'''.format(random_gate_num=random_gate_num))
     def function_recognition(self, qubit_id, registers, name):
         values=self.correspondence[qubit_id][name]
         for ex_seq in self.ex_sequencers:
-            if self.correspondence[qubit_id]['sequencer_id'] == ex_seq.params['sequencer_id']:
-                for _i, register in enumerate(registers):
-                    ex_seq.awg.set_register(ex_seq.params['sequencer_id'], register, values[_i])
+            if self.correspondence[qubit_id]['awg_id'] == ex_seq.awg.device_id:
+                if self.correspondence[qubit_id]['sequencer_id'] == ex_seq.params['sequencer_id']:
+                    for _i, register in enumerate(registers):
+                        ex_seq.awg.set_register(ex_seq.params['sequencer_id'], register, values[_i])
 
     def measure(self):
         meas = {}

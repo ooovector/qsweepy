@@ -588,8 +588,22 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
         table_entry['waveform'] = {'index': 0}
 
         if ex_channel.is_iq():
+            calib_dc = ex_channel.parent.calib_dc()
+            calib_rf = ex_channel.parent.calib_rf(ex_channel)
+            awg_channel = ex_channel.parent.sequencer_id
+            ex_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+            ex_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
+            ex_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+            ex_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
+            ex_channel.parent.awg.set_sin_phase(2 * awg_channel, np.angle(calib_rf['I']) * 360 / np.pi)
+            ex_channel.parent.awg.set_sin_phase(2 * awg_channel + 1, np.angle(calib_rf['Q']) * 360 / np.pi)
+            ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel, 0, np.abs(calib_rf['I']))
+            ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel + 1, 1, np.abs(calib_rf['Q']))
+
+
             table_entry['phase0'] = {'value': np.round(phase*360/2/np.pi, 3), 'increment': True}
             table_entry['phase1'] = {'value': np.round(phase*360/2/np.pi, 3), 'increment': True}
+
         else:
             control_channel_id = ex_channel.channel % 2
             if control_channel_id == 0:
@@ -624,6 +638,17 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
         if ex_channel.is_iq():
             control_seq_id = ex_channel.parent.sequencer_id
             control_channel_id = None
+            calib_dc = ex_channel.parent.calib_dc()
+            calib_rf = ex_channel.parent.calib_rf(ex_channel)
+            awg_channel = ex_channel.parent.sequencer_id
+            ex_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+            ex_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
+            ex_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+            ex_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
+            ex_channel.parent.awg.set_sin_phase(2 * awg_channel, np.angle(calib_rf['I']) * 360 / np.pi)
+            ex_channel.parent.awg.set_sin_phase(2 * awg_channel+1, np.angle(calib_rf['Q']) * 360 / np.pi)
+            ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel, 0, np.abs(calib_rf['I']))
+            ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel + 1, 1, np.abs(calib_rf['Q']))
             if fast_control:
                 ex_channel.parent.awg.set_amplitude(2*control_seq_id, 1)
                 ex_channel.parent.awg.set_amplitude(2*control_seq_id+1, 1)
@@ -822,8 +847,10 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
         table_entry['waveform'] = {'index': 0}
 
         if ex_channel.is_iq():
-            table_entry['phase0'] = {'value': 0 * 360 / 2 / np.pi, 'increment': True}
-            table_entry['phase1'] = {'value': 0 * 360 / 2 / np.pi, 'increment': True}
+            #table_entry['phase0'] = {'value': np.round(np.angle(calib_rf['I']) * 360 / np.pi, 3), 'increment': False}
+            #table_entry['phase1'] = {'value': np.round(np.angle(calib_rf['Q']) * 360 / np.pi, 3), 'increment': False}
+            table_entry['phase0'] = {'value': 0, 'increment': True}
+            table_entry['phase1'] = {'value': 0, 'increment': True}
         else:
             control_channel_id = ex_channel.channel % 2
             if control_channel_id == 0:
@@ -856,7 +883,13 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
         definition_fragment+= textwrap.dedent('''
 wave wave_zeros_{length_samp}= zeros({length_samp});'''.format(length_samp=length_samp))
 
-        play_fragment += textwrap.dedent('''
+        if length_samp==0:
+            play_fragment += textwrap.dedent('''
+//
+        waitWave();'''.format(length_samp=length_samp))
+
+        else:
+            play_fragment += textwrap.dedent('''
 //
     playZero({length_samp});
     waitWave();'''.format(length_samp=length_samp))
@@ -912,19 +945,16 @@ cvar resolution = {resolution};
                 play_fragment += textwrap.dedent('''
 //
     if (variable_register2 & {bitval}) {{
-        incrementSinePhase(0, {increment});
-        waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+        incrementSinePhase(0, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 if ex_channel.is_iq():
                     play_fragment += textwrap.dedent('''
-//
-        incrementSinePhase(1, {increment});
-        waitWave();'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+        incrementSinePhase(1, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 play_fragment += '''
-        wait(1);
-//
     } else {
-        wait(4);
-    }'''
+        incrementSinePhase(0, 0.00000001);
+        incrementSinePhase(1, 0.00000001);
+    }
+    waitWave();'''
 
         elif fast_control:
             definition_fragment += '''
@@ -1004,6 +1034,23 @@ assignWaveIndex(1, wave_zeros_{length_samp}, 1, wave_zeros_{length_samp}, etic_z
         table_entry['waveform'] = {'index': 0}
 
         if ex_channel.is_iq():
+            # calib_dc = ex_channel.parent.calib_dc()
+            # calib_rf = ex_channel.parent.calib_rf(ex_channel)
+            # awg_channel = ex_channel.parent.sequencer_id
+            # ex_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+            # ex_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
+            # ex_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+            # ex_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
+            # ex_channel.parent.awg.set_sin_phase(2 * awg_channel, np.angle(calib_rf['I']) * 360 / np.pi)
+            # ex_channel.parent.awg.set_sin_phase(2 * awg_channel + 1, np.angle(calib_rf['Q']) * 360 / np.pi)
+            # ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel, 0, np.abs(calib_rf['I']))
+            # ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel + 1, 1, np.abs(calib_rf['Q']))
+            #
+            # table_entry['phase0'] = {'value': np.round(np.angle(calib_rf['I']) * 360 / np.pi, 3),
+            #                          'increment': False}
+            # table_entry['phase1'] = {'value': np.round(np.angle(calib_rf['Q']) * 360 / np.pi, 3),
+            #                          'increment': False}
+
             table_entry['phase0'] = {'value': phase, 'increment': True}
             table_entry['phase1'] = {'value': phase, 'increment': True}
         else:
@@ -1032,30 +1079,38 @@ assignWaveIndex(1, wave_zeros_{length_samp}, 1, wave_zeros_{length_samp}, etic_z
             fast_control = fast_control
 
         pulses = {}
-        for seq_id in device.pre_pulses.seq_in_use:
+        for awg, seq_id in device.pre_pulses.seq_in_use:
+            pulses.update({awg.device_id: {}})
+
+        for awg, seq_id in device.pre_pulses.seq_in_use:
             for channel_name, channel in self.channels.items():
                 ex_channel = self.channels[channel_name]
                 if ex_channel.is_iq():
-                    if seq_id ==ex_channel.parent.sequencer_id:
-                        pulses[seq_id] = self.pause(channel_name, length_set, fast_control)
+                    if [awg, seq_id] == [ex_channel.parent.awg, ex_channel.parent.sequencer_id]:
+                    #if seq_id ==ex_channel.parent.sequencer_id:
+                        pulses[awg.device_id][seq_id] = self.pause(channel_name, length_set, fast_control)
                         break
                 else:
-                    if seq_id == ex_channel.channel // 2:
-                        pulses[seq_id] = self.pause(channel_name, length_set, fast_control)
+                    if [awg, seq_id] == [ex_channel.parent.awg, ex_channel.channel // 2]:
+                    #if seq_id == ex_channel.channel // 2:
+                        pulses[awg.device_id][seq_id] = self.pause(channel_name, length_set, fast_control)
                         break
         #pulses = {channel_name: self.pause(channel_name, length) for channel_name, channel in self.channels.items()}
         #pulses = {seq_id: self.pause(seq_id, length) for seq_id in device.pre_pulses.seq_in_use}
         control_seq_id = None
+        control_awg_id = None
         for pulse in params:
             channel = pulse[0]
             ex_channel = self.channels[channel]
             if ex_channel.is_iq():
                 control_seq_id = ex_channel.parent.sequencer_id
+                control_awg_id = ex_channel.parent.awg.device_id
             else:
                 control_seq_id = ex_channel.channel // 2
+                control_awg_id = ex_channel.parent.awg.device_id
             # print ('Setting multipulse: \npulse:', pulse[1], 'channel:', channel, 'length:', length, 'other args:', pulse[2:])
-            pulses[control_seq_id] = pulse[1](channel, length_set, *pulse[2:])
-        return [pulses, [control_seq_id]]
+            pulses[ex_channel.parent.awg.device_id][control_seq_id] = pulse[1](channel, length_set, *pulse[2:])
+        return [pulses, [control_seq_id], [control_awg_id]]
 
     def sin(self, channel, length, amp, freq, initial_phase, fast_control=False):
         definition_fragment = ''''''
@@ -1075,8 +1130,8 @@ wave sine_wave_{samples} = sine({samples}, 1, {initial_phase}, {nrOfPeriods});''
             awg_channel = ex_channel.parent.sequencer_id
             ex_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
             ex_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
-            ex_channel.parent.awg.set_offset(2 * awg_channel, np.real(calib_dc['dc']))
-            ex_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
+            ex_channel.parent.awg.set_offset(channel = 2 * awg_channel, offset = np.real(calib_dc['dc']))
+            ex_channel.parent.awg.set_offset(channel = 2 * awg_channel + 1, offset =  np.imag(calib_dc['dc']))
             play_fragment += textwrap.dedent('''
 //
     playWave(1, {ampI}*sine_wave_{samples}, 2, {ampQ}*sine_wave_{samples});'''.format(samples=nrOfsampl, ampI=np.real(amp)*np.abs(calib_rf['I']), ampQ=np.imag(amp)*np.abs(calib_rf['Q'])))
@@ -1134,13 +1189,15 @@ assignWaveIndex(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples}, et
 
         merged_pulses = {}
         merged_seq_id = []
+        merged_awg_id = []
         merged_pulses = copy.copy(pulse_sequences[0][0])
 
         for _sequences in pulse_sequences:
-            merged_pulses[_sequences[1][0]] = _sequences[0][_sequences[1][0]]
+            merged_pulses[_sequences[2][0]][_sequences[1][0]] = _sequences[0][_sequences[2][0]][_sequences[1][0]]
             merged_seq_id.append(_sequences[1][0])
+            merged_awg_id.append(_sequences[1][0])
 
-        return [merged_pulses, merged_seq_id]
+        return [merged_pulses, merged_seq_id, merged_awg_id]
 
 
     def readout_rect(self, channel, length, amplitude):
@@ -1158,8 +1215,8 @@ assignWaveIndex(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples}, et
         awg_channel = re_channel.parent.sequencer_id
         re_channel.parent.awg.set_amplitude(2 * awg_channel, amplitude)
         re_channel.parent.awg.set_amplitude(2*awg_channel + 1, amplitude)
-        re_channel.parent.awg.set_offset(2 * awg_channel, np.real(calib_dc['dc']))
-        re_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
+        re_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+        re_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
         definition_fragment = textwrap.dedent('''
 wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
 wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));
@@ -1195,8 +1252,8 @@ wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfP
                 awg_channel = re_channel.parent.sequencer_id
                 re_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
                 re_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
-                re_channel.parent.awg.set_offset(2 * awg_channel, np.real(calib_dc['dc']))
-                re_channel.parent.awg.set_offset(2 * awg_channel + 1, np.imag(calib_dc['dc']))
+                re_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+                re_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
                 definition_fragment += textwrap.dedent('''
 wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
 wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));

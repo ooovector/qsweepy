@@ -148,6 +148,8 @@ class ZIDevice():
             time.sleep(0.1)
         if self.awgModule.getInt('compiler/status') == 1:
             # compilation failed, raise an exceptionawg
+            print ('error in sequence:')
+            print (awg_program)
             raise Exception(self.awgModule.getString('compiler/statusstring'))
         if self.awgModule.getInt('compiler/status') == 0:
             print("Sequencer #{}: Compilation successful with no warnings, will upload the program to the instrument.".format(sequencer_id))
@@ -258,7 +260,11 @@ class ZIDevice():
         self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 1)
         self.daq.sync()
 
-    def set_offset(self, channel, offset):
+    def set_offset(self, offset, channel):
+        import traceback
+        if offset > 1.0 or offset==1.0:
+            raise ValueError('Too high offset')
+            return
         self.daq.setDouble('/' + self.device + '/SIGOUTS/%d/OFFSET' % channel, offset)
         self.daq.sync()
 

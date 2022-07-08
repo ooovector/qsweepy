@@ -221,16 +221,21 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, preferred_length=None
     # TODO: revert gauss pulses
     if channel_amplitudes_override is None:
              try:
-                 try:
-                     ##TODO
-                     ##'''Warning'''
-                     return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, preferred_length=preferred_length,
-                                                                                   transition=transition, recalibrate=False)
-                     ##pass
-                 except:
-                     pass
-                 # TODO
-        #         '''Warning'''
+        #          try:
+        #              ##TODO
+        #              ##'''Warning'''
+        #                if device.get_sample_global('is_fluxonium')=='False':
+        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, preferred_length=preferred_length,
+        #                                                                             transition=transition, recalibrate=False)
+        #                else:
+        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_phase(device, qubit_id, rotation_angle,
+        #                                                                     preferred_length=preferred_length,
+        #                                                                     transition=transition, recalibrate=False)
+        #              ##pass
+        #          except:
+        #              pass
+        #          # TODO
+        # #         '''Warning'''
                  return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, preferred_length=preferred_length,
                                                                                   transition=transition, recalibrate=False)
              except:

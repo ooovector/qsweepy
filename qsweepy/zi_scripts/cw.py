@@ -77,13 +77,13 @@ setInt('sines/{qc}/oscselect', {nco_id});
         self.awg.set_sin_phase(self.params['qc'], phase_q)
 
     def set_offset_i(self, offset_i):
-        assert (np.abs(offset_i) <= 0.5)
-        self.awg.set_offset(self.params['ic'], offset_i)
+        assert (np.abs(offset_i) <= 0.6)
+        self.awg.set_offset(channel=self.params['ic'], offset=offset_i)
         # self.awg.set_register(self.params['sequencer_id'], self.params['io'], np.asarray(int(offset_i*0xffffffff), dtype=np.uint32))
 
     def set_offset_q(self, offset_q):
-        assert (np.abs(offset_q) <= 0.5)
-        self.awg.set_offset(self.params['qc'], offset_q)
+        assert (np.abs(offset_q) <= 0.6)
+        self.awg.set_offset(channel=self.params['qc'], offset=offset_q)
         # self.awg.set_register(self.params['sequencer_id'], self.params['qo'], np.asarray(int(offset_q*0xffffffff), dtype=np.uint32))
 
     def start(self):

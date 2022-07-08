@@ -31,7 +31,7 @@ class modem_readout(data_reduce.data_reduce):
         self.axis_mean = axis_mean
         self.trigger_channel = trigger_channel
         self.exdir_db = exdir_db
-        self.awg = hardware.hdawg
+        self.awg = hardware.iq_devices['iq_ro'].awg #self.awg = hardware.hdawg
 
         self.readout_channels = {}
         self.delay_calibrations = {}
