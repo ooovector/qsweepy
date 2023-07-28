@@ -105,8 +105,7 @@ class single_shot_readout:
 
         if self.dbg_storage:
             abs_path = "'D:\\qtlab_replacement\\dbg_data"  # TODO make dependent path
-            with open(abs_path + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + '.pkl', 'wb') as f:
-                pkl.dump((X, y), f)
+            with open(abs_path + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + '.pkl', 'wb') as f: pkl.dump((X, y), f)
 
         # last dimension is the feature dimension
         # y = np.asarray(y)

@@ -68,7 +68,7 @@ class awg_channel:
 		return False
 
 	def set_offset(self, offset):
-		return self.awg.set_offset(offset=offset, channel=self.channel)
+		return self.awg.set_offset(offset, channel=self.channel)
 	def get_offset(self):
 		return self.awg.get_offset(channel=self.channel)
 	def set_amplitude(self, amplitude):

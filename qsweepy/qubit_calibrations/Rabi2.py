@@ -11,7 +11,7 @@ import time
 def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0,
               pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}):
     from .readout_pulse2 import get_uncalibrated_measurer
-    from .calibrated_readout import get_calibrated_measurer
+    from .calibrated_readout2 import get_calibrated_measurer
 
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
         readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples)
@@ -25,52 +25,59 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         exp_sin_fitter_mode = 'unsync'
         exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
 
-    #pre_pulse_sequences = []
-    #for pulse in pre_pulses:
-    #    if hasattr(pulse, 'get_pulse_sequence'):
-    #        pre_pulse_sequences += pulse.get_pulse_sequence(0.0)
-    #    else:
-    #        pre_pulse_sequences += pulse
-
-    #pre_pulse_sequences = [p for pulse in pre_pulses for p in pulse.get_pulse_sequence(0)]
-    # Exitation sequencer
-    # Nado zagrusit pre rulse vo vse sequencery
-    #print(qubit_id)
 
     ex_channel = device.awg_channels[exitation_channel]
-    if ex_channel.is_iq():
-        control_seq_id = ex_channel.parent.sequencer_id
-    else:
-        control_seq_id = ex_channel.channel//2
+    # if ex_channel.is_iq():
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.parent.sequencer_id
+    # else:
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.channel // 2
+
+    control_awg, control_seq_id = device.pre_pulses.seq_in_use[0]
     ex_sequencers = []
 
     # Pulse definition
-    for a, c in channel_amplitudes.items():
-        if a == exitation_channel:
-            exitation_amplitude = np.abs(c)
-    def_frag, play_frag = device.pg.rect_cos(channel=exitation_channel,
-                                             length=0, amp=exitation_amplitude,
-                                             length_tail=tail_length, fast_control=True)
+    # for a, c in channel_amplitudes.items():
+    #     if a == exitation_channel:
+    #         exitation_amplitude = np.abs(c)
+    # def_frag, play_frag, entry_table_index_constants, assign_fragment, table_entry = device.pg.rect_cos(channel=exitation_channel,
+    #                                          length=0, amp=exitation_amplitude,
+    #                                          length_tail=tail_length, fast_control=True, control_frequency=0)
 
-    for seq_id in device.pre_pulses.seq_in_use:
-        if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses = [])
+    prepare_seq = []
+    gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                              channel_amplitudes=channel_amplitudes,
+                                                              tail_length=tail_length,
+                                                              length=lengths,
+                                                              fast_control=True)
+    prepare_seq.extend(gate_pulse)
+
+
+    for awg, seq_id in device.pre_pulses.seq_in_use:
+
+        if [awg, seq_id] != [control_awg, control_seq_id]:
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+
+            #ex_seq.start(holder=1)
         else:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
-            control_sequence = ex_seq
-            ex_seq.add_definition_fragment(def_frag)
-            ex_seq.add_play_fragment(play_frag*repeats)
 
+            control_sequence = ex_seq
+        device.pre_pulses.set_seq_offsets(ex_seq)
+        device.pre_pulses.set_seq_prepulses(ex_seq)
+        ex_seq.start(holder=1)
+            #ex_seq.add_definition_fragment(def_frag)
+            #ex_seq.add_play_fragment(play_frag*repeats)
         ex_sequencers.append(ex_seq)
-    control_sequence.set_frequency(np.abs(ex_channel.get_frequency()))
-    for sequence in ex_sequencers:
-        sequence.stop()
-        device.pre_pulses.set_seq_offsets(sequence)
-        device.pre_pulses.set_seq_prepulses(sequence)
-        device.modem.awg.set_sequence(sequence.params['sequencer_id'], sequence)
-        sequence.start()
+    # for sequence in ex_sequencers:
+    #     sequence.stop()
+    #     device.pre_pulses.set_seq_offsets(sequence)
+    #     device.pre_pulses.set_seq_prepulses(sequence)
+    #     sequence.awg.set_sequence(sequence.params['sequencer_id'], sequence)
+    #     sequence.start(holder=1)
+
+    sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
 
     '''#There is no more special delay_seq and special readout_trigger_seq due to the new pulse generation structure
     #Now delay_seq and special readout_trigger_seq replace with new sequencer READSequence
@@ -87,9 +94,9 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     re_sequence = sequence_control.define_readout_control_seq(device, readout_pulse)
     re_sequence.start()
 
-    def set_ex_length(length, ex_sequence = control_sequence):
-        ex_sequence.set_length(length)
-        #time.sleep(0.05)
+    def set_ex_length(length, ex_sequencers = ex_sequencers):
+        for ex_seq in ex_sequencers:
+            ex_seq.set_length(length)
 
     times = np.zeros(len(lengths))
     for _i in range(len(lengths)):

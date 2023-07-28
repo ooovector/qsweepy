@@ -1,10 +1,11 @@
 import numpy as np
 import copy
 
-def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit_gate=None, two_qubit_gate_name='fSim', error=1e-3):
+def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit_gate=None,
+					   two_qubit_gate_name='fSIM', error=1e-3, Clifford_group=False):
 	# see https://arxiv.org/pdf/1210.7011.pdf
-	c_q1 = generate_group(generators_q1)
-	c_q2 = generate_group(generators_q2)
+	c_q1 = generate_group(generators=generators_q1, Clifford_group=Clifford_group)
+	c_q2 = generate_group(generators=generators_q2, Clifford_group=Clifford_group)
 	s_q1 = {}
 	s_q2 = {}
 	pi2_q1 = {}
@@ -30,9 +31,9 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit
 			if np.abs(np.abs(np.sum(s2 * np.conj(clifford['unitary']))) - norm) < error:
 				s[name] = clifford
 		return s
-	s_q1 = find_s_gates_from_cliffords(c_q1)
-	s_q2 = find_s_gates_from_cliffords(c_q2)
-	print ('s_q1 length:', len(s_q1))
+	#s_q1 = find_s_gates_from_cliffords(c_q1)
+	#s_q2 = find_s_gates_from_cliffords(c_q2)
+	#print ('s_q1 length:', len(s_q1))
 	# finding pi/2-gates
 	for name, clifford in c_q1.items():
 		square = clifford['unitary'] @ clifford['unitary']
@@ -62,45 +63,98 @@ def two_qubit_clifford(generators_q1, generators_q2, plus_op_parallel, two_qubit
 	if two_qubit_gate is None:
 		return group
 	else:
-		group[two_qubit_gate_name] = {'unitary': two_qubit_gate['unitary'],
-								'pulses': two_qubit_gate['pulses']}
+		group[two_qubit_gate_name] = {'unitary': two_qubit_gate[two_qubit_gate_name]['unitary'],
+								'pulses': two_qubit_gate[two_qubit_gate_name]['pulses']}
 		return group
 
-	#return group
+	return group
 
-def generate_group(generators, error=1e-3):
+def generate_group(generators, error=1e-3, Clifford_group=True):
+
 	group = dict(generators)
-	found = False
-	while not found:
-		#print (found)
-		for name1, element1 in group.items():
-			for name2, element2 in group.items():
-				new_element = {'unitary': np.dot(element1['unitary'], element2['unitary']),
+	if not Clifford_group:
+		return group
+	else:
+		found = False
+		while not found:
+			#print (found)
+			for name1, element1 in group.items():
+				for name2, element2 in group.items():
+					new_element = {'unitary': np.dot(element1['unitary'], element2['unitary']),
 							   'price': element1['price']+element2['price']}
-				new_element_normsqr  = np.sum(np.abs(new_element['unitary'])**2)
-				found = False
+					new_element_normsqr  = np.sum(np.abs(new_element['unitary'])**2)
+					found = False
 				
-				for name3, element3 in group.items():
-					norm3sqr = np.sum(np.abs(element3['unitary']**2))
-					scalar_product = np.abs(np.sum(element3['unitary']*np.conj(new_element['unitary'])))
-					#print ('1:', name1, '2:', name2, 'new:', name3)
-					if norm3sqr*new_element_normsqr-scalar_product**2<error:
-					# this group element is already there					
-						if new_element['price']<element3['price']:
-							del group[name3]
-							found = False
-						else:
-							found = True
-						#print (found)
-						break
+					for name3, element3 in group.items():
+						norm3sqr = np.sum(np.abs(element3['unitary']**2))
+						scalar_product = np.abs(np.sum(element3['unitary']*np.conj(new_element['unitary'])))
+						#print ('1:', name1, '2:', name2, 'new:', name3)
+						if norm3sqr*new_element_normsqr-scalar_product**2<error:
+						# this group element is already there
+							if new_element['price']<element3['price']:
+								del group[name3]
+								found = False
+							else:
+								found = True
+							#print (found)
+							break
 
+					if not found:
+						break
 				if not found:
+					new_element['pulses'] = element2['pulses']+element1['pulses']
+					group['{} {}'.format(name2, name1)] = new_element
+					print(len(group), name2, name1)#, new_element['unitary'])
+					#print ('{} {}'.format(name2, name1))
 					break
-			if not found:
-				new_element['pulses'] = element2['pulses']+element1['pulses']
-				group['{} {}'.format(name2, name1)] = new_element
-				print(len(group), name2, name1)#, new_element['unitary'])
-				#print ('{} {}'.format(name2, name1))
-				break
-		#print (found)
+			#print (found)
+		return group
+
+
+def generate_group2(generators):
+	group = dict(generators)
+
+	I = generators['I']
+	S = generators['Z/2']
+	S2 = generators['Z']
+	S3 = generators['-Z/2']
+	X = generators['X/2']
+
+	t1 = [I, S, S2, S3] * 6
+	t2 = [X] * 24
+	t3 = [I] * 4 + [S] * 4 + [S2] * 4 + [S3] * 4 + [I] * 4 + [S2] * 4
+	t4 = [I] * 16 + [X] * 8
+
+	group = {}
+
+	for r in np.arange(24):
+		result = {'unitary':  t4[r]['unitary'] @ t3[r]['unitary'] @ t2[r]['unitary'] @ t1[r]['unitary'],
+				  'price': 2.0,
+				  'pulses': t1[r]['pulses']+t2[r]['pulses']+t3[r]['pulses']+t4[r]['pulses']}
+
+		group[str(r)] = result
+
+	return group
+
+def generate_group3(generators):
+	group = dict(generators)
+
+	I = generators['I']
+	S = generators['Z/2']
+	S2 = generators['Z']
+	S3 = generators['-Z/2']
+	X = generators['X/2']
+	Xm = generators['-X/2']
+
+	t1 = [I, S, S2, S3, I, S]
+	t2 = [X, X, Xm, Xm, I, I]
+	group = {}
+
+	for r in np.arange(5):
+		result = {'unitary':  t2[r]['unitary'] @ t1[r]['unitary'],
+				  'price': 2.0,
+				  'pulses': t1[r]['pulses']+t2[r]['pulses']}
+
+		group[str(r)] = result
+
 	return group

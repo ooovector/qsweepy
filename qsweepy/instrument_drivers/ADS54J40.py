@@ -5,7 +5,8 @@ from qsweepy.libraries import config as global_config
 
 class ADS54J40():
 	def __init__(self):
-		self.device_id = ftd2xx.listDevices().index(b'A6O5BD7')
+		#self.device_id = ftd2xx.listDevices().index(b'A6O5BD7')
+		self.device_id = ftd2xx.listDevices().index(b'A6O5AWL')
 		self.open(self.device_id)
 		self.device.setChars(0x00,0,0x00,1) 
 		self.device.setTimeouts(2000,20000)

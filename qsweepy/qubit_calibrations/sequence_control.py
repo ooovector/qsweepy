@@ -1,5 +1,6 @@
 import numpy as np
 from qsweepy import zi_scripts
+import json
 
 
 
@@ -25,7 +26,7 @@ def define_qubit_control_seq(device, ex_sequence, ex_channel, exitation_amplitud
     control_seq_id = ex_sequence.params['sequencer_id']
     for seq_id in device.pre_pulses.seq_in_use:
         if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg, readout_delay=readout_delay,
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=device.modem.awg, readout_delay=readout_delay,
                                                awg_amp=1, use_modulation=True, pre_pulses = [])
             ex_seq.stop()
             device.pre_pulses.set_seq_offsets(ex_seq)
@@ -41,29 +42,53 @@ def define_qubit_control_seq(device, ex_sequence, ex_channel, exitation_amplitud
             #ex_sequence.start()
 
     return ex_sequencers
-def set_preparation_sequence(device, ex_sequencers, prepare_seq, control_sequence = None):
+def set_preparation_sequence(device, ex_sequencers, prepare_seq, control_sequence = None, instructions=None):
+    for ex_channel in device.awg_channels.keys():
+        awg_channel = device.awg_channels[ex_channel]
+        if hasattr(awg_channel.parent, 'sequencer_id'):
+            calib_dc = awg_channel.parent.calib_dc()
+            calib_rf = awg_channel.parent.calib_rf(awg_channel)
+            awg_channel_id = awg_channel.parent.sequencer_id
+            awg_channel.parent.awg.set_offset(channel=2 * awg_channel_id, offset=np.real(calib_dc['dc']))
+            awg_channel.parent.awg.set_offset(channel=2 * awg_channel_id + 1, offset=np.imag(calib_dc['dc']))
+
     if control_sequence is None:
-        for ex_seq in ex_sequencers:
+        #for ex_seq in ex_sequencers:
+        for _id, ex_seq in enumerate(ex_sequencers):
             ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
             ex_seq.clear_pulse_sequence()
             for prep_seq in prepare_seq:
-                for seq_id, single_sequence in prep_seq[0].items():
+                for seq_id, single_sequence in prep_seq[0][ex_seq.awg.device_id].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         ex_seq.add_definition_fragment(single_sequence[0])
                         ex_seq.add_play_fragment(single_sequence[1])
-            device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+            ex_seq.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+            if instructions is not None:
+                json_str = json.dumps(instructions[_id])
+                print(_id, 'string length: ', len(json_str) , json_str)
+                #raise ValueError('fallos')
+                ex_seq.awg.load_instructions(ex_seq.params['sequencer_id'], json_str)
+                print ('commandtable status: ', ex_seq.awg.daq.get('/' + ex_seq.awg.device +'/AWGS/{}/COMMANDTABLE/STATUS'.format(ex_seq.params['sequencer_id'])))
             ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
     else:
-        for ex_seq in ex_sequencers:
+        #for ex_seq in ex_sequencers:
+        for _id, ex_seq in enumerate(ex_sequencers):
             if ex_seq.params['sequencer_id'] == control_sequence.params['sequencer_id']:
                 ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
                 ex_seq.clear_pulse_sequence()
                 for prep_seq in prepare_seq:
-                    for seq_id, single_sequence in prep_seq[0].items():
+                    for seq_id, single_sequence in prep_seq[0][ex_seq.awg.device_id].items():
                         if seq_id == ex_seq.params['sequencer_id']:
                             ex_seq.add_definition_fragment(single_sequence[0])
                             ex_seq.add_play_fragment(single_sequence[1])
-                device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+
+                ex_seq.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+                if instructions is not None:
+                    json_str = json.dumps(instructions[_id])
+                    print(_id, 'string length: ', len(json_str) , json_str)
+                    #raise ValueError('fallos')
+                    ex_seq.awg.load_instructions(ex_seq.params['sequencer_id'], json_str)
+                    print ('commandtable status: ', ex_seq.awg.daq.get('/' + ex_seq.awg.device +'/AWGS/{}/COMMANDTABLE/STATUS'.format(ex_seq.params['sequencer_id'])))
                 ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
 
 def define_readout_control_seq(device, readout_pulse):

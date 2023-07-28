@@ -107,28 +107,31 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     ## strategy: if we have a ready readout pulse, use it.
     ## otherwise, try to calibrate a readout pulse. If that fails,
     ## jump to passthrough measurements
-    try:
-        measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata_fidelity_scan, references_that=references)
-        pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
-    except Exception as e:
-        #print (type(e), str(e))
-        traceback.print_exc()
-        # if there is no passthrough, calibrate passthrough
+    use_calibrated_measurer = bool(device.get_qubit_constant(name='use_calibrated_measurer', qubit_id=qubit_id) == 'True')
+    if use_calibrated_measurer:
         try:
-            measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False, ignore_other_qubits=ignore_other_qubits)
+            measurement = device.exdir_db.select_measurement(measurement_type='readout_fidelity_scan', metadata=metadata_fidelity_scan, references_that=references)
             pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
         except Exception as e:
-            print ('Failed to get readout pulse from fidelity scan, fall back to passthrough')
+            #print (type(e), str(e))
             traceback.print_exc()
+            # if there is no passthrough, calibrate passthrough
             try:
-                measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata_passthrough, references_that=references)
-                pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+                measurement = readout_fidelity_scan(device, qubit_id, [length], amplitudes, recalibrate_excitation=False, ignore_other_qubits=ignore_other_qubits)
+                pulse = get_qubit_readout_pulse_from_fidelity_scan(device, measurement)
             except Exception as e:
-                print (type(e), str(e))
-                traceback.print_exc()
-                # if there is no passthrough, calibrate passthrough
-                measurement = readout_passthrough(device, qubit_id, length=length, amplitudes=amplitudes)
-                pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+               print ('Failed to get readout pulse from fidelity scan, fall back to passthrough')
+               traceback.print_exc()
+    else:
+        try:
+            measurement = device.exdir_db.select_measurement(measurement_type='readout_passthrough', metadata=metadata_passthrough, references_that=references)
+            pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
+        except Exception as e:
+            print (type(e), str(e))
+            traceback.print_exc()
+            # if there is no passthrough, calibrate passthrough
+            measurement = readout_passthrough(device, qubit_id, length=length, amplitudes=amplitudes)
+            pulse = get_qubit_readout_pulse_from_passthrough(device, measurement)
     return pulse
 
 
@@ -171,20 +174,23 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
     excitation_pulse_sequence = excitation_pulse.get_pulse_sequence(0) if excitation_pulse is not None else []
     ex_channel = device.awg_channels[exitation_channel]
 
-    if hasattr(ex_channel.parent, 'sequencer_id'):
-        control_seq_id = ex_channel.parent.sequencer_id
-    else:
-        control_seq_id = ex_channel.channel//2
+
+    # if ex_channel.is_iq():
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.parent.sequencer_id
+    # else:
+    #     control_awg, control_seq_id = ex_channel.parent.awg, ex_channel.channel // 2
+
+    control_awg, control_seq_id = device.pre_pulses.seq_in_use[0]
     '''Warning'''
     #TODO
     ex_sequencers = []
-    for seq_id in device.pre_pulses.seq_in_use:
-        if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses = [])
+    for awg, seq_id in device.pre_pulses.seq_in_use:
+        if [awg, seq_id] != [control_awg, control_seq_id]:
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[])
         else:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control = True)
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
         ex_seq.stop()
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
@@ -194,7 +200,6 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
     # We neet to set readout sequence to awg readout channel
     # readout pulse parameters ('length' and 'amplitude') we get from qubit_readout_pulse.metadata
-    # device.pg.set_seq(device.pre_pulses + excitation_pulse_sequence + device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence())
     re_channel = device.awg_channels[readout_channel]
     sequence = zi_scripts.READSequence(re_channel.parent.sequencer_id, device.modem.awg)
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel,
@@ -231,6 +236,9 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
 
 def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False):
     from .calibrated_readout2 import get_calibrated_measurer
+
+    print (device, qubit_id, transition)
+
     try:
        assert transition == '01'
        qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)

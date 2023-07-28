@@ -37,7 +37,7 @@ var delay = getUserReg({trig_delay_reg});
 
 while (true) {{
    // Wait trigger from adc. The same trigger channel as for qubit control sequence.
-   wait(10000);
+   wait(3000);
    waitDigTrigger(1);
    //resetOscPhase();
    //wait(10);
@@ -79,12 +79,12 @@ while (true) {{
 
     def set_offset_i(self, offset_i):
         assert (np.abs(offset_i) <= 0.5)
-        self.awg.set_offset(self.params['ic'], offset_i)
+        self.awg.set_offset(channel=self.params['ic'], offset=offset_i)
         # self.awg.set_register(self.params['sequencer_id'], self.params['io'], np.asarray(int(offset_i*0xffffffff), dtype=np.uint32))
 
     def set_offset_q(self, offset_q):
         assert (np.abs(offset_q) <= 0.5)
-        self.awg.set_offset(self.params['qc'], offset_q)
+        self.awg.set_offset(channel=self.params['qc'], offset=offset_q)
         # self.awg.set_register(self.params['sequencer_id'], self.params['qo'], np.asarray(int(offset_q*0xffffffff), dtype=np.uint32))
 
     def set_waveform(self, waveform1 = None, waveform2 = None, waveform_id = 0):

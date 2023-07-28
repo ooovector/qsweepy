@@ -2,7 +2,7 @@ from qsweepy.ponyfiles.data_structures import *
 from qsweepy.qubit_calibrations import channel_amplitudes
 import traceback
 from qsweepy.qubit_calibrations import Rabi2 as Rabi
-from qsweepy.qubit_calibrations import gauss_hd2 as gauss_hd
+from qsweepy.qubit_calibrations import gauss_hd3 as gauss_hd
 from qsweepy.libraries import pulses2 as pulses
 
 
@@ -175,7 +175,7 @@ def get_excitation_pulse_from_Rabi_rect_fit(device, rotation_angle, Rabi_fit):
                                      Rabi_rect_measurement=Rabi_rect_measurement.id)
 
 
-def get_excitation_pulse(device, qubit_id, rotation_angle, transition='01', channel_amplitudes_override=None,
+def get_excitation_pulse(device, qubit_id, rotation_angle, preferred_length=None, transition='01', channel_amplitudes_override=None,
                          recalibrate=True):
     '''
     Rabi_goodness = []
@@ -218,26 +218,28 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, transition='01', chan
             traceback.print_exc()
             pass
     '''
-    #TODO: revert gauss pulses
-    #if channel_amplitudes_override is None:
-         #try:
-             #try:
-                 ##TODO
-                 ##'''Warning'''
-                 #return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle,
-                 #                                                              transition=transition, recalibrate=False)
-                 ##pass
-             #except:
-             #    pass
-             # TODO
-    #         '''Warning'''
-             #return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle,
-             #                                                                  transition=transition, recalibrate=False)
-             ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, transition=transition, recalibrate=recalibrate)
-         ##gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, transition=transition, recalibrate=False)
-
-         #except:
-             #pass
+    # TODO: revert gauss pulses
+    if channel_amplitudes_override is None:
+             try:
+        #          try:
+        #              ##TODO
+        #              ##'''Warning'''
+        #                if device.get_sample_global('is_fluxonium')=='False':
+        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, preferred_length=preferred_length,
+        #                                                                             transition=transition, recalibrate=False)
+        #                else:
+        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_phase(device, qubit_id, rotation_angle,
+        #                                                                     preferred_length=preferred_length,
+        #                                                                     transition=transition, recalibrate=False)
+        #              ##pass
+        #          except:
+        #              pass
+        #          # TODO
+        # #         '''Warning'''
+                 return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, preferred_length=preferred_length,
+                                                                                  transition=transition, recalibrate=False)
+             except:
+                 pass
 
     return get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition=transition,
                                      channel_amplitudes_override=channel_amplitudes_override, recalibrate=recalibrate)

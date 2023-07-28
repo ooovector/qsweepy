@@ -48,14 +48,35 @@ var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
         definition_fragment = self.definition_fragment
         play_fragment = self.play_fragment
 
+#         play_fragment1 = '''
+#
+# while (true) {{
+# //repeat(8192){{
+#     // Wait DIO trigger from qubit control sequencer.
+#     setDIO(0);
+#     wait(3000);
+#     waitDigTrigger(1);
+#     setDIO(1);
+#     wait(10);
+#     setDIO(0);
+#     waitDIOTrigger();
+#     //setDIO(0);
+#     waitDigTrigger(1);
+#     //resetOscPhase();
+#     //waitSineOscPhase(1);
+#     //wait(10);
+# '''
         play_fragment1 = '''
+
 while (true) {{
+//repeat(8192){{
     // Wait DIO trigger from qubit control sequencer.
-    wait(1000);
-    waitDigTrigger(1);
-    setDIO(1);
-    wait(10);
     setDIO(0);
+    wait(3000);
+    waitDigTrigger(1);
+    setTrigger(2);
+    wait(10);
+    setTrigger(0);
     waitDIOTrigger();
     //setDIO(0);
     waitDigTrigger(1);
@@ -63,6 +84,7 @@ while (true) {{
     //waitSineOscPhase(1);
     //wait(10);
 '''
+
         play_fragment2 ='''
     wait(delay);
     setTrigger(1);

@@ -130,7 +130,7 @@ class awg_digital:
                                                                     'dac': dac_dataset,
                                                                     'dac_adc_time': dac_dataset_adc_time}
                                                           )
-            #modem.delay_calibration = calibration_measurement
+            modem.delay_calibration = calibration_measurement
         print ('Calibration measurement (delay):', self.measured_delay)
         self.delay = self.measured_delay
 

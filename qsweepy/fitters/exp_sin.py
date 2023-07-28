@@ -102,7 +102,11 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
             MSE_rel = MSE_rel_calculator(parameters_new)
             parameters = parameters_new
         else:
-            parameters_old = {k: np.asarray(v)[0] if (k != 'A' and k != 'inf') else v for k,v in parameters_old.items()}
+            if mode == 'unsync':
+                parameters_old = {k: np.asarray(v)[0] if (k != 'A' and k != 'inf') else v for k,v in parameters_old.items()}
+            else:
+                parameters_old = {k: np.asarray(v)[0] if (k != 'A') else v for k,v in parameters_old.items()}
+
             #print ('parameters_old:', parameters_old)
             MSE_rel_old = MSE_rel_calculator(parameters_old)
             parameters = parameters_old if MSE_rel_new > MSE_rel_old else parameters_new
