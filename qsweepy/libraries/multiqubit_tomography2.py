@@ -8,7 +8,8 @@ from . import readout_classifier
 
 class multiqubit_tomography:
     def __init__(self, device, measurer, ex_sequencers, readout_sequencer, pulse_generator, proj_seq,
-                 qubit_ids, correspondence, reconstruction_basis={}, interleavers=None):
+                 qubit_ids, correspondence, reconstruction_basis={}, interleavers=None, virtual_phase1=0,
+                 virtual_phase2=0, sign=False):
         # self.sz_measurer = sz_measurer
         # self.adc = adc
         self.pulse_generator = pulse_generator
@@ -21,6 +22,10 @@ class multiqubit_tomography:
         self.readout_sequencer = readout_sequencer
         self.correspondence = correspondence
         self.qubit_ids = qubit_ids
+
+        self.virtual_phase_1 = virtual_phase1
+        self.virtual_phase_2 = virtual_phase2
+        self.sign = sign
         # self.adc_reducer = data_reduce.data_reduce(self.sz_measurer.adc)
         # self.adc_reducer.filters['SZ'] = {k:v for k,v in self.sz_measurer.filter_binary.items()}
         # self.adc_reducer.filters['SZ']['filter'] = lambda x: 1-2*self.sz_measurer.filter_binary_func(x)
@@ -56,6 +61,9 @@ class multiqubit_tomography:
         command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
                              "header": {"version": "0.2"},
                              "table": []}
+        # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
+        #                  'header': {'version': '1.0.0'},
+        #                  'table': []}
 
         random_command_id = 0
         waveform_id = -1
@@ -85,12 +93,29 @@ class multiqubit_tomography:
                         random_pulse = part[4]
                         # if 'amplitude0' in random_pulse:
                         # table_entry['amplitude0'] = random_pulse['amplitude0']
-                        if 'phase0' in random_pulse:
+                        # if ex_seq.device.get_sample_global('is_fluxonium')=='True':
+                        if ex_seq.params['is_iq']:
+                            if 'phase0' in random_pulse:
                                 table_entry['phase0'] = random_pulse['phase0']
-                        # if 'amplitude1' in random_pulse:
-                        # table_entry['amplitude1'] = random_pulse['amplitude1']
-                        if 'phase1' in random_pulse:
-                            table_entry['phase1'] = random_pulse['phase1']
+                            # if 'amplitude1' in random_pulse:
+                            # table_entry['amplitude1'] = random_pulse['amplitude1']
+                            if 'phase1' in random_pulse:
+                                table_entry['phase1'] = random_pulse['phase1']
+                        else:
+                            if ex_seq.device.get_sample_global('is_fluxonium') == 'True':
+                                if 'phase0' in random_pulse:
+                                    table_entry['phase0'] = random_pulse['phase0']
+                                # if 'amplitude1' in random_pulse:
+                                # table_entry['amplitude1'] = random_pulse['amplitude1']
+                                if 'phase1' in random_pulse:
+                                    table_entry['phase1'] = random_pulse['phase1']
+                            else:
+                                if 'phase0' in random_pulse:
+                                    table_entry['phase0'] = random_pulse['phase0']
+                                # if 'amplitude1' in random_pulse:
+                                # table_entry['amplitude1'] = random_pulse['amplitude1']
+                                if 'phase1' in random_pulse:
+                                    table_entry['phase1'] = random_pulse['phase0']
 
                         command_table['table'].append(table_entry)
                         # command_table['table'].append(table_entry)
@@ -109,11 +134,15 @@ class multiqubit_tomography:
         table_entry['phase1'] = {'value': 0, 'increment': True}
         command_table['table'].append(table_entry)
 
-        two_qubit_gate_index = random_command_id - 1
+        if self.sign:
+            two_qubit_gate_index = random_command_id - 2
+        else:
+            two_qubit_gate_index = random_command_id - 1
 
         if self.prepare_seq is not None:
             play_part = textwrap.dedent('''
 //  Tomography play part
+    variable_register0 = getUserReg(var_reg0);
     executeTableEntry({random_gate_num});
     wait(5);
 

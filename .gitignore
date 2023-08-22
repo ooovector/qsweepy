@@ -8,3 +8,4 @@ qtlab.cfg
 build
 dist
 *.egg-info
+.DS Store

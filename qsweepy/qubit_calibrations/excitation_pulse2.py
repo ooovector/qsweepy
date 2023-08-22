@@ -53,8 +53,8 @@ def get_vf(device, qubit_id, freq):
     return sequence_f
 
 
-def get_s(device, qubit_id, phase=np.pi / 2., fast_control = False):
-    pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2.)
+def get_s(device, qubit_id, phase=np.pi / 2., fast_control = False,  gauss=False, sort='best'):
+    pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., gauss=gauss, sort=sort)
     channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
         device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
 
@@ -93,14 +93,14 @@ def get_not(device, qubit_id):
     return pi.get_pulse_sequence(0.0)
 
 
-def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase = 0, fast_control=False):
+def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase = 0, fast_control=False, control_frequency=0):
     #if tail_length > 0:
 
     # It is ordinary function if you use IQ mode (for example: qubit is transmon type), but
     # if you don't use IQ mode, phase = 0 is set for microwave pulses (qubit state control),
     # phase = np.pi/2 is set for rect pulses without modulation (qubit frequency control) (for example: qubit is fluxonium type).
     '''Warning'''
-    channel_pulses = [(c, device.pg.rect_cos, a * np.exp(1j * phase), tail_length, fast_control) for c, a in
+    channel_pulses = [(c, device.pg.rect_cos, a * np.exp(1j * phase), tail_length, fast_control, control_frequency) for c, a in
                         channel_amplitudes.items()]
     #channel_pulses = [(c, device.pg.rect_cos, a, tail_length) for c, a in
                       #channel_amplitudes.items()]
@@ -176,7 +176,7 @@ def get_excitation_pulse_from_Rabi_rect_fit(device, rotation_angle, Rabi_fit):
 
 
 def get_excitation_pulse(device, qubit_id, rotation_angle, preferred_length=None, transition='01', channel_amplitudes_override=None,
-                         recalibrate=True):
+                         recalibrate=True, gauss=True, sort = 'best'):
     '''
     Rabi_goodness = []
     ex_channels_found = []
@@ -221,32 +221,37 @@ def get_excitation_pulse(device, qubit_id, rotation_angle, preferred_length=None
     # TODO: revert gauss pulses
     if channel_amplitudes_override is None:
              try:
-        #          try:
-        #              ##TODO
-        #              ##'''Warning'''
-        #                if device.get_sample_global('is_fluxonium')=='False':
-        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, preferred_length=preferred_length,
+                    if gauss:
+        #               try:
+        #                   ##TODO
+        #                   ##'''Warning'''
+        #                       if device.get_sample_global('is_fluxonium')=='False':
+        #                           return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_alpha(device, qubit_id, rotation_angle, preferred_length=preferred_length,
         #                                                                             transition=transition, recalibrate=False)
-        #                else:
-        #                    return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_phase(device, qubit_id, rotation_angle,
+        #                       else:
+        #                           return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_phase(device, qubit_id, rotation_angle,
         #                                                                     preferred_length=preferred_length,
         #                                                                     transition=transition, recalibrate=False)
-        #              ##pass
-        #          except:
-        #              pass
+        #                   ##pass
+        #               except:
+        #                   pass
         #          # TODO
         # #         '''Warning'''
-                 return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, preferred_length=preferred_length,
+        #             print('SUCCESS')
+
+                        return gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device, qubit_id, rotation_angle, preferred_length=preferred_length,
                                                                                   transition=transition, recalibrate=False)
+
              except:
                  pass
 
     return get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition=transition,
-                                     channel_amplitudes_override=channel_amplitudes_override, recalibrate=recalibrate)
+                                     channel_amplitudes_override=channel_amplitudes_override, recalibrate=recalibrate,
+                                     sort = sort)
 
 
 def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01', channel_amplitudes_override=None,
-                              recalibrate=True):
+                              recalibrate=True, sort = 'best'):
     for attempt_id in range(2):
         # fit = Rabi_measurements(device,
         #	qubit_id=qubit_id, frequency=device.get_qubit_fq(qubit_id), frequency_tolerance = device.get_qubit_constant(qubit_id=qubit_id, name='frequency_rounding'))
@@ -261,6 +266,8 @@ def get_rect_excitation_pulse(device, qubit_id, rotation_angle, transition='01',
                                             channel_amplitudes_override, 'id') else channel_amplitudes_override,
                                         sample_name=device.exdir_db.sample_name)
         fits = device.exdir_db.db.db.select(query)
+        if sort == 'newest':
+            fits.sort(reverse = True)
         # print ( query)
         print('good Rabi fits:', fits)
         for Rabi_fit_id in fits:

@@ -12,5 +12,6 @@ from . import Ramsey2 as Ramsey
 from . import readout_passthrough2 as readout_passthrough
 from . import readout_pulse2 as readout_pulse
 from . import relaxation
+from . import relaxation2 as relaxation
 from . import sequence_control
 from . import state_tomography, zgate

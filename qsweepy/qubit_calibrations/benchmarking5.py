@@ -49,9 +49,11 @@ def create_flat_dataset(measurement, dataset_name):
     measurement.datasets[dataset_name+'_flat'] = MeasurementDataset(flat_dataset_parameters, flat_dataset)
 
 
-def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
-                           pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0,
+def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, two_qubit_gate2=None, max_pulses=None,
+                           pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0, two_qubit_num2=0,
                            random_gate_num=1, seeds = None, shuffle=False, min_pulses=0, seq_lengths=None, additional_metadata=None):
+    if not two_qubit_gate:
+        two_qubit_num = 0
     channel_amplitudes_ = {}
     pi2_pulses = {}
     pi_pulses = {}
@@ -126,39 +128,75 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     else:
         two_qubit_name = 'None'
 
+    if two_qubit_gate2 is not None:
+        for name, i in two_qubit_gate2.items():
+            two_qubit_name2 = name
+    else:
+        two_qubit_name2 = 'None'
+
     if len(qubit_ids) == 2:
         #TODO
         HZ_group = clifford.two_qubit_clifford(*tuple([g for g in generators.values()]),
-                                               plus_op_parallel=device.pg.parallel, two_qubit_gate=two_qubit_gate, two_qubit_gate_name=two_qubit_name)
+                                               plus_op_parallel=device.pg.parallel, two_qubit_gate=two_qubit_gate,
+                                               two_qubit_gate_name=two_qubit_name, two_qubit_gate2=two_qubit_gate2,
+                                               two_qubit_gate_name2=two_qubit_name2)
     elif len(qubit_ids) == 1:
         HZ_group = clifford.generate_group(generators=generators[qubit_ids[0]], Clifford_group=False)
     else:
         raise ValueError ('More than two qubits are unsupported')
 
     #HZ_group = HZ
-    print ('group length:', len(HZ_group))
+    # print ('group length:', len(HZ_group))
 
     # TODO qubit sequencer
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_ids[0]).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
+    # if ex_channel.is_iq():
+    #     control_seq_id = ex_channel.parent.sequencer_id
+    # else:
+    #     control_seq_id = ex_channel.channel // 2
+    # ex_sequencers = []
+    #
+    # for seq_id in device.pre_pulses.seq_in_use:
+    #     if seq_id != control_seq_id:
+    #         ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+    #                                            awg_amp=1, use_modulation=True, pre_pulses=[])
+    #     else:
+    #         ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+    #                                            awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+    #         control_sequence = ex_seq
+    #     device.pre_pulses.set_seq_offsets(ex_seq)
+    #     device.pre_pulses.set_seq_prepulses(ex_seq)
+    #     ex_seq.start()
+    #     ex_sequencers.append(ex_seq)
     if ex_channel.is_iq():
-        control_seq_id = ex_channel.parent.sequencer_id
+
+        control_qubit_awg = ex_channel.parent.awg
+        control_qubit_seq_id = ex_channel.parent.sequencer_id
     else:
-        control_seq_id = ex_channel.channel // 2
+        control_qubit_awg = ex_channel.parent.awg
+        control_qubit_seq_id = ex_channel.channel // 2
+    control_awg, control_seq_id = device.pre_pulses.seq_in_use[0]
     ex_sequencers = []
 
-    for seq_id in device.pre_pulses.seq_in_use:
-        if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+    for awg, seq_id in device.pre_pulses.seq_in_use:
+        if [awg, seq_id] != [control_awg, control_seq_id]:
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[])
+            # ex_seq.start(holder=1)
         else:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
             control_sequence = ex_seq
+            # print('control_sequence=',control_sequence)
+        if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
+            control_qubit_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
+
+
     if seeds is None:
         seeds = np.random.randint(65536, size=(len(seq_lengths), len(ex_sequencers), random_sequence_num))
     references = {'readout_pulse': qubit_readout_pulse.id}
@@ -172,9 +210,11 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                                                   interleavers=HZ_group,
                                                                   random_sequence_num=random_sequence_num,
                                                                   two_qubit_num=two_qubit_num,
+                                                                  two_qubit_num2=two_qubit_num2,
                                                                   random_gate_num=random_gate_num,
                                                                   readout_sequencer = readout_sequencer,
-                                                                  two_qubit=two_qubit_gate)
+                                                                  two_qubit=two_qubit_gate,
+                                                                  two_qubit2=two_qubit_gate2)
     gates=[]
     for name, gate in HZ_group.items():
         print(name)

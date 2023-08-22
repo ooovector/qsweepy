@@ -3,25 +3,34 @@ import time
 
 
 class READSequence:
-    def __init__(self, sequencer_id, awg, use_modulation=True, awg_amp=1, trig_delay_reg=0):
+    def __init__(self, device, sequencer_id, awg, use_modulation=True, awg_amp=1, trig_delay_reg=0, post_selection_flag=False):
         """
         Sequence for readout delay calibration.
         Send trigger for adc start.
         Produces random waveform.
         Parameters
-
+        :param post_selection_flag: if True when add readout pulse before excitation sequence
         ----------
         awg
         n_samples - number of samples in calibration waveform.
         """
 
         self.awg = awg
+
+        #self.awg.set_marker_out(2 * sequencer_id, 0)
+        #self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
+        self.awg.set_marker_out(2 * sequencer_id, 4)
+        #self.awg.set_marker_out(sequencer_id * 2 + 1, 7)
+        self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
+
         self.control_frequency = 0
         self.clock = float(self.awg._clock)
         self.params = dict(sequencer_id=sequencer_id, use_modulation=use_modulation,
                            awg_amp=awg_amp, i_amp = 0, q_amp = 0,
                            trig_delay_reg=trig_delay_reg,
-                           ic=2 * sequencer_id, qc=sequencer_id * 2 + 1, nco_id=sequencer_id*4)
+                           ic=2 * sequencer_id, qc=sequencer_id * 2 + 1, nco_id=sequencer_id*4,
+                           delay = np.abs(int(-np.floor(device.modem.trigger_channel.delay * 2.4e9))))
+        self.post_selection_flag = post_selection_flag
 
         # self.awg.
         #self.awg.set_dig_trig1_source([4, 4, 4, 4])
@@ -38,7 +47,9 @@ class READSequence:
 // Readout sequence definition fragment
 //setInt('sines/{ic}/oscselect', {nco_id});
 //setInt('sines/{qc}/oscselect', {nco_id});
-var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
+//wave marker = marker(50,1);
+var delay = getUserReg({trig_delay_reg});
+const delay1 = {delay};'''.format(**self.params)
         # In this fragment we define work sequence for play
         self.play_fragment = '''
     //'''
@@ -68,32 +79,114 @@ var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
 # '''
         play_fragment1 = '''
 
+wave w_left=marker(delay1,0);
+wave w_center=marker(40,1);
+wave w_marker=join(w_left,w_center);
+
+wave ro_wave_i_marker = w_marker+ro_wave_i;
+wave ro_wave_q_marker = w_marker+ro_wave_q;
+'''
+        if not self.post_selection_flag:
+            play_fragment1 += '''
 while (true) {{
 //repeat(8192){{
     // Wait DIO trigger from qubit control sequencer.
     setDIO(0);
-    wait(3000);
-    waitDigTrigger(1);
-    setTrigger(2);
     wait(10);
-    setTrigger(0);
+    //wait(3000);
+    
+    //From digitizer
+    waitDigTrigger(1);
+
+    //Send to excitation sequencers
+    setDIO(1);
+    //setTrigger(2);
+    wait(10);
+    setDIO(0);
+    //setTrigger(0);
+
+    //From excitation sequencers
     waitDIOTrigger();
-    //setDIO(0);
+    //waitDigTrigger(2);
+
+    //From digitizer
+    waitDigTrigger(1);
+    //resetOscPhase();
+    //waitSineOscPhase(1);
+    //wait(10);'''
+
+            play_fragment2 = '''
+//
+    //wait(delay);
+    //waitWave();
+    //setTrigger(1);
+    //wait(10);
+    //setTrigger(0);
+    //playWave(marker);
+    waitWave();}}'''
+            code = ''.join(definition_fragment + play_fragment1 + play_fragment + play_fragment2)
+
+        else:
+            print('\x1b[1;30;44m' + 'READOUT PULSE FOR POST SELECTION!' + '\x1b[0m')
+            play_fragment1 += '''
+while (true) {{
+//repeat(8192){{
+    // Wait DIO trigger from qubit control sequencer.
+    setDIO(0);
+    wait(10);
+    //wait(3000);
+    
+    //Wait trigger from digitizer
+    waitDigTrigger(1);
+
+    //Send trigger to excitation sequencers
+    setDIO(1);
+    //setTrigger(2);
+    wait(10);
+    setDIO(0);
+    //setTrigger(0);
+
+    //Wait trigger from excitation sequencers
+    waitDIOTrigger();
+    //waitDigTrigger(2);
+
+    //Wait trigger from digitizer
+    waitDigTrigger(1);
+    //resetOscPhase();
+    //waitSineOscPhase(1);
+    //wait(10);
+    
+    // Play readout pulse for post selection
+'''
+            play_fragment1_ = '''
+    //Send trigger to excitation sequencers
+    setDIO(1);
+    //setTrigger(2);
+    wait(10);
+    setDIO(0);
+    //setTrigger(0);
+
+    //Wait trigger from excitation sequencers
+    waitDIOTrigger();
+    //waitDigTrigger(2);
+
+    //Wait trigger from digitizer
     waitDigTrigger(1);
     //resetOscPhase();
     //waitSineOscPhase(1);
     //wait(10);
 '''
-
-        play_fragment2 ='''
-    wait(delay);
-    setTrigger(1);
-    wait(10);
-    setTrigger(0);
-    waitWave();
-}}
-'''
-        code = ''.join(definition_fragment + play_fragment1 + play_fragment + play_fragment2)
+            play_fragment2 = '''
+//
+    //wait(delay);
+    //waitWave();
+    //setTrigger(1);
+    //wait(10);
+    //setTrigger(0);
+    //playWave(marker);
+    waitWave();}}'''
+            code = ''.join(definition_fragment + play_fragment1 + play_fragment + play_fragment1_ + play_fragment + play_fragment2)
+            # print(code)
         #print(code)
         return code
 
@@ -106,7 +199,9 @@ while (true) {{
 // Readout sequence definition fragment
 //setInt('sines/{ic}/oscselect', {nco_id});
 //setInt('sines/{qc}/oscselect', {nco_id});
-var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
+//wave marker = marker(50,1);
+var delay = getUserReg({trig_delay_reg});
+const delay1 = {delay};'''.format(**self.params)
         # In this fragment we define work sequence for play
         self.play_fragment = '''
     //'''
@@ -172,6 +267,8 @@ var delay = getUserReg({trig_delay_reg});'''.format(**self.params)
         # self.trig_delay = delay
         # self.params['trig_delay'] = delay
         print('setting delay to ', delay)
+        if delay > 0:
+            delay=0
         self.awg.set_register(self.params['sequencer_id'], self.params['trig_delay_reg'], int(-np.floor(delay * 300e6)))
 
     def start(self):

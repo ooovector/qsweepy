@@ -1,4 +1,5 @@
 import visa  # -> We use the VISA standard for communicating with
+# visa.log_to_screen()
 from qsweepy.instrument_drivers.instrument import Instrument
 # Actual Driver
 
@@ -24,9 +25,10 @@ class AnaPicoAPSIN(Instrument):
         self._sc = False
         # Connect to the device
         visa_instrument = visa.ResourceManager().open_resource(
-            self.address, timeout=5000
+            self.address, timeout=10000
         )
         self._visainstrument: visa.resources.MessageBasedResource = visa_instrument  # type:ignore
+
         self._output = False
         # default init values
         # (e.g. power, bandwidth, averages, sweep_mode, frequencies, fixed_frequency)

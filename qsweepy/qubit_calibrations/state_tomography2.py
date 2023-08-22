@@ -8,7 +8,8 @@ import itertools
 
 
 class ProcessTomography(multiqubit_tomography):
-    def __init__(self, device, qubit_ids, correspondence, pause_length=0):
+    def __init__(self, device, qubit_ids, correspondence, pause_length=0, virtual_phase1=0, virtual_phase2=0,
+                 sign=False):
         qubit_readout_pulse, readout_device, confusion_matrix = \
             get_confusion_matrix(device, qubit_ids, pause_length, recalibrate=True, force_recalibration=False)
 
@@ -176,7 +177,7 @@ class ProcessTomography(multiqubit_tomography):
 
         super().__init__(device, reducer, ex_sequencers, readout_sequencer, device.pg, multi_qubit_observables,
                          qubit_ids=qubit_ids, correspondence=correspondence, reconstruction_basis=reconstruction_basis,
-                         interleavers=HZ_group)
+                         interleavers=HZ_group, virtual_phase1=virtual_phase1, virtual_phase2=virtual_phase2, sign=sign)
         self.output_array = output_array
         self.reconstruction_output_array = reconstruction_output_array
 

@@ -153,6 +153,8 @@ def sweep(measurer, *parameters, shuffle=False,
 
     # initialize data
     for dataset_name, point_parameters in point_parameters.items():
+        print('dataset_name, point_parameters')
+        print(dataset_name, point_parameters)
         all_parameters = sweep_parameters + point_parameters
         data_dimensions = tuple([len(parameter.values) for parameter in all_parameters])
         data = np.empty(data_dimensions, dtype=measurer.get_dtype()[dataset_name])
@@ -175,6 +177,9 @@ def sweep(measurer, *parameters, shuffle=False,
         indeces = list(indeces)
         indices_buffer = indices_buffer + indeces
         for dataset in single_measurement_result.keys():
+            print(dataset)
+            print(single_measurement_result[dataset])
+            print( tuple(indeces+[...]))
             state.datasets[dataset].data[tuple(indeces+[...])] = single_measurement_result[dataset]
             state.datasets[dataset].indeces_updates = tuple(indeces+[...])
         state.done_sweeps += 1

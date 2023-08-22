@@ -12,6 +12,8 @@ class adaptive_coil_vna_tool:
 
     def set_coil_current_vna_freq(self, cur):
         self.cur_setter(cur)
-        vna_freq = sin_model(cur, *self.model_params_tuple)
+        # vna_freq = sin_model(cur, *self.model_params_tuple)
+        currents = self.model_params_tuple[0]
+        vna_freq = self.model_params_tuple[1][currents.index(cur)]
         self.vna_freq_setter(vna_freq, vna_freq)
 

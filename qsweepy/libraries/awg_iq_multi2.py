@@ -328,7 +328,7 @@ class AWGIQMulti:
             target_sideband_id = 1 if carrier.get_if() > 0 else -1
             sideband_ids = np.asarray(np.linspace(-(num_sidebands - 1) / 2, (num_sidebands - 1) / 2, num_sidebands),
                                       dtype=int)
-            I = 0.3
+            I = 0.4
             Q = x[0] + x[1] * 1j
 
             if np.abs(Q) >= 0.49:
@@ -386,7 +386,7 @@ class AWGIQMulti:
         if np.abs(Q_save) >= 0.49:
             Q_save = Q_save / np.abs(Q_save) * 0.49
 
-        self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.3,
+        self.rf_calibrations[self.rf_cname(carrier)] = {'I': 0.4,
                                                         'Q': Q_save,
                                                         'score': score,
                                                         'num_sidebands': num_sidebands,

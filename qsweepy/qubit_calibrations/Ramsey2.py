@@ -82,17 +82,31 @@ def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=No
 
 
 def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None,
-           target_freq_offset=None, readout_delay=0, delay_seq_generator=None, pre_pulse_gate=None, measurement_type='Ramsey',
-           additional_references = {}, additional_metadata = {}):
+           target_freq_offset=None, readout_delay=None, delay_seq_generator=None, pre_pulse_gate=None, measurement_type='Ramsey',
+           additional_references = {}, additional_metadata = {}, gauss = True , sort = 'best', qubit_readout_pulse=None, ro_channel=None):
     from .readout_pulse2 import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
     #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
-    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
-    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+    # readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
+
+    if not ro_channel:
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
+    else:
+        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition)
+
+    if qubit_readout_pulse:
+        readout_pulse = qubit_readout_pulse
+
+    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes1, gauss = gauss,
+                                                      sort = sort)
+    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes2, gauss = gauss,
+                                                      sort = sort)
+
 
 
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
@@ -122,20 +136,24 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             control_qubit_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
-        ex_seq.start()
+        if ex_seq.params['is_iq']:
+            ex_seq.start()
+        else:
+            ex_seq.start(holder=1)
         ex_sequencers.append(ex_seq)
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
     readout_sequencer.start()
 
     times = np.zeros(len(lengths))
     for _i in range(len(lengths)):
-        times[_i] = int(round(lengths[_i] * control_sequence.clock / 8))
-    lengths = times * 8 / control_sequence.clock
+        times[_i] = int(round(lengths[_i] * control_sequence.clock))
+    lengths = times / control_sequence.clock
 
     class ParameterSetter:
         def __init__(self):
             self.ex_sequencers=ex_sequencers
             self.prepare_seq = []
+            self.readout_delay = readout_delay
             self.readout_sequencer = readout_sequencer
             self.delay_seq_generator = delay_seq_generator
             self.lengths = lengths
@@ -157,14 +175,18 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
                 self.prepare_seq.extend(self.post_pause)
             self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
                                                            phase=(64/self.control_sequence.clock)*target_freq_offset*360 % 360,
-                                                           fast_control='quasi-binary'))
+                                                           fast_control='quasi-binary', gauss=gauss, sort=sort))
             self.prepare_seq.extend(ex_pulse2.get_pulse_sequence(0))
+            if self.readout_delay is not None:
+                self.prepare_seq.extend([device.pg.pmulti(device, readout_delay)])
+
             # Set preparation sequence
             sequence_control.set_preparation_sequence(device, self.ex_sequencers, self.prepare_seq)
             self.readout_sequencer.start()
 
         def set_delay(self, length):
-            phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            #phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            phase = int(np.round((length) * self.control_sequence.clock)) / self.control_sequence.clock * target_freq_offset * 360 % 360
             #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
 
             if self.delay_seq_generator is None:
@@ -202,7 +224,6 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
                     else:
                         self.control_qubit_sequence.set_phase(int((360 + phase) / 360 * (2 ** 8)))
 
-
     setter = ParameterSetter()
 
     references = {'ex_pulse1':ex_pulse1.id,
@@ -214,7 +235,10 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
     if hasattr(measurer, 'references'):
         references.update(measurer.references)
 
-    fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+    if not ro_channel:
+        fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+    else:
+        fitter_arguments = ('iq' + ro_channel, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
@@ -222,7 +246,6 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
               'target_offset_freq': str(target_freq_offset),
               'readout_delay':str(readout_delay)}
     metadata.update(additional_metadata)
-
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                               *extra_sweep_args,
@@ -240,16 +263,31 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
 def Ramsey_prepulse(device, qubit_id, transition='01', pre_pulse_delays = None, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None,
            target_freq_offset=None, readout_delay=0, measurement_type='Ramsey_prepulse_delay',
-           additional_references = {}, additional_metadata = {}):
+           additional_references = {}, additional_metadata = {}, sort='best', gauss=True, dot_products=False, post_selection_flag=False):
+
+    if post_selection_flag:
+        readouts_per_repetition = 2
+    else:
+        readouts_per_repetition = 1
+
     from .readout_pulse2 import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
+
     #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
-    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
-    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, dot_products=dot_products,
+                                                        readouts_per_repetition=readouts_per_repetition)
+
+
+    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes1, gauss=gauss,
+                                                      sort=sort)
+    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes2, gauss=gauss,
+                                                      sort=sort)
 
 
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
@@ -262,11 +300,13 @@ def Ramsey_prepulse(device, qubit_id, transition='01', pre_pulse_delays = None, 
 
     for seq_id in device.pre_pulses.seq_in_use:
         if seq_id != control_seq_id:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses = [])
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses = [],
+                                               post_selection_flag=post_selection_flag)
         else:
-            ex_seq = zi_scripts.SIMPLESequence(sequencer_id=seq_id, awg=device.modem.awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+            ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=device.modem.awg,
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True,
+                                               post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             #print('control_sequence=',control_sequence)
         device.pre_pulses.set_seq_offsets(ex_seq)
@@ -274,7 +314,7 @@ def Ramsey_prepulse(device, qubit_id, transition='01', pre_pulse_delays = None, 
         #device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
     class ParameterSetter:
@@ -561,7 +601,7 @@ def Ramsey_crosstalk(device,
                     readout_delay=0,
                     delay_seq_generator=None,
                     measurement_type='Ramsey_crosstalk',
-                    additional_references={}):
+                    additional_references={}, gauss = True, sort = 'best'):
 
     #if type(lengths) is type(None):
     #	lengths = np.arange(0,
@@ -583,9 +623,15 @@ def Ramsey_crosstalk(device,
 
     #readout_pulse = get_qubit_readout_pulse(device, target_qubit_id)
     readout_pulse, measurer = get_uncalibrated_measurer(device, target_qubit_id)#, readout_pulse)
-    ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi, channel_amplitudes_override=channel_amplitudes_control)
-    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes1)
-    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2., channel_amplitudes_override=channel_amplitudes2)
+    ex_control_pulse = excitation_pulse.get_excitation_pulse(device, control_qubit_id, np.pi,
+                                                             channel_amplitudes_override=channel_amplitudes_control,
+                                                             gauss = gauss, sort = sort)
+    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes1, gauss = gauss,
+                                                      sort = sort)
+    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, target_qubit_id, np.pi/2.,
+                                                      channel_amplitudes_override=channel_amplitudes2, gauss = gauss,
+                                                      sort = sort)
 
     def set_delay(length):
         #ex_pulse_seq = [device.pg.pmulti(length+2*tail_length, *tuple(channel_pulses))]

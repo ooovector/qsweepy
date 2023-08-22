@@ -262,9 +262,9 @@ class ZIDevice():
 
     def set_offset(self, offset, channel):
         import traceback
-        if offset > 1.0 or offset==1.0:
-            raise ValueError('Too high offset')
-            return
+        # if abs(offset) > 1.2 or abs(offset)==1.2:
+        #     raise ValueError('Too high offset')
+        #     return
         self.daq.setDouble('/' + self.device + '/SIGOUTS/%d/OFFSET' % channel, offset)
         self.daq.sync()
 
@@ -304,8 +304,15 @@ class ZIDevice():
             self.daq.setInt('/' + self.device + '/triggers/in/%d/IMP50' % trigger_in, 1)
             self.daq.sync()
 
-    def set_trig_level(self, input_level):
-        for trigger_in in range(self.num_channels):
+    def set_trig_level(self, input_level, channels=None):
+        # for trigger_in in range(self.num_channels):
+        #     self.trig_input_level[trigger_in] = input_level
+        #     self.daq.setDouble('/' + self.device + '/triggers/in/%d/LEVEL' % trigger_in, input_level)
+        #     self.daq.sync()
+
+        if channels == None:
+            channels = np.arange(self.num_channels)
+        for trigger_in in channels:
             self.trig_input_level[trigger_in] = input_level
             self.daq.setDouble('/' + self.device + '/triggers/in/%d/LEVEL' % trigger_in, input_level)
             self.daq.sync()
@@ -595,4 +602,137 @@ class ZIDevice():
     # wave. The marker function takes two arguments, the first is the length of the wave, the second
     # is the marker configuration in binary encoding: the value 0 stands for a both marker bits low, the
     # values 1, 2, and 3 stand for the first, the second, and both marker bits high, respectively
+
+    def freeze(self):
+        #print (self.device, 'freeze')
+        if not self.frozen:
+            self.sequencers_updated = [False]*4
+            self.frozen = True
+
+    def unfreeze(self):
+        #print (self.device, 'unfreeze')
+        if self.frozen:
+            self.frozen = False
+            for sequencer, updated in enumerate(self.sequencers_updated):
+                if updated:
+                    self.set_sequencer(sequencer)
+
+
+    def set_sequencer(self, sequencer):
+        #print ('freeze status: ', self.frozen)
+        if self.frozen:
+            self.sequencers_updated[sequencer] = True
+            #print ('Sequencer ', sequencer, ' frozen, not setting')
+            return
+
+        self.stop_seq(sequencer=sequencer)
+        waveformI = self._waveforms[sequencer * 2 + 0]
+        waveformQ = self._waveforms[sequencer * 2 + 1]
+        markerI = self._markers[sequencer * 2 + 0]
+        markerQ = self._markers[sequencer * 2 + 1]
+        offsetI = self._offsets[sequencer * 2 + 0]
+        offsetQ = self._offsets[sequencer * 2 + 1]
+
+        nonzero_sig = np.abs(waveformI)+np.abs(waveformQ)+np.abs(markerI)+np.abs(markerQ) > 1e-5
+        #nonzero_sig1 = np.abs(waveformI) + np.abs(waveformQ) > 1e-5
+        nonzero = np.nonzero(nonzero_sig)[0]
+
+        if len(nonzero) == 0:
+            wave_length = 0
+            self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 0)
+            self.daq.sync()
+        else:
+            first_point = int(np.floor(nonzero[0]/8)*8)
+            last_point = int(np.ceil((nonzero[-1]+1)/8)*8)
+
+            post_delay = self.get_nop() - last_point
+
+            wave_length_nonzero = last_point - first_point
+            wave_length_found = False
+            for wave_length_available in self.wave_lengths:
+                if wave_length_available >= wave_length_nonzero:
+                    wave_length = wave_length_available
+                    wave_length_found = True
+                    break
+            if not wave_length_found:
+                raise ValueError('Waveform too long on sequencer {}'.format(sequencer))
+
+            self.Predelay[sequencer] = self.get_nop()-post_delay-wave_length
+            if self.Predelay[sequencer] < 0:
+                post_delay += -self.Predelay[sequencer]
+                self.Predelay[sequencer] = 0
+
+            waveformI_truncated = waveformI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            waveformQ_truncated = waveformQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            markerI_truncated = markerI[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+            markerQ_truncated = markerQ[self.Predelay[sequencer]:self.Predelay[sequencer]+wave_length]
+
+            #self.Postdelay[sequencer] = post_delay
+
+            if any((waveformI_truncated + offsetI) > 1) or any ((waveformQ_truncated + offsetQ) > 1):
+                logging.warning('Some of the values got overflowed')
+
+            factor = 2 ** 15 - 1
+            ch1 = np.asarray((waveformI_truncated + offsetI) * factor, dtype=np.int16)  # TODO check if this sets to 0 or to 0.001
+            ch2 = np.asarray((waveformQ_truncated + offsetQ) * factor, dtype=np.int16)
+            m1 = np.asarray(markerI_truncated, dtype=np.uint16)
+            m2 = np.asarray(markerQ_truncated, dtype=np.uint16)
+            #vector = np.asarray(np.transpose([ch1, ch2]).ravel())
+            #markers = np.asarray(np.transpose([m1, m2]).ravel())
+            # too strong
+            #vector = (vector << 2 | markers).astype('int16')
+
+            #after update
+            vector = zhinst.utils.convert_awg_waveform(wave1=ch1, wave2=ch2, markers=m1+m2*4)
+
+            self.last_vector = vector
+
+            if wave_length != 0:
+                self.daq.setVector('/' + self.device + '/awgs/{}/waveform/waves/{}'.format(
+                    sequencer, self.wave_lengths.index(wave_length)-1), vector)
+
+            #except:
+            #    traceback.print_exc()
+            # self.daq.sync()
+
+            if self.devtype == 'UHF':
+                self.daq.setInt('/' + self.device + '/awgs/%d/single' % sequencer, 1)
+
+            self.daq.setInt('/' + self.device + '/awgs/%d/enable' % sequencer, 1)
+            self.daq.sync()
+
+            print (
+               'device:', self.device,
+               'sequencer:', sequencer,
+               'first_point: ', first_point,
+               'last_point: ', last_point,
+               'waveformI length', waveformI.shape,
+               'waveformQ length', waveformQ.shape,
+               'markerI length', len(markerI),
+               'markerQ length', len(markerQ),
+               'wave_length', wave_length,
+               'nop', self.get_nop(),
+               'post_delay', post_delay,
+               'pre_delay', self.Predelay[sequencer],
+               'pre_delay_reg', int(self.Predelay[sequencer]//8),
+            )
+
+            # for UHF readout trigger
+            if self.devtype == 'UHF':
+                waveform_offset = (first_point - self.Predelay[sequencer])//8
+                self.daq.setInt('/{device}/awgs/0/userregs/{default_delay_reg}'.format(device=self.device,
+                                                                      default_delay_reg=self.default_delay_reg),
+                                waveform_offset )
+                pass
+
+        self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{pre_delay_reg}'.format(device = self.device,
+                sequencer=sequencer, pre_delay_reg = self.initial_param_values['pre_delay_reg']),
+                        int(self.Predelay[sequencer]//8-self.delay_int*self.get_clock()//8))
+
+        self.daq.setInt('/{device}/awgs/{sequencer}/userregs/{wave_length_reg}'.format(device = self.device,
+                sequencer=sequencer, wave_length_reg = self.initial_param_values['wave_length_reg']),
+                        wave_length//8)
+        #time.sleep(0.3)
+        #self.set_output(channel=sequencer*2+0, output=1)
+        #self.set_output(channel=sequencer*2+1, output=1)
 

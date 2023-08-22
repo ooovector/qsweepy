@@ -29,7 +29,7 @@ setUserReg(15, pre_samp{index});
 
 const pre_amp{index} = {pre_amp_0};
 const pre_tail{index} = {pre_tail_0};
-wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
+//wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
 wave pre_tail_wave_{index} = hann(2*pre_tail{index}, pre_amp{index});
 //wave pre_wawe_{index}=join(cut(pre_tail_wave_{index}, 0, pre_tail{index}), plato_wawe_{index}, cut(pre_tail_wave_{index}, pre_tail{index}, 2*pre_tail{index}-1));
 wave pre_wawe_{index}=join(zeros(31-pre_tail{index}%32), cut(pre_tail_wave_{index}, 0, pre_tail{index}));
@@ -102,15 +102,7 @@ class PrepulseSetter:
         self.offsets = offsets
         self.pre_pulses = pre_pulses
 
-        for offset in self.offsets:
-            if hasattr(self.device.awg_channels[offset.channel].parent, 'sequencer_id'):
-                seq_id = device.awg_channels[offset.channel].parent.sequencer_id
-                awg = device.awg_channels[offset.channel].parent.awg
-            else:
-                seq_id = self.device.awg_channels[offset.channel].parent.channel // 2
-                awg = device.awg_channels[offset.channel].parent.awg
-            if [awg, seq_id] not in self.seq_in_use:
-                self.seq_in_use.append([awg, seq_id])
+
         for pre_pulse in self.pre_pulses:
             if hasattr(self.device.awg_channels[pre_pulse.channel].parent, 'sequencer_id'):
                 seq_id = self.device.awg_channels[pre_pulse.channel].parent.sequencer_id
@@ -120,6 +112,15 @@ class PrepulseSetter:
                 awg = device.awg_channels[pre_pulse.channel].parent.awg
             if [awg, seq_id] not in self.seq_in_use:
                 self.seq_in_use.append([awg,seq_id])
+        for offset in self.offsets:
+            if hasattr(self.device.awg_channels[offset.channel].parent, 'sequencer_id'):
+                seq_id = device.awg_channels[offset.channel].parent.sequencer_id
+                awg = device.awg_channels[offset.channel].parent.awg
+            else:
+                seq_id = self.device.awg_channels[offset.channel].parent.channel // 2
+                awg = device.awg_channels[offset.channel].parent.awg
+            if [awg, seq_id] not in self.seq_in_use:
+                self.seq_in_use.append([awg, seq_id])
 
 
     def set_seq_offsets(self, sequencer):
@@ -195,7 +196,7 @@ class PrepulseSetter:
 class SIMPLESequence:
     def __init__(self, device, sequencer_id, awg, readout_delay=0,pre_pulse_delay=331, awg_amp=1, pre_pulses = [],
                  use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, var_reg3 =3,
-                 var_reg4 =4, var_reg5 =5, control=False, is_iq = False):
+                 var_reg4 =4, var_reg5 =5, control=False, is_iq = False, post_selection_flag=False):
         """
         Pre pulses settings.
         Parameters
@@ -206,13 +207,34 @@ class SIMPLESequence:
 
         """
 
+        self.device = device
         self.control = control
         self.registors = {}  # Dictionary for reserved User registors
         self.registors['var_reg0'] = var_reg0
         self.registors['var_reg1'] = var_reg1
         self.awg = awg
+        control_frequency = 0 * 10e6
+        self.post_selection_flag = post_selection_flag
 
         #iq definition
+        # for excitation_channel in device.awg_channels.keys():
+        #     ex_channel_ = device.awg_channels[excitation_channel]
+        #     if self.awg == ex_channel_.parent.awg:
+        #         if ex_channel_.is_iq():
+        #             if sequencer_id == ex_channel_.parent.sequencer_id:
+        #                 is_iq = ex_channel_.is_iq()
+        #                 calib_rf = ex_channel_.parent.calib_rf(ex_channel_)
+        #                 self.phaseI = np.angle(calib_rf['I']) * 360 / np.pi
+        #                 self.phaseQ = np.angle(calib_rf['Q']) * 360 / np.pi
+        #         else:
+        #             if device.get_sample_global('is_fluxonium') == 'False':
+        #                 if sequencer_id == ex_channel_.channel // 2:
+        #                     is_iq = ex_channel_.is_iq()
+        #                     self.phaseI = 0
+        #                     self.phaseQ = 90
+        #             else:
+        #                 self.phaseI = 90
+        #                 self.phaseQ = 90
         for excitation_channel in device.awg_channels.keys():
             ex_channel_ = device.awg_channels[excitation_channel]
             if self.awg == ex_channel_.parent.awg:
@@ -225,30 +247,40 @@ class SIMPLESequence:
                 else:
                     if sequencer_id == ex_channel_.channel // 2:
                         is_iq = ex_channel_.is_iq()
-                        self.phaseI = 0
-                        self.phaseQ = 90
+                        if self.device.get_sample_global('is_fluxonium')=='True':
+                            control_frequency = 0
+                            self.phaseI = 0
+                            self.phaseQ = 90
+                        else:
+                            control_frequency = 0*10e6
+                            self.phaseI = 90
+                            self.phaseQ = 90
+
 
 
         self.is_iq = is_iq
         self.clock = self.awg._clock
         frequency = self.awg.get_frequency(sequencer_id * 4)
 
-
-
         self.params = dict(sequencer_id=int(sequencer_id), qubit_channel=0,
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
                            pre_pulse_delay=pre_pulse_delay,
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
-                           var_reg3=int(var_reg3), var_reg4=int(var_reg4), var_reg5=int(var_reg5), var_reg15=int(15),
+                           var_reg3=int(var_reg3), var_reg4=int(var_reg4), var_reg5=int(var_reg5),
+                           var_reg15=int(15),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
-                           frequency=frequency, control_frequency=0,
+                           frequency=frequency, control_frequency=control_frequency,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
         self.pre_pulses = pre_pulses
         self.definition_pre_pulses = '''
 // Pre pulses definition'''
+        self.definition_exc_pre_pulses = '''
+// Excitation pre pulses definition'''
         self.play_pre_pulses = '''
 // Pre pulses play'''
+        self.play_exc_pre_pulses = '''
+// Excitation pre pulses play'''
         # Initial settings
         self.set_awg_amp(self.params['awg_amp'])
         # You need to set phase in offset channel equal to 90 degrees
@@ -286,7 +318,7 @@ const var_reg3 = {var_reg3};
 const var_reg4 = {var_reg4};
 const var_reg5 = {var_reg5};
 var wave_ind=0;
-var variable_register0 = getUserReg(var_reg0);
+var variable_register0 = getUserReg(var_reg0)+1;
 var variable_register1 = getUserReg(var_reg1);
 var variable_register2 = getUserReg(var_reg2);
 var variable_register3 = getUserReg(var_reg3);
@@ -300,12 +332,16 @@ var variable_register15;
     def zicode(self):
         # In this fragment we collect pre_pulses from in device.pre_pulses
         definition_pre_pulses = self.definition_pre_pulses
+        # In this fragment we collect exc_pre_pulses
+        definition_exc_pre_pulses = self.definition_exc_pre_pulses
         # In this fragment we define all waveforms
         definition_fragments = self.definition_fragments
         # In this fragment we define work sequence for play
         play_fragment = self.play_fragment
         # In play_pre_pulses we play pre_pulses defined in definition_pre_pulses
         play_pre_pulses = self.play_pre_pulses
+        # In play_exc_pre_pulses we play exc_pre_pulses defined in definition_exc_pre_pulses
+        play_exc_pre_pulses = self.play_exc_pre_pulses
         # In play_fragment1 we wait for trigger from readout sequencer
         play_fragment1 = '''
 //'''
@@ -327,14 +363,22 @@ var variable_register15;
     wait(10);
     '''.format(nco_control_id = self.params['nco_control_id'], phaseI=self.phaseI, phaseQ=self.phaseQ))
         else:
-            play_pre_pulses+=textwrap.dedent('''
+            if self.device.get_sample_global('is_fluxonium') == 'True':
+                play_pre_pulses+=textwrap.dedent('''
 //    
     setDouble('oscs/{nco_control_id}/freq', control_frequency);
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
-    wait(10);
-    '''.format(**self.params))
+    wait(10);'''.format(**self.params))
+            else:
+                play_pre_pulses += textwrap.dedent('''
+//    
+    setDouble('oscs/{nco_control_id}/freq', control_frequency);
+    resetOscPhase();
+    setSinePhase(0, 90);
+    setSinePhase(1, 90);
+    wait(10);'''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
 setDIO(0); 
@@ -355,12 +399,14 @@ while (true) {{
 #     '''.format(**self.params))
             play_fragment1 += textwrap.dedent('''
 //    
-    // Wait trigger and reset
+    // Wait trigger from readout sequencer and reset
     //
-    waitDigTrigger(2);
-    setTrigger(1);
-    wait(10);
-    setTrigger(0);
+    //waitDigTrigger(1);
+    waitDIOTrigger();
+
+    //setTrigger(1);
+    //wait(10);
+    //setTrigger(0);
     playZero(pre_pulse_delay);
     waitWave();
     '''.format(**self.params))
@@ -376,14 +422,13 @@ while (true) {{
 //    
     // Wait trigger and reset
     //
-    waitDigTrigger(2
-    );
+    waitDigTrigger(2);
     '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
 //
     setDouble('oscs/{nco_control_id}/freq', {control_frequency});
-    variable_register0 = getUserReg(var_reg0);
+    variable_register0 = getUserReg(var_reg0)+1;
     variable_register1 = getUserReg(var_reg1);
     variable_register2 = getUserReg(var_reg2);
     variable_register3 = getUserReg(var_reg3);
@@ -393,6 +438,25 @@ while (true) {{
     setPRNGSeed(variable_register1);
         '''.format(**self.params))
 
+        if self.post_selection_flag:
+            print('\x1b[1;30;44m' + 'READOUT PULSE FOR POST SELECTION!' + '\x1b[0m')
+            play_fragment1 += textwrap.dedent('''
+//
+    //Send trigger for readout_channel to start waveform generation for post selection readout
+    waitWave();
+    playZero(readout_delay);
+    
+    //setTrigger(2);
+    setDIO(8);
+    wait(10);
+    setDIO(0);
+    //setTrigger(0);
+    
+    // Wait trigger from readout channel
+    //waitDigTrigger(1);
+    waitDIOTrigger();
+''')
+
         if self.is_iq:
             play_fragment1 += textwrap.dedent('''
 //    
@@ -401,13 +465,18 @@ while (true) {{
     setSinePhase(1, {phaseQ});
     '''.format(phaseI=self.phaseI, phaseQ=self.phaseQ))
         else:
-            play_fragment1 += textwrap.dedent('''
+            if self.device.get_sample_global('is_fluxonium') == 'True':
+                play_fragment1 += textwrap.dedent('''
 //    
     resetOscPhase();
     setSinePhase(0, 0);
-    setSinePhase(1, 90);
-    '''.format(**self.params))
-
+    setSinePhase(1, 90);'''.format(**self.params))
+            else:
+                play_fragment1 += textwrap.dedent('''
+//    
+    resetOscPhase();
+    setSinePhase(0, 90);
+    setSinePhase(1, 90);'''.format(**self.params))
 
         # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
         # There is initial delay between readout trigger and and readout waveform generation around 140 ns.
@@ -417,9 +486,13 @@ while (true) {{
     // Send trigger for readout_channel to start waveform generation
     waitWave();
     playZero(readout_delay);
+    
+    // Send trigger back to readout
+    //setTrigger(2);
     setDIO(8);
     wait(10);
     setDIO(0);
+    //setTrigger(0);
 }}
 ''')
 
@@ -427,14 +500,16 @@ while (true) {{
             play_fragment2 += textwrap.dedent('''
 //
     // Send trigger for readout_channel to start waveform generation
-    //waitWave();
-    //playZero(readout_delay);
+    waitWave();
+    playZero(readout_delay);
     //setDIO(8);
-    //wait(50);
+    //wait(10);
     //setDIO(0);
 }}
 ''')
-        code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+        # code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+        code = ''.join(
+            definition_pre_pulses  + definition_fragments + definition_exc_pre_pulses + play_fragment1 + play_pre_pulses + play_exc_pre_pulses + play_fragment + play_fragment2)
         return code
 
     def add_register(self, reg_name, value):
@@ -480,7 +555,7 @@ const var_reg3 = {var_reg3};
 const var_reg4 = {var_reg4};
 const var_reg5 = {var_reg5};
 var wave_ind=0;
-var variable_register0 = getUserReg(var_reg0);
+var variable_register0 = getUserReg(var_reg0)+1;
 var variable_register1 = getUserReg(var_reg1);
 var variable_register2 = getUserReg(var_reg2);
 var variable_register3 = getUserReg(var_reg3);
@@ -492,12 +567,29 @@ var variable_register15;
     '''
 
     def add_pre_pulse(self, definition, play_fragment):
-        # self.pre_pulses.append(pre_pulse)
+        """
+        Add definition and play fragment to pre pulse fragment
+        """
         self.definition_pre_pulses += definition
         self.play_pre_pulses += play_fragment
+        # self.pre_pulses.append(pre_pulse)
+
+
+    def add_exc_pre_pulse(self, definition, play_fragment):
+        """
+        Add definition and play fragment to excitation pre pulse fragment
+        """
+        if definition in self.definition_exc_pre_pulses:
+            Warning('The same definition fragment has already been added to the program')
+            self.play_exc_pre_pulses += play_fragment
+        else:
+            self.definition_exc_pre_pulses += definition
+            self.play_exc_pre_pulses += play_fragment
 
     def add_definition_fragment(self, definition_fragment):
         if definition_fragment in self.definition_fragments:
+            Warning('The same definition fragment has already been added to the program')
+        elif definition_fragment in self.definition_exc_pre_pulses:
             Warning('The same definition fragment has already been added to the program')
         else:
             self.definition_fragments +=definition_fragment
@@ -505,16 +597,36 @@ var variable_register15;
     def add_play_fragment(self, play_fragment):
         self.play_fragment += play_fragment
 
+
     def set_frequency(self, frequency):
         self.params['frequency'] = frequency
-
         self.awg.set_frequency(self.params['nco_id'], frequency)
         self.awg.set_frequency(self.params['nco_id']+1, self.params['control_frequency'])
 
+    def set_control_frequency(self, control_frequency):
+        self.params['control_frequency'] = control_frequency
+        self.awg.set_frequency(self.params['nco_id'], self.params['frequency'])
+        self.awg.set_frequency(self.params['nco_id']+1, self.params['control_frequency'])
+
+    # def set_awg_amp(self, awg_amp):
+    #     if self.params['is_iq']:
+    #         self.awg.set_amplitude(self.params['ic'], np.real(awg_amp))
+    #         self.awg.set_amplitude(self.params['qc'], np.imag(awg_amp))
+    #     else:
+    #         self.awg.set_wave_amplitude(self.params['ic'], 0, np.abs(awg_amp))
+    #         self.awg.set_wave_amplitude(self.params['ic'], 1, 1)
+    #         self.awg.set_wave_amplitude(self.params['qc'], 0, 1)
+    #         self.awg.set_wave_amplitude(self.params['qc'], 1, 1)
+
     def set_awg_amp(self, awg_amp):
         if self.params['is_iq']:
+            self.awg.set_wave_amplitude(self.params['ic'], 0, 1)
+            self.awg.set_wave_amplitude(self.params['ic'], 1, 1)
+            self.awg.set_wave_amplitude(self.params['qc'], 0, 1)
+            self.awg.set_wave_amplitude(self.params['qc'], 1, 1)
             self.awg.set_amplitude(self.params['ic'], np.real(awg_amp))
             self.awg.set_amplitude(self.params['qc'], np.imag(awg_amp))
+
         else:
             self.awg.set_wave_amplitude(self.params['ic'], 0, np.abs(awg_amp))
             self.awg.set_wave_amplitude(self.params['ic'], 1, 1)
@@ -579,23 +691,67 @@ var variable_register15;
 
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg2'], phase)
 
+    # def start(self, holder=0):
+    #     #self.awg.start_seq(self.params['sequencer_id'])
+    #     self.awg.set_sin_enable(self.params['ic'], 0, 0)
+    #     self.awg.set_sin_enable(self.params['qc'], 1, 0)
+    #     # Мне не нравится. Заставить это работать так как ты хочешь будет очень сложно.
+    #     if self.params['use_modulation']:
+    #         if self.params['is_iq']:
+    #             self.awg.set_modulation(self.params['ic'], 1)
+    #             self.awg.set_modulation(self.params['qc'], 2)
+    #         else:
+    #             self.awg.set_modulation(self.params['ic'], 3)
+    #             self.awg.set_modulation(self.params['qc'], 0)
+    #     else:
+    #         self.awg.set_modulation(self.params['ic'], 0)
+    #         self.awg.set_modulation(self.params['qc'], 0)
+    #     self.awg.set_holder(self.params['ic'], holder)
+    #     self.awg.set_holder(self.params['qc'], 1)
+    #     if self.is_iq:
+    #         self.awg.set_holder(self.params['ic'], holder)
+    #         self.awg.set_holder(self.params['qc'], holder)
+    #
+    #     self.awg.set_output(self.params['ic'], 1)
+    #     self.awg.set_output(self.params['qc'], 1)
+    #     self.awg.start_seq(self.params['sequencer_id'])
+
     def start(self, holder=0):
         #self.awg.start_seq(self.params['sequencer_id'])
         self.awg.set_sin_enable(self.params['ic'], 0, 0)
         self.awg.set_sin_enable(self.params['qc'], 1, 0)
+
+        self.awg.set_wave_amplitude(self.params['ic'], 0, 1)
+        self.awg.set_wave_amplitude(self.params['ic'], 1, 1)
+        self.awg.set_wave_amplitude(self.params['qc'], 0, 1)
+        self.awg.set_wave_amplitude(self.params['qc'], 1, 1)
         # Мне не нравится. Заставить это работать так как ты хочешь будет очень сложно.
         if self.params['use_modulation']:
             if self.params['is_iq']:
                 self.awg.set_modulation(self.params['ic'], 1)
                 self.awg.set_modulation(self.params['qc'], 2)
             else:
-                self.awg.set_modulation(self.params['ic'], 3)
-                self.awg.set_modulation(self.params['qc'], 0)
+                if self.device.get_sample_global('is_fluxonium')=='True':
+                    self.awg.set_modulation(self.params['ic'], 3)
+                    self.awg.set_modulation(self.params['qc'], 0)
+                    self.awg.set_holder(self.params['ic'], holder)
+                    self.awg.set_holder(self.params['qc'], 1)
+                else:
+                    self.awg.set_modulation(self.params['ic'], 3)
+                    self.awg.set_modulation(self.params['qc'], 4)
+                    self.awg.set_holder(self.params['ic'], holder)
+                    self.awg.set_holder(self.params['qc'], holder)
         else:
-            self.awg.set_modulation(self.params['ic'], 0)
-            self.awg.set_modulation(self.params['qc'], 0)
-        self.awg.set_holder(self.params['ic'], holder)
-        self.awg.set_holder(self.params['qc'], 1)
+            if self.device.get_sample_global('is_fluxonium') == 'True':
+                self.awg.set_modulation(self.params['ic'], 0)
+                self.awg.set_modulation(self.params['qc'], 0)
+                self.awg.set_holder(self.params['ic'], holder)
+                self.awg.set_holder(self.params['qc'], 1)
+            else:
+                self.awg.set_modulation(self.params['ic'], 0)
+                self.awg.set_modulation(self.params['qc'], 0)
+                self.awg.set_holder(self.params['ic'], holder)
+                self.awg.set_holder(self.params['qc'], holder)
         if self.is_iq:
             self.awg.set_holder(self.params['ic'], holder)
             self.awg.set_holder(self.params['qc'], holder)

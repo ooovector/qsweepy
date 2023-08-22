@@ -19,6 +19,13 @@ class DMSequence:
         """
         self.awg = awg
         self.clock = self.awg._clock
+
+        self.awg.set_marker_out(2*sequencer_id, 0)
+        self.awg.set_marker_out(sequencer_id*2+1, 1)
+
+        #self.awg.set_marker_out(2 * sequencer_id, 4)
+        #self.awg.set_marker_out(sequencer_id * 2 + 1, 7)
+
         self.params = dict(sequencer_id=sequencer_id, use_modulation = use_modulation,
                            n_samples=n_samples, awg_amp = awg_amp, trig_delay_reg = trig_delay_reg,
                            ic=2*sequencer_id, qc=sequencer_id*2+1, nco_id=sequencer_id*4)
@@ -33,6 +40,7 @@ setInt('sines/{ic}/oscselect', {nco_id});
 setInt('sines/{qc}/oscselect', {nco_id});
 const n_samp = {n_samples};
 wave w_zeros = rect(n_samp, 1);
+//wave marker = marker(50,1);
 var delay = getUserReg({trig_delay_reg});
 
 while (true) {{
@@ -43,10 +51,13 @@ while (true) {{
    //wait(10);
    //setSinePhase(0, 270);
    playWave(w_zeros, w_zeros);
+   
    wait(delay);
+   //waitWave();
    setTrigger(1);
    wait(10);
    setTrigger(0);
+   //playWave(marker);
    waitWave();
 }}
 '''.format(**self.params)
@@ -107,6 +118,8 @@ while (true) {{
         #self.trig_delay = delay
         #self.params['trig_delay'] = delay
         print('setting delay to ',  delay)
+        if delay > 0:
+            delay=0
         self.awg.set_register(self.params['sequencer_id'], self.params['trig_delay_reg'], int(-np.floor(delay*300e6)))
 
     def start(self):

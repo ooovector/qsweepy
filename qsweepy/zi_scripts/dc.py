@@ -27,11 +27,14 @@ class DCSequence:
 
     def zicode(self):
         code = '''
+//wave marker = marker(50,1);
+
 while (true) {{
    // Send trigger to adc. The same trigger channel as for qubit control sequence.
    setTrigger(1);
    wait(10);
    setTrigger(0);
+   //playWave(marker);
    waitWave();
 
 }}

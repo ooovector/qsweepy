@@ -83,6 +83,8 @@ class modem_readout(data_reduce.data_reduce):
         self.awg.set_sequence(ex_channel.parent.sequencer_id, sequence)
         sequence.stop()
         sequence.set_waveform(dac_sequence)
+        if self.trigger_channel.delay>0:
+            self.trigger_channel.delay=0
         sequence.set_delay(self.trigger_channel.delay)
         sequence.start()
 
@@ -102,6 +104,8 @@ class modem_readout(data_reduce.data_reduce):
         # maximum correlation:
         readout_delay = -(np.argmax(abs_xc) - len(
             dac_sequence_adc_time) - 50) / self.adc.get_clock()  # get delay time in absolute units
+        if readout_delay>0:
+            readout_delay=0
         # plt.plot(xc1)
         # plt.plot(xc2)
         # plt.plot(xc3)

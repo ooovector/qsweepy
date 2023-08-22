@@ -55,7 +55,7 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes, target_freq_offset
     return Ramsey.Ramsey(device, gate.metadata['target_qubit_id'], '01', (amplitudes, setter.amplitude_setter, 'amplitude'),
                            lengths = lengths, target_freq_offset=target_freq_offset,
                            delay_seq_generator=setter.filler_func, measurement_type='Ramsey_amplitude_scan',
-                           additional_references={'gate':gate.id})
+                           additional_references={'gate':gate.id}, sort=sort)
 
 def zgate_amplitude_ramsey_crosstalk(device, gate, target_qubit_id, control_qubit_id, lengths, amplitudes,
                                      target_freq_offset=100e6, measurement = 'Ramsey'):

@@ -372,28 +372,29 @@ etic_gauss_modulation_{length_samp}_{signI}{realI}_{signQ}{imagQ}_{phase_round})
 
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
-    def gauss_hd(self, channel, length, amp_x, sigma, alpha=0., phase = 0, fast_control = False):
-        #gauss = gaussian(int(round(length * self.channels[channel].get_clock())),
+    def gauss_hd(self, channel, length, amp_x, sigma, alpha=0., phase=0, fast_control=False):
+        # gauss = gaussian(int(round(length * self.channels[channel].get_clock())),
         #                 sigma * self.channels[channel].get_clock())
-        #gauss -= gauss[0]
-        #gauss /= np.max(gauss)
-        #gauss_der = np.gradient(gauss) * self.channels[channel].get_clock()
-        #if phase<0:
-            #phase=2*np.pi +phase
+        # gauss -= gauss[0]
+        # gauss /= np.max(gauss)
+        # gauss_der = np.gradient(gauss) * self.channels[channel].get_clock()
+        # if phase<0:
+        # phase=2*np.pi +phase
         definition_fragment = ''''''
         play_fragment = ''''''
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length) * ex_channel.get_clock()/16)*16
+        length_samp = round((length) * ex_channel.get_clock() / 16) * 16
         sigma_samp = int((sigma) * ex_channel.get_clock())
-        #position_samp = round((length)*ex_channel.get_clock())/2
-        position_samp = (length_samp-1)/ 2
+        # position_samp = round((length)*ex_channel.get_clock())/2
+        position_samp = (length_samp - 1) / 2
         definition_fragment += textwrap.dedent('''
 // Waveform definition gauss_hd_{length_samp}
 wave gauss_hd_{length_samp}_{sigma_samp} = gauss({length_samp}, {amp_x}, {position_samp}, {sigma_samp});
 gauss_hd_{length_samp}_{sigma_samp} = gauss_hd_{length_samp}_{sigma_samp} - gauss_hd_{length_samp}_{sigma_samp}[0];
-wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {position_samp}, {sigma_samp});'''.format(length_samp=length_samp, sigma_samp=sigma_samp, position_samp=position_samp, amp_x=1, alpha = alpha))
+wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {position_samp}, {sigma_samp});'''.format(
+                length_samp=length_samp, sigma_samp=sigma_samp, position_samp=position_samp, amp_x=1, alpha=alpha))
         if fast_control == 'phase_correction':
 
             play_fragment += '''
@@ -417,8 +418,8 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
             playWave(1, -{ampI}*gauss_hd_{length_samp}_{sigma_samp} + {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 2, -{ampQ}*gauss_hd_{length_samp}_{sigma_samp} - {ampI}*drag_hd_{length_samp}_{sigma_samp});
             incrementSinePhase(0,{phase});
             incrementSinePhase(1,{phase});
-            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x), ampQ=np.imag(amp_x),
-                       alpha=alpha, phase=np.round(phase*360/2/np.pi, 3)))
+            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
+                                      ampQ=np.imag(amp_x),alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
             else:
                 control_channel_id = ex_channel.channel % 2
                 if control_channel_id == 0:
@@ -431,8 +432,8 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
             //incrementSinePhase(0,{phase});
             playWave(1, -{ampI}*gauss_hd_{length_samp}_{sigma_samp} + {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 1, -{ampQ}*gauss_hd_{length_samp}_{sigma_samp} - {ampI}*drag_hd_{length_samp}_{sigma_samp});
             incrementSinePhase(0,{phase});
-            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x), ampQ=np.imag(amp_x),
-                       alpha=alpha, phase=np.round(phase*360/2/np.pi, 3)))
+            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
+                                      ampQ=np.imag(amp_x),alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
                 elif control_channel_id == 1:
                     play_fragment += textwrap.dedent('''
 //
@@ -443,14 +444,14 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
             //incrementSinePhase(1,{phase});
             playWave(2, -{ampI}*gauss_hd_{length_samp}_{sigma_samp} + {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 2, -{ampQ}*gauss_hd_{length_samp}_{sigma_samp} - {ampI}*drag_hd_{length_samp}_{sigma_samp});
             incrementSinePhase(1,{phase});
-            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x), ampQ=np.imag(amp_x),
-                       alpha=alpha, phase=np.round(phase*360/2/np.pi, 3)))
+            waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
+                                      ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
             play_fragment += '''
 //
     }}'''
 
         elif fast_control:
-            definition_fragment +='''
+            definition_fragment += '''
 //var i = 0;
 //var j = 0;'''
             play_fragment += '''
@@ -467,19 +468,22 @@ wave drag_hd_{length_samp}_{sigma_samp} = {alpha}*drag({length_samp}, {amp_x}, {
             incrementSinePhase(0,{phase});
             incrementSinePhase(1,{phase});
             waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                                  ampQ=np.imag(amp_x), alpha = alpha, phase=np.round(phase*360/2/np.pi, 3)))
+                                      ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
 
-                # TODO
-                entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                    # TODO
+                entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp,
+                                                                    sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1),
+                                                                    ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x)) // 0.01),
+                                                                    signQ=(np.sign(np.imag(amp_x)) == 1),
+                                                                    ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
 
                 assign_fragment += textwrap.dedent('''
 assignWaveIndex(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                                                signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                                realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1),
+                                                                ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
             else:
                 control_channel_id = ex_channel.channel % 2
                 if control_channel_id == 0:
@@ -489,18 +493,21 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
             playWave(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 1, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp});
             incrementSinePhase(0,{phase});
             waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                                  ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase*360/2/np.pi, 3)))
+                                      ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
 
-                    # TODO
-                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                        # TODO
+                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
+                                length_samp=length_samp, sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1),
+                                ampI=np.real(amp_x), ealI=int(np.abs(np.real(amp_x)) // 0.01),
+                                signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                     assign_fragment += textwrap.dedent('''
 assignWaveIndex(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 1, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                                                signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                                realI=int(np.abs(np.real(amp_x)) // 0.01),
+                                                                signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x),
+                                                                imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                 elif control_channel_id == 1:
                     play_fragment += textwrap.dedent('''
 //
@@ -508,18 +515,21 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
             playWave(2, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp});
             incrementSinePhase(1,{phase});
             waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                                  ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase*360/2/np.pi, 3)))
-                    # TODO
-                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                      ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
+                        # TODO
+                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
+                                length_samp=length_samp, sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x),
+                                imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                     assign_fragment += textwrap.dedent('''
 assignWaveIndex(2, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
-            play_fragment +='''
+                                                            signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                            realI=int(np.abs(np.real(amp_x)) // 0.01),
+                                                            signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x),
+                                                            imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
+            play_fragment += '''
 //
     }}'''
 
@@ -533,18 +543,21 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
     incrementSinePhase(0,{phase});
     incrementSinePhase(1,{phase});
     waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                          ampQ=np.imag(amp_x), alpha = alpha, phase=np.round(phase*360/2/np.pi, 3)))
+                              ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
 
-                # TODO
-                entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                    # TODO
+                entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp,
+                                                            sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1),
+                                                            ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x)) // 0.01),
+                                                            signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x),
+                                                            imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                 assign_fragment += textwrap.dedent('''
 assignWaveIndex(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                                            signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                            realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1),
+                                                            ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
             else:
                 control_channel_id = ex_channel.channel % 2
                 if control_channel_id == 0:
@@ -553,39 +566,44 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
     //incrementSinePhase(0,{phase});
     playWave(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 1, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp});
     incrementSinePhase(0,{phase});
-    waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                          ampQ=np.imag(amp_x), alpha = alpha, phase=np.round(phase*360/2/np.pi, 3)))
-                    # TODO
-                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+    waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x), ampQ=np.imag(amp_x),
+                              alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
+                        # TODO
+                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
+                                length_samp=length_samp, sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x),
+                                imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                     assign_fragment += textwrap.dedent('''
 assignWaveIndex(1, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 1, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                                                signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                                realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1),
+                                                                ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
 
                 elif control_channel_id == 1:
                     play_fragment += textwrap.dedent('''
-//
-    //incrementSinePhase(1,{phase});
-    playWave(2, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp});
-    incrementSinePhase(1,{phase});
-    waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
-                          ampQ=np.imag(amp_x), alpha = alpha, phase=np.round(phase*360/2/np.pi, 3)))
-                    #TODO
-                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+    //
+        //incrementSinePhase(1,{phase});
+        playWave(2, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp});
+        incrementSinePhase(1,{phase});
+        waitWave();'''.format(length_samp=length_samp, sigma_samp=sigma_samp, ampI=np.real(amp_x),
+                              ampQ=np.imag(amp_x), alpha=alpha, phase=np.round(phase * 360 / 2 / np.pi, 3)))
+                        # TODO
+                    entry_table_index_constants.append('etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
+                                length_samp=length_samp, sigma_samp=sigma_samp, signI=(np.sign(np.real(amp_x)) == 1),
+                                ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x)) // 0.01),
+                                signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
                     assign_fragment += textwrap.dedent('''
 assignWaveIndex(2, {ampI}*gauss_hd_{length_samp}_{sigma_samp} - {ampQ}*drag_hd_{length_samp}_{sigma_samp}, 
 2, {ampQ}*gauss_hd_{length_samp}_{sigma_samp} + {ampI}*drag_hd_{length_samp}_{sigma_samp}, 
 etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_samp=length_samp, sigma_samp=sigma_samp,
-                                                      signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x), realI=int(np.abs(np.real(amp_x))// 0.01),
-                                                      signQ=(np.sign(np.imag(amp_x)) == 1), ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x))// 0.01)))
+                                                            signI=(np.sign(np.real(amp_x)) == 1), ampI=np.real(amp_x),
+                                                            realI=int(np.abs(np.real(amp_x)) // 0.01), signQ=(np.sign(np.imag(amp_x)) == 1),
+                                                            ampQ=np.imag(amp_x), imagQ=int(np.abs(np.imag(amp_x)) // 0.01)))
         table_entry = {'index': 0}
         table_entry['waveform'] = {'index': 0}
+
 
         if ex_channel.is_iq():
             calib_dc = ex_channel.parent.calib_dc()
@@ -599,10 +617,13 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
             ex_channel.parent.awg.set_sin_phase(2 * awg_channel + 1, np.angle(calib_rf['Q']) * 360 / np.pi)
             ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel, 0, np.abs(calib_rf['I']))
             ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel + 1, 1, np.abs(calib_rf['Q']))
-
-
             table_entry['phase0'] = {'value': np.round(phase*360/2/np.pi, 3), 'increment': True}
             table_entry['phase1'] = {'value': np.round(phase*360/2/np.pi, 3), 'increment': True}
+            control_seq_id = ex_channel.parent.sequencer_id
+            ex_channel.parent.awg.set_wave_amplitude(2 * control_seq_id, 0, 1)
+            ex_channel.parent.awg.set_wave_amplitude(2 * control_seq_id, 1, 1)
+            ex_channel.parent.awg.set_wave_amplitude(2 * control_seq_id + 1, 0, 1)
+            ex_channel.parent.awg.set_wave_amplitude(2 * control_seq_id + 1, 1, 1)
 
         else:
             control_channel_id = ex_channel.channel % 2
@@ -618,6 +639,8 @@ etic_gauss_hd_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(length_sam
         table_entry['amplitude1'] = {'value': 1.0}
 
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
+
+
 
     def rect_cos(self, channel, length, amp, length_tail, fast_control=False, control_frequency=0):
         # this part is necessary for accurate length setter and fast control
@@ -705,7 +728,7 @@ wave w_{wave_length}_{amp} = join(zeros(32-{wave_length}), rect({wave_length}, 1
         case {wave_length}:
             playWave(1, {ampI}*w_{wave_length}_{amp}, 2, {ampQ}*w_{wave_length}_{amp});
             wait(variable_register0);
-            playWave(1, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp});'''.format(wave_length=wave_length,
+            playWave(1, {ampI}*tail_fall_0_{amp}, 2, {ampQ}*tail_fall_0_{amp});'''.format(wave_length=wave_length,
                                                                                         ampI=np.real(amp), ampQ=np.imag(amp),
                                                                                                 amp=int(np.abs(amp)// 0.01)))
                     # TODO
@@ -735,7 +758,7 @@ assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 2, {ampQ}*tail_fall_{wave_len
         case {wave_length}:
             playWave(1, {ampI}*w_{wave_length}_{amp}, 1, {ampQ}*w_{wave_length}_{amp});
             wait(variable_register0);
-            playWave(1, {ampI}*tail_fall_{wave_length}_{amp}, 1, {ampQ}*tail_fall_{wave_length}_{amp});'''.format(wave_length=wave_length,
+            playWave(1, {ampI}*tail_fall_0_{amp}, 1, {ampQ}*tail_fall_0_{amp});'''.format(wave_length=wave_length,
                                                                                         ampI=np.real(amp), ampQ=np.imag(amp),
                                                                                                       amp=int(np.abs(amp)// 0.01)))
                         # TODO
@@ -764,7 +787,7 @@ assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 1, {ampQ}*tail_fall_{wave_len
         case {wave_length}:
             playWave(2, {ampI}*w_{wave_length}_{amp}, 2, {ampQ}*w_{wave_length}_{amp});
             wait(variable_register0);
-            playWave(2, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp});'''.format(wave_length=wave_length,
+            playWave(2, {ampI}*tail_fall_0_{amp}, 2, {ampQ}*tail_fall_0_{amp});'''.format(wave_length=wave_length,
                                                                                         ampI=np.real(amp), ampQ=np.imag(amp),
                                                                                                       amp=int(np.abs(amp)// 0.01)))
                         # TODO
@@ -791,16 +814,19 @@ assignWaveIndex(2, {ampI}*tail_fall_{wave_length}, 2, {ampQ}*tail_fall_{wave_len
         else:
             if tail_samp > 2:
                 definition_fragment += textwrap.dedent('''
+control_frequency = {control_frequency};
 // Waveform definition rect_cos_{length_samp}
 wave tail_rect_cos_{length_samp} = (hann(4*{tail_samp}+1, {amp})-0.5)*2.0;
 wave rise_rect_cos_{length_samp} = cut(tail_rect_cos_{length_samp}, {tail_samp}, 2*{tail_samp}-1);
 wave fall_rect_cos_{length_samp} = cut(tail_rect_cos_{length_samp}, 2*{tail_samp}+1, 3*{tail_samp});
 wave rect_cos_{length_samp}_{tail_samp} = join(rise_rect_cos_{length_samp}, rect({length_samp}, {amp}), fall_rect_cos_{length_samp});
-'''.format(tail_samp=tail_samp, length_samp=length_samp, amp=1))
+'''.format(tail_samp=tail_samp, length_samp=length_samp, amp=1, control_frequency=control_frequency))
             else:
                 definition_fragment += textwrap.dedent('''
+control_frequency = {control_frequency};           
 // Waveform definition rect_cos_{length_samp}
-wave rect_cos_{length_samp}_{tail_samp} = rect({length_samp}, {amp});'''.format(tail_samp=tail_samp, length_samp=length_samp, amp=1))
+wave rect_cos_{length_samp}_{tail_samp} = rect({length_samp}, {amp});'''.format(tail_samp=tail_samp, length_samp=length_samp, amp=1,
+                                                                                control_frequency=control_frequency))
 
             if ex_channel.is_iq():
                 play_fragment += textwrap.dedent('''
@@ -870,7 +896,8 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
         if length<=0 and fast_control is False:
             definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry  = self.pause2(channel, -length)
         else:
-            definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry = self.rect_cos(channel, length, amp=0, length_tail=0, fast_control=fast_control)
+            definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry = self.rect_cos(channel, length, amp=0, length_tail=0,
+                                                                                                                          fast_control=fast_control, control_frequency=0)
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
     def pause2(self, channel, length):
@@ -950,10 +977,17 @@ cvar resolution = {resolution};
                     play_fragment += textwrap.dedent('''
         incrementSinePhase(1, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 play_fragment += '''
+//
     } else {
         incrementSinePhase(0, 0.00000001);
-        incrementSinePhase(1, 0.00000001);
-    }
+'''
+                if ex_channel.is_iq():
+                    play_fragment += '''
+//
+        incrementSinePhase(1, 0.00000001);'''
+                play_fragment += '''
+// 
+        }
     waitWave();'''
 
         elif fast_control:
@@ -1220,12 +1254,15 @@ assignWaveIndex(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples}, et
         definition_fragment = textwrap.dedent('''
 wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
 wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));
+
+wave ro_wave_i = {name}_wave_i;
+wave ro_wave_q = {name}_wave_q;
 '''.format(name=channel, samples=nrOfsampl, amplitude_i=np.abs(calib_rf['I']), amplitude_q=np.abs(calib_rf['Q']),
            phaseOffset_i=np.angle(calib_rf['I']) * 2, phaseOffset_q=np.angle(calib_rf['Q']) * 2,
            nrOfPeriods=nrOfPeriods))
         play_fragment = textwrap.dedent('''
 //
-    playWave({name}_wave_i, {name}_wave_q);
+    playWave(ro_wave_i_marker, ro_wave_q_marker);
 '''.format(name=channel))
         return definition_fragment, play_fragment
 
@@ -1275,7 +1312,7 @@ wave ro_wave_q = add({add_wave_q});
 
             play_fragment += textwrap.dedent('''
 //
-    playWave(ro_wave_i, ro_wave_q);
+    playWave(ro_wave_i_marker, ro_wave_q_marker);
 '''.format(name=channel))
 
         return definition_fragment, play_fragment

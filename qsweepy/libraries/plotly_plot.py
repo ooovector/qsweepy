@@ -16,7 +16,8 @@ def default_plot(state, db):
 	traces, dropdowns = add_default_traces(measurements, db, interactive=False)
 	traces = pd.DataFrame(traces, columns=['id', 'dataset', 'op', 'style', 'color', 'x-axis', 'y-axis', 'row', 'col'])
 	cross_sections = cross_section_configurations_add_default(traces, db)
-	return plot(traces, cross_sections, db)
+	# return plot(traces, cross_sections, db)
+	return plot(traces, cross_sections, db, max_data_size=2e6)
 
 def cross_section_configurations_add_default(selected_traces, db, current_config=[]):
 	measurements_to_load = selected_traces['id'].unique()
@@ -171,7 +172,8 @@ def ax_id(ax_id, ax_num):
 		cols = int(np.ceil(np.sqrt(ax_num)))
 		return (ax_id//cols, ax_id%cols)
 
-def plot(selected_traces, cross_sections, db):
+
+def plot(selected_traces, cross_sections, db, max_data_size=None):
 	from time import time
 	start_time = time()
 	measurements_to_load = selected_traces['id'].unique()
@@ -303,7 +305,9 @@ def plot(selected_traces, cross_sections, db):
 		else:
 			plot_trace['mode'] = style
 			plot_trace['marker'] = {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']}
-
+		if max_data_size is not None:
+			if np.prod(data_to_plot.shape) > max_data_size:
+				continue
 		figure['data'].append(plot_trace)
 		#print (figure['data'][-1]['xaxis'], figure['data'][-1]['yaxis'])
 
@@ -322,9 +326,168 @@ def plot(selected_traces, cross_sections, db):
 		print ('trace {} time: '.format(trace_id), trace_end_time - pre_trace_time)
 
 		#print(layout['xaxis{}'.format(row*num_cols+col+1)], layout['yaxis{}'.format(row*num_cols+col+1)])
+
 	figure['layout'] = layout
 
 	for measurement_id, measurement in measurements.items():
 		measurement.exdir.close()
 
 	return figure
+
+# def plot(selected_traces, cross_sections, db):
+# 	from time import time
+# 	start_time = time()
+# 	measurements_to_load = selected_traces['id'].unique()
+# 	measurements = {}
+# 	measurement_types = []
+# 	# load measurements
+# 	with db_session:
+# 		for measurement_id in measurements_to_load:
+# 			measurements[measurement_id] = save_exdir.load_exdir(db.Data[int(measurement_id)].filename, db, lazy=True)
+# 			measurement_types.append(measurements[measurement_id].measurement_type)
+#
+# 	load_time = time()
+# 	print ('load time: ', load_time - start_time)
+# 	if len(selected_traces['row']):
+# 	# building subplot grid
+# 		num_rows = int(selected_traces['row'].astype(int).max()+1)
+# 	else:
+# 		num_rows = 1
+#
+# 	if len(selected_traces['col']):
+# 		num_cols = int(selected_traces['col'].astype(int).max()+1)
+# 	else:
+# 		num_cols = 1
+#
+# 	layout = {}
+# 	figure = {}
+# 	layout['annotations'] = []
+# 	layout['showlegend'] = False
+# 	layout['title'] = ', '.join(measurement_types)
+# 	figure['data'] = []
+#
+# 	if num_cols < 3:
+# 		x_offset = 0.1
+# 	elif num_cols < 5:
+# 		x_offset = 0.13
+# 	elif num_cols < 7:
+# 		x_offset = 0.15
+# 	else:
+# 		x_offset = 0.2
+#
+# 	if num_rows < 3:
+# 		y_offset = 0.1
+# 	else:
+# 		y_offset = 0.2
+#
+# 	for row in range(num_rows):
+# 		for col in range(num_cols):
+# 			layout['xaxis{}'.format(row*num_cols+col+1)] = {'anchor': 'y{}'.format(row*num_cols+col+1),
+# 															'domain': [(col+x_offset)/num_cols, (col + 1.0 - x_offset)/num_cols],}
+# 			layout['yaxis{}'.format(row*num_cols+col+1)] = {'anchor': 'x{}'.format(row*num_cols+col+1),
+# 															'domain': [(row+y_offset)/num_rows, (row + 1.0 - y_offset)/num_rows], }
+#
+# 	pre_trace_time = time()
+# 	print ('pre_trace_time: ', pre_trace_time - load_time)
+#
+# 	for trace_id, trace in selected_traces.to_dict('index').items():
+# 		trace_start = time()
+# 		dataset_name = trace['dataset']
+# 		measurement = measurements[trace['id']]
+# 		dataset = measurement.datasets[dataset_name]
+# 		x_axis_id = -1
+# 		y_axis_id = -1
+# 		title_x = dataset_name
+# 		title_y = dataset_name
+#
+# 		indexes = [slice(None, None, None)]*len(dataset.data.shape)
+# 		for parameter_values in cross_sections:
+# 			if parameter_values['trace-id'] == trace_id:
+# 				diff = np.asarray(dataset.parameters[parameter_values['parameter-id']].values)-float(parameter_values['value'])
+# 				cross_section_id = np.argmin(np.abs(diff))
+# 				indexes[parameter_values['parameter-id']] = cross_section_id
+#
+# 		for parameter_id, parameter in enumerate(dataset.parameters):
+# 			if parameter.name == trace['x-axis']:
+# 				dataset_x = np.memmap.tolist(parameter.values)
+# 				title_x = '{name} ({unit})'.format(name=parameter.name, unit=parameter.unit)
+# 				x_axis_id = parameter_id
+# 			if parameter.name == trace['y-axis']:
+# 				dataset_y = np.memmap.tolist(parameter.values)
+# 				title_y = '{name} ({unit})'.format(name=parameter.name, unit=parameter.unit)
+# 				y_axis_id = parameter_id
+#
+# 		data_flat = dataset.data[indexes]
+# 		if trace['style'] != '2d':
+# 			trace_data = data_flat
+# 		else:
+# 			if x_axis_id>y_axis_id:
+# 				trace_data = data_flat.T
+# 			else:
+# 				trace_data = data_flat
+#
+# 		if trace['op'] == 'Im': data_to_plot = np.imag(trace_data)
+# 		elif trace['op'] == 'Re': data_to_plot = np.real(trace_data)
+# 		elif trace['op'] == 'Abs': data_to_plot = np.abs(trace_data)
+# 		elif trace['op'] == 'Ph': data_to_plot = np.angle(trace_data)
+# 		else: data_to_plot = trace_data
+#
+# 		x = dataset_x if x_axis_id != -1 else data_to_plot
+# 		y = dataset_y if y_axis_id != -1 else data_to_plot
+# 		#print ('new trace shape:', trace_data.shape, 'x shape:',np.asarray(x).shape, 'y shape:', np.asarray(y).shape)
+#
+#
+# 		row = int(trace['row'])
+# 		col = int(trace['col'])
+# 		if trace['style'] == '-': style = 'lines'
+# 		elif trace['style'] == 'o': style = 'markers'
+# 		elif trace['style'] == '.': style = 'markers'
+# 		else: style = '2d'
+#
+# 		plot_trace = {'type': 'heatmap' if style == '2d' else 'scatter',
+#
+# 					  #'mode': style,
+# 					  #'marker': {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']},
+# 					  #'color': 'rgb({red},{blue},{green})'.format(red=webcolors.name_to_rgb(trace['color']).red,
+# 					  #											  blue=webcolors.name_to_rgb(trace['color']).blue,
+# 					  #											  green=webcolors.name_to_rgb(trace['color']).green),
+# 					  'xaxis': 'x{}'.format(row*num_cols+col+1),
+# 					  'yaxis': 'y{}'.format(row*num_cols+col+1),
+# 					  'x': x,
+# 					  'y': y}
+# 		if style == '2d':
+# 			plot_trace['colorbar'] = {'len': (1.0-y_offset*2)/num_rows,
+# 							   'thickness': 0.025/num_cols,
+# 							   'thicknessmode': 'fraction',
+# 							   'x': (col + 1.0-x_offset)/num_cols,
+# 							   'y': (row + 0.5)/num_rows}
+# 			plot_trace['colorscale'] = 'Blackbody'
+# 			plot_trace['z'] = data_to_plot.T
+# 		else:
+# 			plot_trace['mode'] = style
+# 			plot_trace['marker'] = {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']}
+#
+# 		figure['data'].append(plot_trace)
+# 		#print (figure['data'][-1]['xaxis'], figure['data'][-1]['yaxis'])
+#
+# 		layout['annotations'].append({'font': {'size': 16},
+# 						'showarrow': False,
+# 						'text': str(trace['id']) + ': ' + trace['op'] + '(' + dataset_name + ')',
+# 						'x': (col + 0.5)/num_cols,
+# 						'xanchor': 'center',
+# 						'xref': 'paper',
+# 						'y': (row + 1.0 - y_offset)/num_rows,
+# 						'yanchor': 'bottom', 'yref': 'paper'})
+#
+# 		layout['xaxis{}'.format(row*num_cols+col+1)].update({'title': title_x})
+# 		layout['yaxis{}'.format(row*num_cols+col+1)].update({'title': title_y})
+# 		trace_end_time = time()
+# 		print ('trace {} time: '.format(trace_id), trace_end_time - pre_trace_time)
+#
+# 		#print(layout['xaxis{}'.format(row*num_cols+col+1)], layout['yaxis{}'.format(row*num_cols+col+1)])
+# 	figure['layout'] = layout
+#
+# 	for measurement_id, measurement in measurements.items():
+# 		measurement.exdir.close()
+#
+# 	return figure

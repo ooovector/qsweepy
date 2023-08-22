@@ -6,6 +6,7 @@ class exp_sin_fitter:
     def __init__(self, mode='sync'):
         self.name = 'exp_sin_fit'
         self.mode = mode
+
     def fit(self,x,y, parameters_old=None):
         return exp_sin_fit(x, y, parameters_old, self.mode)
 
@@ -20,7 +21,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
     x = x[:first_nan]
     y = y[:, :first_nan]
     try:
-        if len(x) < 5:
+        if len(x) < 15:
             raise IndexError
 
         # defining model for fit
@@ -165,6 +166,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
     frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.2 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
     decay_goodness_test = parameters['decays_in_scan_length']>0.75 and frequency_goodness_test and np.isfinite(parameters['T'])
     parameters['frequency_goodness_test'] = 1 if frequency_goodness_test else 0
+    # parameters['frequency_goodness_test'] = 1
     parameters['decay_goodness_test'] = 1 if decay_goodness_test else 0
     # print ('parameters:', parameters)
 

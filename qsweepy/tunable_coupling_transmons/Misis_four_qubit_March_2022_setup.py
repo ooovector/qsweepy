@@ -235,13 +235,13 @@ class hardware_setup():
         # self.awg_tek.stop()
 
         for channel in range(0, 8):
-            self.hdawg2.set_amplitude(amplitude=0.05, channel=channel)
+            self.hdawg2.set_amplitude(amplitude=0.5, channel=channel)
             self.hdawg2.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
             self.hdawg2.set_output(output=1, channel=channel)
             # self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)
 
         for channel in range(2, 4):
-            self.hdawg1.set_amplitude(amplitude=0.05, channel=channel)
+            self.hdawg1.set_amplitude(amplitude=0.5, channel=channel)
             self.hdawg1.set_offset(offset=self.cw_settings['mixer_thru'], channel=channel)
             self.hdawg1.set_output(output=1, channel=channel)
             # self.hdawg.set_waveform(waveform=[0] * global_num_points, channel=channel)

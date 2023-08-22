@@ -91,14 +91,14 @@ def set_preparation_sequence(device, ex_sequencers, prepare_seq, control_sequenc
                     print ('commandtable status: ', ex_seq.awg.daq.get('/' + ex_seq.awg.device +'/AWGS/{}/COMMANDTABLE/STATUS'.format(ex_seq.params['sequencer_id'])))
                 ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
 
-def define_readout_control_seq(device, readout_pulse):
+def define_readout_control_seq(device, readout_pulse, post_selection_flag=False):
     try:
         re_channel = device.awg_channels[readout_pulse.metadata['channel']]
     except:
         qubit_id = readout_pulse.metadata['qubit_ids'][0]
         readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
         re_channel = device.awg_channels[readout_channel]
-    sequence = zi_scripts.READSequence(re_channel.parent.sequencer_id, device.modem.awg)
+    sequence = zi_scripts.READSequence(device,re_channel.parent.sequencer_id, device.modem.awg, post_selection_flag=post_selection_flag)
 
     #def_frag, play_frag = device.pg.readout_rect(channel=readout_pulse.metadata['channel'],
     #                                             length=float(readout_pulse.metadata['length']),
