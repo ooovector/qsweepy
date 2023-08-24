@@ -34,7 +34,7 @@ class ziUHF(ZIDevice):
         self.repetition_reg = 2
         self.default_delay_reg = 9
         # Define if we should leave Integration result as vector or number
-        self.internal_avg = True
+        self.averaging = True
         # Service values
         self.timeout = 10
         self.thresholds = [0] * num_covariances
@@ -48,7 +48,7 @@ class ziUHF(ZIDevice):
         return self.nsamp
 
     def set_nums(self, nums):
-        if self.internal_avg:
+        if self.averaging:
             self.nsegm = nums
             self.nres = 1
         else:
@@ -59,7 +59,7 @@ class ziUHF(ZIDevice):
 
     def set_internal_avg(self, internal_avg):
         nums = self.get_nums()
-        self.internal_avg = internal_avg
+        self.averaging = internal_avg
         self.set_nums(nums)
 
     def get_nums(self):
@@ -192,7 +192,7 @@ class ziUHF(ZIDevice):
             points.update({'Voltage': [('Sample', np.asarray([0]), ''),  # UHFQA stores only the averaged trace
                         ('Time', np.arange(self.nsamp)/self.get_clock(), 's')]})
         if self.output_result:
-            if self.internal_avg:
+            if self.averaging:
                 points.update({self.result_source + str(channel): [] for channel in range(self.num_covariances)})
             else:
                 points.update({self.result_source + str(channel): [('Sample', np.arange(self.nres), '')]
@@ -309,7 +309,7 @@ class ziUHF(ZIDevice):
 
     # King of kostyl
     def set_feature_real(self, feature_id, feature, threshold=None):
-        self.internal_avg = False
+        self.averaging = False
 
         if threshold is not None:
             threshold = threshold/np.max(np.abs(feature[:self.nsamp]))

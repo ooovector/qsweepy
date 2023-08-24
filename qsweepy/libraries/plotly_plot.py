@@ -16,7 +16,7 @@ def default_plot(state, db):
 	traces, dropdowns = add_default_traces(measurements, db, interactive=False)
 	traces = pd.DataFrame(traces, columns=['id', 'dataset', 'op', 'style', 'color', 'x-axis', 'y-axis', 'row', 'col'])
 	cross_sections = cross_section_configurations_add_default(traces, db)
-	return plot(traces, cross_sections, db)
+	return plot(traces, cross_sections, db, max_data_size=2e6)
 
 def cross_section_configurations_add_default(selected_traces, db, current_config=[]):
 	measurements_to_load = selected_traces['id'].unique()
@@ -171,7 +171,7 @@ def ax_id(ax_id, ax_num):
 		cols = int(np.ceil(np.sqrt(ax_num)))
 		return (ax_id//cols, ax_id%cols)
 
-def plot(selected_traces, cross_sections, db):
+def plot(selected_traces, cross_sections, db, max_data_size=None):
 	from time import time
 	start_time = time()
 	measurements_to_load = selected_traces['id'].unique()
@@ -303,7 +303,9 @@ def plot(selected_traces, cross_sections, db):
 		else:
 			plot_trace['mode'] = style
 			plot_trace['marker'] = {'size': 5 if trace['style'] == 'o' else 2, 'color':trace['color']}
-
+		if max_data_size is not None:
+			if np.prod(data_to_plot.shape) > max_data_size:
+				continue
 		figure['data'].append(plot_trace)
 		#print (figure['data'][-1]['xaxis'], figure['data'][-1]['yaxis'])
 
@@ -322,6 +324,7 @@ def plot(selected_traces, cross_sections, db):
 		print ('trace {} time: '.format(trace_id), trace_end_time - pre_trace_time)
 
 		#print(layout['xaxis{}'.format(row*num_cols+col+1)], layout['yaxis{}'.format(row*num_cols+col+1)])
+
 	figure['layout'] = layout
 
 	for measurement_id, measurement in measurements.items():

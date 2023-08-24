@@ -70,6 +70,48 @@ def zgate_amplitude_ramsey(device, gate, lengths, amplitudes,additional_metadata
                            delay_seq_generator=setter.filler_func, pre_pulse_gate=pre_pulse_gate, measurement_type='Ramsey_amplitude_scan',
                            additional_references={'gate':gate.id}, additional_metadata= additional_metadata)
 
+def frequency_coupler_ramsey(device, gate, lengths, frequencies, amplitude, frequency_setter, additional_metadata={},  target_freq_offset=100e9, pre_pulse_gate=None):
+
+    class ParameterSetter:
+        def __init__(self):
+            self.amplitude = amplitude
+            self.length = lengths[0]
+            self.pre_pause_seq = []
+            self.gate_pulse_seq = []
+            self.post_pause_seq = []
+
+
+        def filler_func(self, length):
+            self.length = length
+
+            tail_length = float(gate.metadata['tail_length'])
+            pre_pause = float(gate.metadata['pre_pause'])
+            post_pause = float(gate.metadata['post_pause'])
+
+            channel_amplitudes1_ = channel_amplitudes.channel_amplitudes(device,
+                                                                         **{gate.metadata[
+                                                                                'carrier_name']: self.amplitude})
+            gate1_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
+                                                                       channel_amplitudes=channel_amplitudes1_,
+                                                                       tail_length=tail_length,
+                                                                       length=lengths,
+                                                                       phase=0.0,
+                                                                       fast_control=True)
+
+            self.pre_pause_seq = [device.pg.pmulti(device, pre_pause)]
+            self.gate_pulse_seq = gate1_pulse
+            self.post_pause_seq = [device.pg.pmulti(device, post_pause)]
+
+            return self.pre_pause_seq, self.gate_pulse_seq, self.post_pause_seq
+    setter = ParameterSetter()
+
+    return Ramsey.Ramsey(device, gate.metadata['target_qubit_id'], '01', (frequencies, frequency_setter(), 'amplitude'),
+                           lengths = lengths, target_freq_offset=target_freq_offset,
+                           delay_seq_generator=setter.filler_func, pre_pulse_gate=pre_pulse_gate, measurement_type='Ramsey_amplitude_scan',
+                           additional_references={'gate':gate.id}, additional_metadata= additional_metadata)
+
+
+
 def zgate_amplitude_echo(device, gate, lengths, amplitudes,additional_metadata={}, parallel_gate=None, target_freq_offset=100e9):
     pre_pause = float(gate.metadata['pre_pause'])
     post_pause = float(gate.metadata['post_pause'])
@@ -260,3 +302,5 @@ def zgate_amplitude_relaxation(device, gate, lengths, amplitudes, ex_pulse=None,
                            ex_pulse=ex_pulse,
                            additional_metadata=additional_metadata,
                            additional_references={'gate':gate.id})
+
+

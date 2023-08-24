@@ -25,3 +25,8 @@ class channel_amplitudes(MeasurementState):
 	def items(self): # just use metadata for now
 		for channel, amplitude in self.metadata.items():
 			yield channel, complex(amplitude)
+
+	def keys(self):
+		for channel in self.metadata.keys():
+			yield channel
+

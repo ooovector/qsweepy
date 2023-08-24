@@ -103,7 +103,7 @@ class modem_readout(data_reduce.data_reduce):
         # plt.plot(xc2)
         # plt.plot(xc3)
         # plt.plot(xc4)
-        plt.plot(abs_xc)
+        #plt.plot(abs_xc)
         plt.figure()
         plt.plot(np.real(adc_sequence))
         plt.plot(np.imag(adc_sequence))

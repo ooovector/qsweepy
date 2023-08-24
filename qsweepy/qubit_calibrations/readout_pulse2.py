@@ -15,6 +15,7 @@ class qubit_readout_pulse(MeasurementState):
 
 
 def get_qubit_readout_pulse_from_passthrough(device, passthrough_measurement):
+    print('\x1b[1;30;44m' + 'GET QUBIT READOUT PULSE FROM PASSTHROUGH!' + '\x1b[0m')
     references = {'passthrough_measurement':passthrough_measurement.id}
     if 'channel_calibration' in passthrough_measurement.metadata:
         references['channel_calibration'] = passthrough_measurement.references['channel_calibration']
@@ -98,6 +99,7 @@ def get_qubit_readout_pulse(device, qubit_id, length=None):
     metadata_passthrough = {'qubit_id': qubit_id}
     if length:
         metadata_passthrough['length'] = str(length)
+    print(metadata_passthrough)
     metadata_fidelity_scan = { k:v for k,v in metadata_passthrough.items() }
     metadata_fidelity_scan['ignore_other_qubits'] = ignore_other_qubits
 
@@ -155,7 +157,15 @@ def get_readout_calibration(device, qubit_readout_pulse, excitation_pulse=None, 
         return new_measurement
 
 
-def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=None):
+def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=None, post_selection_flag=False):
+    """
+
+    :param device:
+    :param qubit_readout_pulse:
+    :param excitation_pulse:
+    :param nums:
+    :return:
+    """
     qubit_id = qubit_readout_pulse.metadata['qubit_id']
     readout_channel = [i for i in device.get_qubit_readout_channel_list(qubit_id).keys()][0]
     adc, mnames =  device.setup_adc_reducer_iq(qubit_id, raw=True)
@@ -167,8 +177,12 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
         adc.set_adc_nums(nums)
 
     mean_sample = data_reduce.data_reduce(adc)
-    mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
-    mean_sample.filters['Std_Voltage_AC'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)
+    if len(adc.get_points()['Voltage']) > 2:
+        mean_sample.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc, 'Voltage', 0)
+        mean_sample.filters['Std_Voltage_AC'] = data_reduce.std_reducer_noavg(adc, 'Voltage', 0, 1)
+    else:
+        mean_sample.filters['Mean_Voltage_AC'] = data_reduce.thru(adc, 'Voltage')
+        mean_sample.filters['Std_Voltage_AC'] = data_reduce.thru(adc, 'Voltage', 0, np.inf)
     mean_sample.filters['S21'] = data_reduce.thru(adc, mnames[qubit_id], diff=0, scale=nums)
 
     excitation_pulse_sequence = excitation_pulse.get_pulse_sequence(0) if excitation_pulse is not None else []
@@ -201,7 +215,7 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
     # We neet to set readout sequence to awg readout channel
     # readout pulse parameters ('length' and 'amplitude') we get from qubit_readout_pulse.metadata
     re_channel = device.awg_channels[readout_channel]
-    sequence = zi_scripts.READSequence(re_channel.parent.sequencer_id, device.modem.awg)
+    sequence = zi_scripts.READSequence(device, re_channel.parent.sequencer_id, device.modem.awg, post_selection_flag=post_selection_flag)
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel,
                                                  length=float(qubit_readout_pulse.metadata['length']),
                                                  amplitude=float(qubit_readout_pulse.metadata['amplitude']))
@@ -234,16 +248,48 @@ def measure_readout(device, qubit_readout_pulse, excitation_pulse=None, nums=Non
     return measurement
 
 
-def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False):
+def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False, shots=False, dot_products=False, readouts_per_repetition=1):
+    """
+
+    :param device:
+    :param qubit_id:
+    :param transition:
+    :param samples:
+    :param shots: if True when save shots
+    :param dot_products: if True when save scalar products for each descriptor
+    :param readouts_per_repetition: for post selection readout we use two readout pulses in a repetition use readouts_per_repetition=2
+    :return:
+    """
     from .calibrated_readout2 import get_calibrated_measurer
 
-    print (device, qubit_id, transition)
+    print(device, qubit_id, transition)
 
     try:
        assert transition == '01'
-       qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False)
+       qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False, readouts_per_repetition=readouts_per_repetition)
+       qubit_readout_pulse_, measurer, thresholds, features = get_calibrated_measurer(device, [qubit_id],
+                                                                                      recalibrate=False,
+                                                                                      readouts_per_repetition=readouts_per_repetition,
+                                                                                      get_thresholds=True)
+       print (measurer.avg_cov_mode)
        reducer = data_reduce.data_reduce(measurer)
        reducer.filters['iq'+qubit_id] = data_reduce.cross_section_reducer(measurer, 'resultnumbers', 0, 1)
+       if shots:
+           measurer.all_cov = True
+           reducer.filters['shots'] = data_reduce.thru(measurer, 'all_cov0')
+       else:
+           measurer.all_cov = False
+       if dot_products:
+           measurer.dot_prods = True
+           # reducer.filters['dot_products0'] = data_reduce.thru(measurer, 'disc_ch0') # if you want to manually postselect data
+           # reducer.filters['dot_products1'] = data_reduce.thru(measurer, 'disc_ch1')
+           if measurer.adc.trig_src_mode != 'when_ready':
+                measurer.adc.set_trig_src_mode('when_ready')
+                print("Trigger mode was changed to \"when_ready\" type")
+           threshold = thresholds[0] / np.max(np.abs(features[0][:measurer._nsamp_max])) * (2 ** 13)
+           reducer.filters['iq'+qubit_id] = data_reduce.post_selection_filter(measurer, 'disc_ch0', axis=0, threshold=threshold)
+       else:
+           measurer.dot_prods = False
        return qubit_readout_pulse_, reducer
     except:
        traceback.print_exc()
@@ -271,6 +317,18 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
         #measurer.output_raw = False
         measurer.filters['Mean_Voltage_AC'] = data_reduce.mean_reducer_noavg(adc_reducer, 'Voltage', 0)
     # measurer.references = {'readout_background_calibration': background_calibration.id}
+    if shots:
+        adc_reducer.all_cov = True
+        measurer.filters['shots'] = data_reduce.thru(adc_reducer, 'all_cov0')
+    else:
+        adc_reducer.all_cov = False
+    if dot_products:
+        adc_reducer.dot_prods = True
+        measurer.filters['dot_products0'] = data_reduce.thru(adc_reducer, 'disc_ch0')
+        # measurer.filters['dot_products1'] = data_reduce.thru(adc_reducer, 'disc_ch1')
+    else:
+        adc_reducer.dot_prods = False
+
     nums = int(device.get_qubit_constant(name='uncalibrated_readout_nums', qubit_id=qubit_id))
     adc_reducer.set_adc_nums(nums)
     return qubit_readout_pulse_, measurer

@@ -3,13 +3,14 @@ from . import fit_dataset
 import traceback
 
 class exp_sin_fitter:
-    def __init__(self, mode='sync'):
+    def __init__(self, mode='sync', frequency_goodness_test = None):
         self.name = 'exp_sin_fit'
         self.mode = mode
+        self.frequency_goodness_test = frequency_goodness_test
     def fit(self,x,y, parameters_old=None):
-        return exp_sin_fit(x, y, parameters_old, self.mode)
+        return exp_sin_fit(x, y, parameters_old, self.mode, self.frequency_goodness_test)
 
-def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
+def exp_sin_fit(x, y, parameters_old=None, mode='sync', frequency_goodness_test = None):
     y = np.asarray(y)
     if np.any(np.logical_not(np.isfinite(y))):
         first_nan = np.argmax(np.any(np.logical_not(np.isfinite(y)), axis=0))
@@ -162,8 +163,12 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         parameters['points_per_period'] = np.nan
         parameters['decays_in_scan_length'] = np.nan
 
-    frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.2 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
+    if frequency_goodness_test is None:
+        frequency_goodness_test = MSE_rel<0.35 and parameters['num_periods_decay']>1.2 and parameters['num_periods_scan']>1.5 and parameters['points_per_period']>4.
     decay_goodness_test = parameters['decays_in_scan_length']>0.75 and frequency_goodness_test and np.isfinite(parameters['T'])
+    # ####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # frequency_goodness_test = 1
+    # ####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     parameters['frequency_goodness_test'] = 1 if frequency_goodness_test else 0
     parameters['decay_goodness_test'] = 1 if decay_goodness_test else 0
     # print ('parameters:', parameters)

@@ -156,7 +156,7 @@ while (true) {{
     //resetOscPhase();
     ''')
         # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
-        # There is initial delay between readout trigger and and readout waveform generation around 140 ns.
+        # There is initial delay between readout trigger and readout waveform generation around 140 ns.
         play_fragment2 += textwrap.dedent( '''
 //    
     }

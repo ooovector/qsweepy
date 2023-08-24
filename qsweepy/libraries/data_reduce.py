@@ -27,8 +27,23 @@ class data_reduce:
 		return { filter_name:{**filter['get_opts'](), **self.extra_opts} for filter_name, filter in self.filters.items()}
 		
 	def measure(self):
+		print("Measurements by data reducer!")
+		# self.source.save_dot_prods = True # if you want to save dot_prods
 		data = self.source.measure()
-		result = { filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
+		# import datetime
+		# import pickle as pkl
+		# now = datetime.datetime.now()
+		# day_folder_name = now.strftime('%Y-%m-%d')
+		# time_folder_name = now.strftime('%H-%M-%S')
+		#
+		# abs_path = "D:\\data\\" + day_folder_name + '\\'
+		# abs_path = "C:\\data\\"
+		# data_for_saving = data
+		# np.savez_compressed(abs_path + 'meas-' + time_folder_name, d=data_for_saving)
+		# print(abs_path + 'meas-' + time_folder_name)
+
+
+		result = {filter_name:filter['filter'](data) for filter_name, filter in self.filters.items()}
 		del data
 		return result
 		
@@ -145,9 +160,10 @@ def std_reducer_noavg(source, src_meas, axis, noavg_axis):
 		return new_axes
 	def filter_func(x):
 		avg_dim = [len(a[1]) for a in source.get_points()[src_meas].copy()]
-		if hasattr(source, 'internal_average'):
-			if source.internal_average:
-				return np.zeros(avg_dim[1])
+		if hasattr(source, 'averaging'):
+			if source.averaging:
+				# return np.zeros(avg_dim[1])
+				return np.zeros(avg_dim[0])
 		else:
 			avg_dim[noavg_axis] = 1
 			return np.std(x[src_meas]-np.reshape(np.mean(x[src_meas], axis=noavg_axis), avg_dim), axis=axis)
@@ -163,12 +179,10 @@ def mean_reducer_noavg(source, src_meas, axis):
 		del new_axes [axis]
 		return new_axes
 	def filter_func(x):
-		avg_dim = [len(a[1]) for a in source.get_points()[src_meas].copy()]
-		if hasattr(source, 'internal_average'):
-			if source.internal_average:
+		if hasattr(source, 'averaging') :
+			if source.averaging:
 				return x[src_meas] - np.mean(x[src_meas], axis=0)
-		else:
-			return np.mean(x[src_meas], axis=axis) - np.mean(x[src_meas])
+		return np.mean( x[src_meas], axis=axis) - np.mean(x[src_meas] )
 	filter = {'filter': filter_func,
 			  'get_points': get_points,
 			  'get_dtype': (lambda : complex if source.get_dtype()[src_meas] is complex else float),
@@ -248,4 +262,49 @@ def hist_filter(source, *src_meas_values):
 			  'get_points': [],
 			  'get_dtype': lambda : float,
 			  'get_opts': lambda : source.get_opts()[src_meas[0]]}
+	return filter
+
+
+def post_selection_filter(source, src_meas, axis, threshold):
+	"""
+	Post select data with known threshold using postselection function
+	:param source:
+	:param src_meas:
+	:param axis:
+	:param threshold:
+	"""
+	def get_points():
+		new_axes = source.get_points()[src_meas].copy()
+		del new_axes[axis]
+		return new_axes
+
+	def filter_function(x):
+		data = x[src_meas]
+
+		# in case of test readout
+		data = list(x[src_meas])
+		del data[2::3]
+		data = np.asarray(data)
+		data = np.expand_dims(data, axis=0)
+
+
+		# data = np.expand_dims(x[src_meas], axis=0)
+		delay_nums = 1
+		i = 0
+		populations = np.zeros((delay_nums, 1, 4))
+		data_thresholded = np.asarray(data > threshold, dtype=int)
+		data_reshaped = np.reshape(data_thresholded, (delay_nums, data.shape[1] // 2, 2))
+		# id according to the rule 0: 00, 1: 01,  2: 10,  3: 11 (measurement 0, measurement 1)
+		classified = data_reshaped[:, :, 0] * 2 + data_reshaped[:, :, 1]
+		for class_ in range(4):
+			populations[:, i, class_] = np.sum(classified == class_, axis=1)
+		sum_populations = np.sum(populations, axis=1)
+		return sum_populations[:, 1] / (sum_populations[:, 0] + sum_populations[:, 1])  # when M1=0
+
+
+	filter = {'filter': filter_function,
+			  'get_points': get_points,
+			  'get_dtype': (lambda: complex if source.get_dtype()[src_meas] is complex else float),
+			  'get_opts': (lambda: source.get_opts()[src_meas])}
+
 	return filter

@@ -29,7 +29,7 @@ def plot_measurement(measurement, name=None, save=False, annotation=None, subplo
 	
 	figsize=(8,4.5)
 	axes = {}
-	
+	prinr('Subplots are', subplots)
 	if subplots:
 		figsize = (8, 4.5)
 		num_axes = 0

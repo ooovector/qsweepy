@@ -10,11 +10,11 @@ import numpy as np
 import traceback
 
 
-def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, force_recalibration=False):
+def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, force_recalibration=False, gauss=True, sort='best'):
     qubit_readout_pulse, readout_device = get_calibrated_measurer(device, qubit_ids)
     # TODO
     '''Warning'''
-    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi) for
+    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,gauss=gauss, sort=sort) for
                          qubit_id in qubit_ids}
     ''''''
     references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
@@ -29,19 +29,20 @@ def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, fo
             raise
         confusion_matrix = calibrate_preparation_and_readout_confusion(device=device, qubit_readout_pulse=qubit_readout_pulse,
                                                                        readout_device=readout_device,
-                                                                       pause_length=pause_length)
+                                                                       pause_length=pause_length, gauss=gauss, sort=sort)
 
     return qubit_readout_pulse, readout_device, confusion_matrix
 
 
 def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, readout_device, *extra_sweep_args,
                                                 pause_length=0, middle_seq_generator = None,
-                                                additional_references = {}, additional_metadata = {}):
+                                                additional_references = {}, additional_metadata = {},
+                                                gauss=True, sort='best'):
     qubit_ids = qubit_readout_pulse.metadata['qubit_ids'].split(',')
     target_qubit_states = [0] * len(qubit_ids)
     # TODO
     '''Warning'''
-    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2) for
+    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2.,gauss=gauss, sort=sort) for
                          qubit_id in qubit_ids}
     ''''''
     references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
@@ -119,7 +120,20 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
                                 metadata=metadata)
 
 
-def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalibrate=True, force_recalibration=False):
+def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalibrate=True, force_recalibration=False,
+                            raw=False, internal_avg=False, readouts_per_repetition=1, get_thresholds=False):
+    """
+
+    :param device:
+    :param qubit_ids:
+    :param qubit_readout_pulse:
+    :param recalibrate:
+    :param force_recalibration:
+    :param readouts_per_repetition: for post selection readout we use two readout pulses in a repetition use readouts_per_repetition=2
+    :return:
+    """
+
+    print("It is a calibrated measurer")
     from .readout_pulse2 import get_multi_qubit_readout_pulse
     if qubit_readout_pulse is None:
         qubit_readout_pulse = get_multi_qubit_readout_pulse(device, qubit_ids)
@@ -136,32 +150,57 @@ def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalib
             print (metadata)
             measurement = device.exdir_db.select_measurement(measurement_type='readout_calibration', metadata=metadata,
                                                              references_that=references)
+            print('\x1b[1;30;44m' + 'GET CALIBRATED MEASURER!' + '\x1b[0m')
         except Exception as e:
             print(traceback.print_exc())
             if not recalibrate:
                 raise
             measurement = calibrate_readout(device, qubit_id, qubit_readout_pulse)
-
+        print("reference: ('readout_calibration', {}): {}".format(str(qubit_id), measurement.id))
         features.append(measurement.datasets['feature'].data)
         thresholds.append(measurement.datasets['threshold'].data.ravel()[0])
 
-    readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True)
+    readout_device = device.set_adc_features_and_thresholds(features, thresholds, disable_rest=True, raw=raw,
+                                                            internal_avg=internal_avg)
     nums = int(device.get_sample_global(name='calibrated_readout_nums'))
-    readout_device.set_adc_nums(nums)
+    readout_device.set_adc_nums(nums * readouts_per_repetition)
     readout_device.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
 
     #readout_device.output_raw = False
     #readout_device.output_result = False
     #readout_device.output_resnum = True
 
-    return qubit_readout_pulse, readout_device  # , features, thresholds
+    if not get_thresholds:
+        return qubit_readout_pulse, readout_device  # , features, thresholds
+    else:
+        return qubit_readout_pulse, readout_device, thresholds, features
 
 
-def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ignore_other_qubits=None):
-    adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
+def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ignore_other_qubits=None, dbg_storage=False,
+                      dbg_storage_samples=False, gauss=True, sort='best', internal_avg=True, post_selection_flag=False):
+    """
+    Calibrate readout
+    :param device:
+    :param qubit_id:
+    :param qubit_readout_pulse:
+    :param transition:
+    :param ignore_other_qubits:
+    :param dbg_storage: if True then save samples in m.datasets['x'] and markers in m.datasets['y']
+    :param gauss:
+    :param sort: type of sorting for Rabi references "best" or "newest"
+    :param internal_avg: internal avg of a measurement, if True then dbg_storage=False and averaging is performed
+    :return:
+    """
+    if not post_selection_flag:
+        adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True, internal_avg=internal_avg)
+        adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
+    else:
+        # in case of post selection use features and thresholds from previous readout calibration
+        qubit_readout_pulse_, adc = get_calibrated_measurer(device, qubit_id, raw=True, internal_avg=internal_avg,
+                                                            readouts_per_repetition=2)
+
     nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
     old_nums = adc.get_adc_nums()
-    adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     if ignore_other_qubits is None:
         ignore_other_qubits = (device.get_qubit_constant(qubit_id=qubit_id, name='readout_calibration_ignore_other_qubits') == 'True')
     print ('ignore_other_qubits', ignore_other_qubits)
@@ -174,13 +213,18 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                 # TODO
                 '''Warning'''
                 half_excited_pulse = excitation_pulse.get_excitation_pulse(device, other_qubit_id,
-                                                                           rotation_angle=np.pi / 2.)
+                                                                           rotation_angle=np.pi / 2,gauss=gauss,
+                                                                           sort = sort)
                 references[('other_qubit_pulse', other_qubit_id)] = half_excited_pulse.id
                 other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0))
     # TODO
     '''Warning'''
-    #qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2)
-    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi)
+    if gauss:
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2, gauss=gauss,
+                                                                       sort = sort)
+    else:
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi, gauss=gauss,
+                                                                       sort = sort)
     metadata = {'qubit_id': qubit_id,
                 'averages': nums,
                 'ignore_other_qubits': ignore_other_qubits}
@@ -206,10 +250,10 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
 
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
 
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
@@ -220,23 +264,30 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
         ex_seq.start()
         ex_sequencers.append(ex_seq)
 
+    if gauss:
+        excitation = qubit_excitation_pulse.get_pulse_sequence(0) + qubit_excitation_pulse.get_pulse_sequence(0)
+    else:
+        excitation = qubit_excitation_pulse.get_pulse_sequence(0)
+
     sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
-                                                                       qubit_excitation_pulse.get_pulse_sequence(0))#+
-                                                                        #qubit_excitation_pulse.get_pulse_sequence(0))
+                                              excitation)
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)+
+                                                                       #  qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     #readout_sequencer = sequence_control.define_readout_control_seq(device, readout_channel)
     #raise ValueError('fallos')
 
-    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
     classifier = single_shot_readout.single_shot_readout(device=device,
                                                          adc=adc,
                                                          prepare_seqs=[other_qubit_pulse_sequence,
                                                                        other_qubit_pulse_sequence +
-                                                                       qubit_excitation_pulse.get_pulse_sequence(0)],#+
-                                                                       #qubit_excitation_pulse.get_pulse_sequence(0)],
+                                                                       excitation],
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)+
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,
                                                          control_seq = control_qubit_sequence,
@@ -244,12 +295,13 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                                                          ro_delay_seq=None,
                                                          _readout_classifier=readout_classifier.binary_linear_classifier(),
                                                          adc_measurement_name='Voltage',
-                                                         dbg_storage=False)
+                                                         dbg_storage=dbg_storage, dbg_storage_samples=dbg_storage_samples,
+                                                         post_selection_flag=post_selection_flag)
 
     classifier.readout_classifier.cov_mode = 'equal'
-
     try:
-        adc.set_adc_nums(nums)
+        if not post_selection_flag:
+            adc.set_adc_nums(nums)
         measurement = device.sweeper.sweep(classifier,
                                            measurement_type='readout_calibration',
                                            metadata=metadata,
@@ -257,7 +309,8 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
     except:
         raise
     finally:
-        adc.set_adc_nums(old_nums)
+        if not post_selection_flag:
+            adc.set_adc_nums(old_nums)
 
     return measurement
     # classifier.repeat_samples = 2
@@ -298,7 +351,8 @@ def get_qubit_readout_pulse_from_fidelity_scan(device, fidelity_scan):
     amplitude = float(metadata['amplitude'])
     try:
         readout_pulse = qubit_readout_pulse(
-            device.exdir_db.select_measurement(measurement_type='qubit_readout_pulse', references_that=references,
+            device.exdir_db.select_measurement(measurement_type='qubit_readout_pulse',
+                                               references_that=references,
                                                metadata=metadata))
     except Exception as e:
         print(type(e), str(e))
@@ -313,8 +367,9 @@ def get_qubit_readout_pulse_from_fidelity_scan(device, fidelity_scan):
 
 
 def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse_amplitudes,
-                          recalibrate_excitation=True, ignore_other_qubits=False, channel_amplitudes=None):
-    adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
+                          recalibrate_excitation=True, ignore_other_qubits=False, channel_amplitudes=None, dbg_storage=False,
+                          gauss=True, sort = 'best', internal_avg=True, readout_frequency_offsets=None):
+    adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True, internal_avg=internal_avg)
     nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
     adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
     old_nums = adc.get_adc_nums()
@@ -334,18 +389,22 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                 #TODO
                 half_excited_pulse = excitation_pulse.get_excitation_pulse(device, other_qubit_id,
                                                                            rotation_angle=np.pi / 2.,
-                                                                           recalibrate=recalibrate_excitation)
+                                                                           recalibrate=recalibrate_excitation,
+                                                                           gauss = gauss,sort = sort)
                 references[('other_qubit_pulse', other_qubit_id)] = half_excited_pulse.id
                 other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     # TODO
-    #qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2,
-                                                                   #channel_amplitudes_override=channel_amplitudes,
-                                                                   #recalibrate=recalibrate_excitation)
-    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,
+    if gauss:
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2,
                                                                    channel_amplitudes_override=channel_amplitudes,
-                                                                   recalibrate=recalibrate_excitation)
+                                                                   recalibrate=recalibrate_excitation,
+                                                                   gauss=gauss,sort = sort)
+    else:
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,
+                                                                   channel_amplitudes_override=channel_amplitudes,
+                                                                   recalibrate=recalibrate_excitation,sort = sort, gauss = gauss)
     metadata = {'qubit_id': qubit_id,
                 'averages': nums,
                 'channel': readout_channel,
@@ -387,15 +446,21 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
         ex_seq.start()
         ex_sequencers.append(ex_seq)
 
+    if gauss:
+        excitation = qubit_excitation_pulse.get_pulse_sequence(0) + qubit_excitation_pulse.get_pulse_sequence(0)
+    else:
+        excitation = qubit_excitation_pulse.get_pulse_sequence(0)
+
     sequence_control.set_preparation_sequence(device, ex_sequencers, other_qubit_pulse_sequence+
-                                                                       qubit_excitation_pulse.get_pulse_sequence(0))#+
-                                                                       #qubit_excitation_pulse.get_pulse_sequence(0))
+                                                                        excitation)
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)+
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0))
 
     '''Warning'''
     #readout_sequencer = sequence_control.define_readout_control_seq(device, readout_channel)
     #raise ValueError('fallos')
     re_channel = device.awg_channels[readout_channel]
-    readout_sequencer = zi_scripts.READSequence(re_channel.parent.sequencer_id, device.modem.awg)
+    readout_sequencer = zi_scripts.READSequence(device, re_channel.parent.sequencer_id, device.modem.awg)
 
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel, length=readout_pulse_lengths[0],
                                                  amplitude=readout_pulse_amplitudes[0])
@@ -409,8 +474,9 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                                                          adc=adc,
                                                          prepare_seqs=[other_qubit_pulse_sequence,
                                                                        other_qubit_pulse_sequence +
-                                                                       qubit_excitation_pulse.get_pulse_sequence(0)],#+
-                                                                       #qubit_excitation_pulse.get_pulse_sequence(0)],
+                                                                       excitation],
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)+
+                                                                       # qubit_excitation_pulse.get_pulse_sequence(0)],
                                                          ex_seqs=ex_sequencers,
                                                          ro_seq=readout_sequencer,
                                                          control_seq=control_qubit_sequence,
@@ -418,7 +484,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                                                          ro_delay_seq=None,
                                                          _readout_classifier=readout_classifier.binary_linear_classifier(),
                                                          adc_measurement_name='Voltage',
-                                                         dbg_storage=False)
+                                                         dbg_storage=dbg_storage)
 
     classifier.readout_classifier.cov_mode = 'equal'
 
@@ -454,12 +520,20 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
             classifier.ro_seq.awg.start_seq(classifier.ro_seq.params['sequencer_id'])
 
     setter = ParameterSetter()
+    sweep_params = [(readout_pulse_lengths, setter.set_readout_length, 'length', 's'),
+                    (readout_pulse_amplitudes, setter.set_readout_amplitude, 'amplitude', '')]
+
+    lo_frequency = device.awg_channels[readout_channel].parent.lo.get_frequency()
+    ro_frequency = device.awg_channels[readout_channel].get_frequency()
+
+    if readout_frequency_offsets is not None:
+        frequency_setter = device.awg_channels[readout_channel].set_uncal_frequency
+        sweep_params.append((readout_frequency_offsets + ro_frequency, frequency_setter, 'frequency', 'Hz'))
 
     try:
         adc.set_adc_nums(nums)
         measurement = device.sweeper.sweep(classifier,
-                                           (readout_pulse_lengths, setter.set_readout_length, 'length', 's'),
-                                           (readout_pulse_amplitudes, setter.set_readout_amplitude, 'amplitude', ''),
+                                           *sweep_params,
                                            measurement_type='readout_fidelity_scan',
                                            metadata=metadata,
                                            references=references)
@@ -467,13 +541,14 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
         raise
     finally:
         adc.set_adc_nums(old_nums)
+        device.awg_channels[readout_channel].parent.lo.set_frequency(lo_frequency)
 
     return measurement
     # classifier.repeat_samples = 2
 
 
 def readout_Zgate_scan(device, qubit_id, qubit_readout_pulse, Zgate, amplitudes,  transition='01', ignore_other_qubits=None):
-    adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
+    adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True,gauss=True,sort = 'best')
     nums = int(device.get_qubit_constant(qubit_id=qubit_id, name='readout_background_nums'))
     old_nums = adc.get_adc_nums()
     adc.set_adc_nop(int(device.get_sample_global('readout_adc_points')))
@@ -487,11 +562,13 @@ def readout_Zgate_scan(device, qubit_id, qubit_readout_pulse, Zgate, amplitudes,
         for other_qubit_id in device.get_qubit_list():
             if other_qubit_id != qubit_id:
                 half_excited_pulse = excitation_pulse.get_excitation_pulse(device, other_qubit_id,
-                                                                           rotation_angle=np.pi / 2.)
+                                                                           rotation_angle=np.pi / 2.,gauss=gauss,
+                                                                           sort = sort)
                 references[('other_qubit_pulse', other_qubit_id)] = half_excited_pulse.id
                 other_qubit_pulse_sequence.extend(half_excited_pulse.get_pulse_sequence(0)[0])
 
-    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi)
+    qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,gauss=gauss,
+                                                                   sort = sort)
     metadata = {'qubit_id': qubit_id,
                 'averages': nums,
                 'ignore_other_qubits': ignore_other_qubits}

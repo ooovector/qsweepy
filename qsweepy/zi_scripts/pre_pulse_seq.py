@@ -26,10 +26,9 @@ class Prepulse:
             self.definition_fragments += textwrap.dedent('''
 const pre_samp{index} = {pre_samp_0};
 setUserReg(15, pre_samp{index});
-
 const pre_amp{index} = {pre_amp_0};
 const pre_tail{index} = {pre_tail_0};
-wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
+//wave plato_wawe_{index} = rect(pre_samp{index} - 2*pre_tail{index}, pre_amp{index});
 wave pre_tail_wave_{index} = hann(2*pre_tail{index}, pre_amp{index});
 //wave pre_wawe_{index}=join(cut(pre_tail_wave_{index}, 0, pre_tail{index}), plato_wawe_{index}, cut(pre_tail_wave_{index}, pre_tail{index}, 2*pre_tail{index}-1));
 wave pre_wawe_{index}=join(zeros(31-pre_tail{index}%32), cut(pre_tail_wave_{index}, 0, pre_tail{index}));
@@ -53,9 +52,9 @@ wave pre_wawe_{index} = plato_wawe_{index};
     playWave(2, pre_wawe_{index}, 1, pre_wawe_{index});
     wait(variable_register15);
     playWave(2, flip(pre_wawe_{index}), 1, flip(pre_wawe_{index}));
-    playWave(2, -0.1*pre_wawe_{index}, 1, -0.1*pre_wawe_{index});
-    wait(40);
-    playWave(2, -0.1*flip(pre_wawe_{index}), 1, -0.1*flip(pre_wawe_{index}));
+    playWave(2, -0.05*pre_wawe_{index}, 1, -0.05*pre_wawe_{index});
+    wait(20);
+    playWave(2, -0.05*flip(pre_wawe_{index}), 1, -0.05*flip(pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index=index, wait_after=int(self.wait_after * clock)))
         else:
@@ -66,9 +65,9 @@ wave pre_wawe_{index} = plato_wawe_{index};
     playWave(2, 0*pre_wawe_{index}, 1, pre_wawe_{index});
     wait(variable_register15);
     playWave(2, 0*flip(pre_wawe_{index}), 1, flip(pre_wawe_{index}));
-    playWave(2, 0*pre_wawe_{index}, 1, -0.1*pre_wawe_{index});
-    wait(40);
-    playWave(2, 0*flip(pre_wawe_{index}), 1, -0.1*flip(pre_wawe_{index}));
+    playWave(2, 0*pre_wawe_{index}, 1, -0.05*pre_wawe_{index});
+    wait(20);
+    playWave(2, 0*flip(pre_wawe_{index}), 1, -0.05*flip(pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index = index, wait_after=int(self.wait_after * clock)))
             elif channel == 1:
@@ -77,13 +76,16 @@ wave pre_wawe_{index} = plato_wawe_{index};
     playWave(2, pre_wawe_{index}, 1, 0*pre_wawe_{index});
     wait(variable_register15);
     playWave(2, flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
-    playWave(2, -0.1*pre_wawe_{index}, 1, 0*pre_wawe_{index});
-    wait(40);
-    playWave(2, -0.1*flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
+    playWave(2, -0.05*pre_wawe_{index}, 1, 0*pre_wawe_{index});
+    wait(20);
+    playWave(2, -0.05*flip(pre_wawe_{index}), 1, flip(0*pre_wawe_{index}));
     playWave(zeros({wait_after}));
 '''.format(index=index, wait_after=int(self.wait_after * clock)))
 
         return self.play_fragment
+
+
+
 
 class PrepulseSetter:
     def __init__(self, device, offsets, pre_pulses):
@@ -120,7 +122,6 @@ class PrepulseSetter:
                 awg = device.awg_channels[pre_pulse.channel].parent.awg
             if [awg, seq_id] not in self.seq_in_use:
                 self.seq_in_use.append([awg,seq_id])
-
 
     def set_seq_offsets(self, sequencer):
         for offset in self.offsets:
@@ -182,9 +183,9 @@ class PrepulseSetter:
     playWave(2, pre_wawe_{index1}, 1, pre_wawe_{index2});
     wait(variable_register15);
     playWave(2, flip(pre_wawe_{index1}), 1, flip(pre_wawe_{index2}));
-    playWave(2, -0.1*pre_wawe_{index1}, 1, -0.1*pre_wawe_{index2});
+    playWave(2, -0.05*pre_wawe_{index1}, 1, -0.05*pre_wawe_{index2});
     wait(40);
-    playWave(2, -0.1*flip(pre_wawe_{index1}), 1, -0.1*flip(pre_wawe_{index2}));
+    playWave(2, -0.05*flip(pre_wawe_{index1}), 1, -0.05*flip(pre_wawe_{index2}));
     playWave(zeros({wait_after}));
     
 '''.format(index1=index1, index2=index2, wait_after=int(wait_after * awg._clock)))
@@ -195,7 +196,7 @@ class PrepulseSetter:
 class SIMPLESequence:
     def __init__(self, device, sequencer_id, awg, readout_delay=0,pre_pulse_delay=331, awg_amp=1, pre_pulses = [],
                  use_modulation=True, var_reg0=0, var_reg1 =1, var_reg2 =2, var_reg3 =3,
-                 var_reg4 =4, var_reg5 =5, control=False, is_iq = False):
+                 var_reg4 =4, var_reg5=5, control=False, is_iq=False, post_selection_flag=False):
         """
         Pre pulses settings.
         Parameters
@@ -211,12 +212,15 @@ class SIMPLESequence:
         self.registors['var_reg0'] = var_reg0
         self.registors['var_reg1'] = var_reg1
         self.awg = awg
+        self.post_selection_flag = post_selection_flag
+
 
         #iq definition
         for excitation_channel in device.awg_channels.keys():
             ex_channel_ = device.awg_channels[excitation_channel]
             if self.awg == ex_channel_.parent.awg:
                 if ex_channel_.is_iq():
+                    # we need to upload iq calibartions
                     if sequencer_id == ex_channel_.parent.sequencer_id:
                         is_iq = ex_channel_.is_iq()
                         calib_rf = ex_channel_.parent.calib_rf(ex_channel_)
@@ -233,8 +237,6 @@ class SIMPLESequence:
         self.clock = self.awg._clock
         frequency = self.awg.get_frequency(sequencer_id * 4)
 
-
-
         self.params = dict(sequencer_id=int(sequencer_id), qubit_channel=0,
                            offset_channel=1, use_modulation=use_modulation, is_iq=is_iq,
                            awg_amp=awg_amp, readout_delay=int(readout_delay * self.clock),
@@ -249,6 +251,7 @@ class SIMPLESequence:
 // Pre pulses definition'''
         self.play_pre_pulses = '''
 // Pre pulses play'''
+
         # Initial settings
         self.set_awg_amp(self.params['awg_amp'])
         # You need to set phase in offset channel equal to 90 degrees
@@ -306,16 +309,25 @@ var variable_register15;
         play_fragment = self.play_fragment
         # In play_pre_pulses we play pre_pulses defined in definition_pre_pulses
         play_pre_pulses = self.play_pre_pulses
+        play_pre_pulses1 = self.play_pre_pulses # Grisha changes
         # In play_fragment1 we wait for trigger from readout sequencer
         play_fragment1 = '''
 //'''
         # In play_fragment2 we set trigger for readout sequencer start to play readout waveform
         play_fragment2 = '''
 //'''
+
+        play_fragment1__ = '''
+//'''
+
+        play_fragment2__ = '''
+//'''
         if self.pre_pulses is not []:
             for _i in range(len(self.pre_pulses)):
                 definition_pre_pulses += self.pre_pulses[_i].get_definition_fragment(self.clock, _i)
                 play_pre_pulses += self.pre_pulses[_i].get_play_fragment(self.params['qubit_channel'], _i)
+
+        play_pre_pulses_ = play_pre_pulses
 
         if self.is_iq:
             play_pre_pulses += textwrap.dedent('''
@@ -337,50 +349,53 @@ var variable_register15;
     '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
-setDIO(0); 
+//setDIO(0); 
 while (true) {{
 //repeat(8192){{''')
         #if self.is_iq:
         if self.awg.device_id =='hdawg-dev8108':
+            play_fragment1 += textwrap.dedent('''
+//
+    // Wait trigger and reset
+    //
+    //waitDIOTrigger();
+    waitDigTrigger(1);
+    //setDIO(8);
+    //wait(10);
+    //setDIO(0);
+    //playZero(pre_pulse_delay);
+    //waitWave();
+    '''.format(**self.params))
 #             play_fragment1 += textwrap.dedent('''
 # //
 #     // Wait trigger and reset
 #     //
-#     waitDIOTrigger();
-#     setDIO(256);
+#     waitDigTrigger(2);
+#     setTrigger(1);
 #     wait(10);
-#     setDIO(0);
+#     setTrigger(0);
 #     playZero(pre_pulse_delay);
 #     waitWave();
 #     '''.format(**self.params))
-            play_fragment1 += textwrap.dedent('''
-//    
-    // Wait trigger and reset
-    //
-    waitDigTrigger(2);
-    setTrigger(1);
-    wait(10);
-    setTrigger(0);
-    playZero(pre_pulse_delay);
-    waitWave();
-    '''.format(**self.params))
 
         else:
+            play_fragment1 += textwrap.dedent('''
+//
+    // Wait trigger and reset
+    //
+    //waitDIOTrigger();
+    waitDigTrigger(1);
+    '''.format(**self.params))
 #             play_fragment1 += textwrap.dedent('''
 # //
 #     // Wait trigger and reset
 #     //
-#     waitDIOTrigger();
+#     waitDigTrigger(2
+#     );
 #     '''.format(**self.params))
+        if self.post_selection_flag:
+            print('\x1b[1;30;44m' + 'READOUT PULSE FOR POST SELECTION!' + '\x1b[0m')
             play_fragment1 += textwrap.dedent('''
-//    
-    // Wait trigger and reset
-    //
-    waitDigTrigger(2
-    );
-    '''.format(**self.params))
-
-        play_fragment1 += textwrap.dedent('''
 //
     setDouble('oscs/{nco_control_id}/freq', {control_frequency});
     variable_register0 = getUserReg(var_reg0);
@@ -391,50 +406,179 @@ while (true) {{
     variable_register5 = getUserReg(var_reg5);
     variable_register15 = getUserReg(15);
     setPRNGSeed(variable_register1);
-        '''.format(**self.params))
+'''.format(**self.params))
 
-        if self.is_iq:
-            play_fragment1 += textwrap.dedent('''
+            if self.is_iq:
+                play_fragment1 += textwrap.dedent('''
 //    
     resetOscPhase();
     setSinePhase(0, {phaseI});
     setSinePhase(1, {phaseQ});
     '''.format(phaseI=self.phaseI, phaseQ=self.phaseQ))
-        else:
-            play_fragment1 += textwrap.dedent('''
+            else:
+                play_fragment1 += textwrap.dedent('''
 //    
     resetOscPhase();
     setSinePhase(0, 0);
     setSinePhase(1, 90);
     '''.format(**self.params))
 
-
-        # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
-        # There is initial delay between readout trigger and and readout waveform generation around 140 ns.
-        if self.control:
-            play_fragment2 += textwrap.dedent('''
+            play_fragment1 += textwrap.dedent('''
 //
-    // Send trigger for readout_channel to start waveform generation
+    // Send trigger for readout_channel to start waveform generation for post selection readout
     waitWave();
     playZero(readout_delay);
-    setDIO(8);
+    //setTrigger(1);
+    setTrigger(0b0100);
     wait(10);
-    setDIO(0);
-}}
-''')
+    //setTrigger(0);
+    setTrigger(0b0000);
+    waitWave();
+    //setDIO(8);
+    //wait(10);
+    //setDIO(0);
+    // Wait trigger from readout channel
+    waitDigTrigger(1);
+'''.format(**self.params))
 
-        else:
             play_fragment2 += textwrap.dedent('''
 //
     // Send trigger for readout_channel to start waveform generation
-    //waitWave();
-    //playZero(readout_delay);
+    //playWave(2, 0*pre_wawe_0, 1, pre_wawe_0);
+    waitWave();
+    playZero(readout_delay);
+    //setTrigger(1);
+    setTrigger(0b0100);
+    wait(10);
+    //setTrigger(0);
+    setTrigger(0b0000);
+    waitWave();
     //setDIO(8);
-    //wait(50);
+    //wait(10);
+    //setDIO(0);
+//}}
+''')
+
+            play_fragment1__ += textwrap.dedent('''
+//
+    //Wait trigger from readout channel
+    waitDigTrigger(1);
+''')
+
+            play_fragment2__ += textwrap.dedent('''
+//
+    // Send trigger for readout_channel to start waveform generation for test readout
+    waitWave();
+    playZero(readout_delay);
+    setTrigger(0b0100);
+    wait(10);
+    setTrigger(0b0000);
+    waitWave();
+}}
+''')
+        else:
+            play_fragment1 += textwrap.dedent('''
+//
+    setDouble('oscs/{nco_control_id}/freq', {control_frequency});
+    variable_register0 = getUserReg(var_reg0);
+    variable_register1 = getUserReg(var_reg1);
+    variable_register2 = getUserReg(var_reg2);
+    variable_register3 = getUserReg(var_reg3);
+    variable_register4 = getUserReg(var_reg4);
+    variable_register5 = getUserReg(var_reg5);
+    variable_register15 = getUserReg(15);
+    setPRNGSeed(variable_register1);
+
+'''.format(**self.params))
+
+            if self.is_iq:
+                play_fragment1 += textwrap.dedent('''
+//    
+    resetOscPhase();
+    setSinePhase(0, {phaseI});
+    setSinePhase(1, {phaseQ});
+    '''.format(phaseI=self.phaseI, phaseQ=self.phaseQ))
+            else:
+                play_fragment1 += textwrap.dedent('''
+//    
+    resetOscPhase();
+    setSinePhase(0, 0);
+    setSinePhase(1, 90);
+    '''.format(**self.params))
+
+            # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
+            # There is initial delay between readout trigger and readout waveform generation around 140 ns.
+            if self.control:
+                play_fragment2 += textwrap.dedent('''
+//
+    // Send trigger for readout_channel to start waveform generation
+    //playWave(2, 0*pre_wawe_0, 1, pre_wawe_0);
+    waitWave();
+    playZero(readout_delay);
+    //setTrigger(1);
+    setTrigger(0b0100);
+    wait(10);
+    //setTrigger(0);
+    setTrigger(0b0000);
+    waitWave();
+    //setDIO(8);
+    //wait(10);
     //setDIO(0);
 }}
 ''')
-        code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+
+            else:
+#             play_fragment2 += textwrap.dedent('''
+# //
+#     // Send trigger for readout_channel to start waveform generation
+#     //waitWave();
+#     //playZero(readout_delay);
+#     //setDIO(8);
+#     //wait(50);
+#     //setDIO(0);
+# }}
+# ''')
+
+                play_fragment2 += textwrap.dedent('''
+//
+    // Send trigger for readout_channel to start waveform generation
+    //playWave(2, 0*pre_wawe_0, 1, pre_wawe_0);
+    //waitWave();
+    //playZero(readout_delay);
+    //setTrigger(1);
+    //setTrigger(0b0100);
+    //wait(10);
+    //setTrigger(0);
+    //setTrigger(0b0000);
+    //waitWave();
+    //setDIO(8);
+    //wait(10);
+    //setDIO(0);
+}}
+''')
+
+#         if self.is_iq:
+#             play_fragment1 += textwrap.dedent('''
+# //
+#     resetOscPhase();
+#     setSinePhase(0, {phaseI});
+#     setSinePhase(1, {phaseQ});
+#     '''.format(phaseI=self.phaseI, phaseQ=self.phaseQ))
+#         else:
+#             play_fragment1 += textwrap.dedent('''
+# //
+#     resetOscPhase();
+#     setSinePhase(0, 0);
+#     setSinePhase(1, 90);
+#     '''.format(**self.params))
+
+        # code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+        if not self.post_selection_flag:
+            code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+        else:
+            code = ''.join(
+            definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2 \
+            + play_fragment1__ + play_pre_pulses_ + play_fragment2__)
         return code
 
     def add_register(self, reg_name, value):
@@ -487,6 +631,7 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
+
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -495,6 +640,22 @@ var variable_register15;
         # self.pre_pulses.append(pre_pulse)
         self.definition_pre_pulses += definition
         self.play_pre_pulses += play_fragment
+
+    def add_exc_pre_pulse(self, definition, play_fragment):
+        """
+        Add definition and play fragment to excitation pre pulse fragment
+        """
+        if definition in self.definition_exc_pre_pulses:
+            Warning('The same definition fragment has already been added to the program')
+            self.play_exc_pre_pulses += play_fragment
+
+        elif definition in self.definition_fragments:
+            Warning('The same definition fragment has already been added to the program')
+            self.play_exc_pre_pulses += play_fragment
+
+        else:
+            self.definition_exc_pre_pulses += definition
+            self.play_exc_pre_pulses += play_fragment
 
     def add_definition_fragment(self, definition_fragment):
         if definition_fragment in self.definition_fragments:

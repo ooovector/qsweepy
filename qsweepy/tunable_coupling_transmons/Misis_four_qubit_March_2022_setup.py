@@ -120,7 +120,7 @@ class hardware_setup():
         # sleep(1)
         self.lo1 = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
         # sleep(1)
-        self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
+        #self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
 
 
         # self.lo1 = SC_PXI("10.20.61.182")

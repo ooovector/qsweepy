@@ -97,7 +97,7 @@ class Exdir_db:
 
     def select_measurement(self, measurement_type: str, metadata: Mapping[str, str] = None,
                            references_this: Mapping[str, int] = None, references_that: Mapping[str, int] = None,
-                           ignore_invalidation: bool = False) -> MeasurementState:
+                           ignore_invalidation: bool = False, comment = None) -> MeasurementState:
         """
         Load first encountered measurement state from SQL that corresponds to parameters provided.
 
@@ -118,7 +118,8 @@ class Exdir_db:
         measurement_db_list = self.select_measurements_db(measurement_type, metadata=metadata,
                                                           references_this=references_this,
                                                           references_that=references_that,
-                                                          ignore_invalidation=ignore_invalidation)
+                                                          ignore_invalidation=ignore_invalidation,
+                                                          comment = comment)
 
         filename_db = list(measurement_db_list.order_by(lambda d: desc(d.id)).limit(1))[0].filename
         filename_converted = self.replace_file_prefixes(filename_db)
@@ -132,7 +133,7 @@ class Exdir_db:
 
     def select_measurements_db(self, measurement_type: str, metadata: Mapping[str, str] = None,
                                references_this: Mapping[str, int] = None, references_that: Mapping[str, int] = None,
-                               ignore_invalidation: bool = False):
+                               ignore_invalidation: bool = False, comment = None):
         """
         PonyORM select clause with where constraints on Data table (which correspond to MeasurementState classes)
 
@@ -158,7 +159,12 @@ class Exdir_db:
         if references_that is None:
             references_that = {}
 
-        q = self.db.Data.select(lambda d: (d.measurement_type == measurement_type and d.sample_name == self.sample_name))
+        if comment is None:
+            q = self.db.Data.select(lambda d: (d.measurement_type == measurement_type and d.sample_name == self.sample_name))
+        else:
+            q = self.db.Data.select(
+                lambda d: (d.measurement_type == measurement_type and d.sample_name == self.sample_name and
+                           d.comment == comment))
         if not ignore_invalidation:
             # q2 = q.where(lambda d: 'invalidation' not in d.metadata.name)
             q2 = q.where(lambda d: (not d.invalid) and (not d.incomplete))

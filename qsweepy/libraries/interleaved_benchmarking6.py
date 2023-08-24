@@ -188,19 +188,20 @@ const sequence_len = {sequence_len};'''.format(random_gate_num=random_gate_num, 
                         command_table['table'].append(table_entry)
             two_qubit_gate_index = random_command_id-1
 
-
-        table_entry = {'index': random_command_id}
-        #table_entry['amplitude0'] = {'value': 1}
-        table_entry['phase0'] = {'value': 0.0, 'increment': False}
-        #table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
-        command_table['table'].append(table_entry)
-        random_command_id += 1
-        table_entry = {'index': random_command_id}
+        phase0 = ex_seq.phaseI
+        phase1 = ex_seq.phaseQ
+        table_entry = {'index': random_gate_num}
         # table_entry['amplitude0'] = {'value': 1}
-        table_entry['phase0'] = {'value': 0.0, 'increment': True}
+        table_entry['phase0'] = {'value': phase0, 'increment': False}
         # table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        table_entry['phase1'] = {'value': phase1, 'increment': False}
+        command_table['table'].append(table_entry)
+
+        table_entry = {'index': random_gate_num + 1}
+        # table_entry['amplitude0'] = {'value': 1}
+        table_entry['phase0'] = {'value': 0, 'increment': True}
+        # table_entry['amplitude1'] = {'value': 1}
+        table_entry['phase1'] = {'value': 0, 'increment': True}
         command_table['table'].append(table_entry)
         if self.two_qubit is not None:
             play_part = textwrap.dedent('''

@@ -8,9 +8,10 @@ import itertools
 
 
 class ProcessTomography(multiqubit_tomography):
-    def __init__(self, device, qubit_ids, correspondence, pause_length=0):
+    def __init__(self, device, qubit_ids, correspondence, pause_length=0, preferred_excitation_length = None, two_qubit_num=1):
+
         qubit_readout_pulse, readout_device, confusion_matrix = \
-            get_confusion_matrix(device, qubit_ids, pause_length, recalibrate=True, force_recalibration=False)
+            get_confusion_matrix(device, qubit_ids, pause_length, recalibrate=True, force_recalibration=False, preferred_excitation_length=preferred_excitation_length)
 
         #ro_seq = [device.pg.pmulti(pause_length)] + device.trigger_readout_seq + qubit_readout_pulse.get_pulse_sequence()
 
@@ -18,11 +19,16 @@ class ProcessTomography(multiqubit_tomography):
         # part from benchmarking because I am a lazy ass
         channel_amplitudes_ = {}
         pi2_pulses = {}
-        pi_pulses = {}
+        # pi_pulses = {}
         generators = {}
         for qubit_id in qubit_ids:
-            pi2_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2.)
-            pi_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi)
+            if preferred_excitation_length is None:
+                pi2_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+                                                                             preferred_length = preferred_excitation_length)
+            else:
+                pi2_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2.,
+                                                                             preferred_length = preferred_excitation_length)
+            # pi_pulses[qubit_id] = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi)
             channel_amplitudes_[qubit_id] = channel_amplitudes.channel_amplitudes(
                 device.exdir_db.select_measurement_by_id(pi2_pulses[qubit_id].references['channel_amplitudes']))
 
@@ -127,12 +133,13 @@ class ProcessTomography(multiqubit_tomography):
         cube_faces_unitaries = {k:    np.cos(v[0]/2)*sigma_i -
                                    1j*np.sin(v[0]/2)*np.cos(v[1])*sigma_x -
                                    1j*np.sin(v[0]/2)*np.sin(v[1])*sigma_y for k, v in cube_faces.items()}
-        pulses = {}
-        for qubit_id in qubit_ids:
-            pulses[qubit_id] = {}
-            for cube_face_name, angles in cube_faces.items():
-                pulses[qubit_id][cube_face_name] = gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(
-                    device, qubit_id, angles[0], recalibrate=True).get_pulse_sequence(angles[1]) if angles[0] > 0 else []
+        # pulses = {}
+        # for qubit_id in qubit_ids:
+        #     pulses[qubit_id] = {}
+        #     for cube_face_name, angles in cube_faces.items():
+        #         pulses[qubit_id][cube_face_name] = gauss_hd.get_excitation_pulse_from_gauss_hd_Rabi_amplitude(
+        #             device, qubit_id, angles[0], recalibrate=True, preferred_length = preferred_excitation_length).get_pulse_sequence(angles[1]) if angles[0] > 0 else []
+
 
         multi_qubit_observables = {}
         output_array = np.zeros([len(cube_faces)]*len(qubit_ids)*2+[2**len(qubit_ids)], dtype=object)
@@ -176,7 +183,7 @@ class ProcessTomography(multiqubit_tomography):
 
         super().__init__(device, reducer, ex_sequencers, readout_sequencer, device.pg, multi_qubit_observables,
                          qubit_ids=qubit_ids, correspondence=correspondence, reconstruction_basis=reconstruction_basis,
-                         interleavers=HZ_group)
+                         interleavers=HZ_group, two_qubit_num=two_qubit_num)
         self.output_array = output_array
         self.reconstruction_output_array = reconstruction_output_array
 

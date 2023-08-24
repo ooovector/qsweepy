@@ -262,9 +262,9 @@ class ZIDevice():
 
     def set_offset(self, offset, channel):
         import traceback
-        if offset > 1.0 or offset==1.0:
-            raise ValueError('Too high offset')
-            return
+        # if np.abs(offset) > 1.0 or np.abs(offset)==1.0:
+        #     raise ValueError('Too high offset')
+        #     return
         self.daq.setDouble('/' + self.device + '/SIGOUTS/%d/OFFSET' % channel, offset)
         self.daq.sync()
 
@@ -304,8 +304,10 @@ class ZIDevice():
             self.daq.setInt('/' + self.device + '/triggers/in/%d/IMP50' % trigger_in, 1)
             self.daq.sync()
 
-    def set_trig_level(self, input_level):
-        for trigger_in in range(self.num_channels):
+    def set_trig_level(self, input_level, channels=None):
+        if channels == None:
+            channels = np.arange(self.num_channels)
+        for trigger_in in channels:
             self.trig_input_level[trigger_in] = input_level
             self.daq.setDouble('/' + self.device + '/triggers/in/%d/LEVEL' % trigger_in, input_level)
             self.daq.sync()
@@ -449,6 +451,10 @@ class ZIDevice():
     def set_register(self, sequencer_id: int, register_id: int, value: int):
         self.daq.setInt('/' + self.device + '/awgs/%d/userregs/%d' % (sequencer_id, register_id), value)
         self.daq.sync()
+
+    def get_register(self, sequencer_id: int, register_id: int):
+        self.daq.getInt('/' + self.device + '/awgs/%d/userregs/%d' % (sequencer_id, register_id))
+        # self.daq.sync()
 
     def get_modulation(self, channel):
         if self.devtype == 'HDAWG':

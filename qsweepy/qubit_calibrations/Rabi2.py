@@ -7,15 +7,53 @@ from qsweepy import zi_scripts
 import traceback
 import time
 
+def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0,
+              readout_delay=0,
+              pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}, comment = '',
+              ex_pre_pulse=None, ex_pre_pulse2=None, ex_post_pulse=None, ex_post_pulse2=None, shots=False, frequency_goodness_test = None,
+              dot_products=False, post_selection_flag=False, gauss=True, sort='newest'):
 
-def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0, readout_delay=0,
-              pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}):
+# def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0,
+#               readout_delay=0,
+#               pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}, comment = '',
+#               ex_pre_pulse=None, ex_post_pulse=None, shots=False, frequency_goodness_test = None):
+    """
+    Rabi rectangular calibration
+    :param device:
+    :param qubit_id:
+    :param channel_amplitudes:
+    :param transition:
+    :param lengths:
+    :param extra_sweep_args:
+    :param tail_length:
+    :param readout_delay:
+    :param pre_pulses:
+    :param repeats:
+    :param measurement_type:
+    :param samples:
+    :param additional_metadata:
+    :param str comment:
+    :param list ex_pre_pulse: sequence of pulses before gate
+    :param list ex_post_pulse: sequence of pulses after gate
+    :param bool shots:
+    :param frequency_goodness_test: if None then frequency_goodness_test is defined by MSE_rel,
+    True then  frequency_goodness_test always true, if False the always False
+    :param dot_products:
+    :param post_selection_flag:
+    :return:
+    """
     from .readout_pulse2 import get_uncalibrated_measurer
     from .calibrated_readout2 import get_calibrated_measurer
 
+    if post_selection_flag:
+        readouts_per_repetition = 3 # 2
+    else:
+        readouts_per_repetition = 1
+
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples)
-        measurement_name = 'iq'+qubit_id
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples,
+                                                            shots=shots, dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
+        measurement_name = 'iq' + qubit_id
         qubit_id = [qubit_id]
         exp_sin_fitter_mode = 'unsync'
         exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
@@ -23,7 +61,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
         measurement_name = 'resultnumbers'
         exp_sin_fitter_mode = 'unsync'
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
 
 
     ex_channel = device.awg_channels[exitation_channel]
@@ -44,6 +82,19 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     #                                          length_tail=tail_length, fast_control=True, control_frequency=0)
 
     prepare_seq = []
+    # Add prepulses before gate
+    # if ex_pre_pulse is not None:
+    #     for pre_pulse in ex_pre_pulse:
+    #         prepare_seq.extend(pre_pulse.get_pulse_sequence(0))
+
+
+    if ex_pre_pulse is not None:
+        #prepare_seq.extend(ex_pre_pulse.get_pulse_sequence(0))
+        prepare_seq.extend(ex_pre_pulse)
+    if ex_pre_pulse2 is not None:
+        prepare_seq.extend(ex_pre_pulse2)
+        # prepare_seq.extend(ex_pre_pulse2.get_pulse_sequence(0))
+
     gate_pulse = excitation_pulse.get_rect_cos_pulse_sequence(device=device,
                                                               channel_amplitudes=channel_amplitudes,
                                                               tail_length=tail_length,
@@ -51,17 +102,28 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                                                               fast_control=True)
     prepare_seq.extend(gate_pulse)
 
+    if ex_post_pulse is not None:
+        # prepare_seq.extend(ex_post_pulse.get_pulse_sequence(0))
+        prepare_seq.extend(ex_post_pulse)
+    if ex_post_pulse2 is not None:
+        prepare_seq.extend(ex_post_pulse2)
+        # prepare_seq.extend(ex_post_pulse2.get_pulse_sequence(0))
+
+    # Add postpulses after gate+
+    # if ex_post_pulse is not None:
+    #     for post_pulse in ex_post_pulse:
+    #         prepare_seq.append(post_pulse.get_pulse_sequence(0))
 
     for awg, seq_id in device.pre_pulses.seq_in_use:
 
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
 
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
 
             control_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
@@ -78,6 +140,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     #     sequence.start(holder=1)
 
     sequence_control.set_preparation_sequence(device, ex_sequencers, prepare_seq)
+    # return  prepare_seq
 
     '''#There is no more special delay_seq and special readout_trigger_seq due to the new pulse generation structure
     #Now delay_seq and special readout_trigger_seq replace with new sequencer READSequence
@@ -91,7 +154,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     # There is no more set_seq
     #device.pg.set_seq(device.pre_pulses+pre_pulse_sequences+delay_seq+ex_pulse_seq+delay_seq+readout_trigger_seq+readout_pulse_seq)'''
 
-    re_sequence = sequence_control.define_readout_control_seq(device, readout_pulse)
+    re_sequence = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     re_sequence.start()
 
     def set_ex_length(length, ex_sequencers = ex_sequencers):
@@ -121,15 +184,19 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         arg_id = -2 # the last parameter is resultnumbers, so the time-like argument is -2
     else:
         arg_id = -1
-    fitter_arguments = (measurement_name, exp_sin_fitter(mode=exp_sin_fitter_mode), arg_id, np.arange(len(extra_sweep_args)))
+    fitter_arguments = (measurement_name, exp_sin_fitter(mode=exp_sin_fitter_mode,frequency_goodness_test = frequency_goodness_test), arg_id, np.arange(len(extra_sweep_args)))
 
     metadata = {'qubit_id': ','.join(qubit_id),
                 'extra_sweep_args': str(len(extra_sweep_args)),
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
                 'repeats': str(repeats),
-                'transition':transition}
+                'transition':transition,}
     metadata.update(additional_metadata)
+
+    measurer.save_dot_prods = True
+    # print('TYPE', measurer.source)
+
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                                             *extra_sweep_args,
@@ -138,7 +205,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                                                             measurement_type=measurement_type,
                                                             metadata=metadata,
                                                             references=references,
-                                                            on_update_divider=5)
+                                                            on_update_divider=5, shuffle=False, comment = comment)
 
     return measurement
 

@@ -60,7 +60,11 @@ class modem_readout(data_reduce.data_reduce):
         return dac_sequence, dac_sequence_adc_time
 
     def demodulation(self, ex_channel, sign=True, use_carrier=True):
-        readout_time_axis = self.adc.get_points()[self.src_meas][1 - self.axis_mean][1]
+        if len(self.adc.get_points()[self.src_meas]) > 1:
+            axis_id = 1 - self.axis_mean
+        else:
+            axis_id = 0
+        readout_time_axis = self.adc.get_points()[self.src_meas][axis_id][1]
         if hasattr(ex_channel, 'get_if') and use_carrier:  # has get_if method => works on carrier, need to demodulate
             demodulation = np.exp(
                 1j * np.asarray(readout_time_axis) * 2 * np.pi * ex_channel.get_if() * (1 if sign else -1))
@@ -86,12 +90,13 @@ class modem_readout(data_reduce.data_reduce):
         sequence.set_delay(self.trigger_channel.delay)
         sequence.start()
 
-        self.adc.output_raw = True
+        self.adc.averaging = True
+        self.adc.samples = True
         meas_result = self.adc.measure()[self.src_meas]
         if meas_result.ndim == 1:  # in case of UHFQA data is already averaged on hardware
             adc_sequence = meas_result
         else:
-            adc_sequence = np.mean(meas_result, axis=self.axis_mean)
+            adc_sequence = np.mean(meas_result, axis=self.axis_mean) #This averaging should be handled by driver
         # adc_sequence = np.mean(self.adc.measure()[self.src_meas], axis=self.axis_mean)
         # demodulate
         demodulation = self.demodulation(ex_channel, sign=True, use_carrier=False)
@@ -101,16 +106,16 @@ class modem_readout(data_reduce.data_reduce):
         abs_xc = np.abs(xc1) + np.abs(xc2)
         # maximum correlation:
         readout_delay = -(np.argmax(abs_xc) - len(
-            dac_sequence_adc_time) - 50) / self.adc.get_clock()  # get delay time in absolute units
-        # plt.plot(xc1)
-        # plt.plot(xc2)
-        # plt.plot(xc3)
-        # plt.plot(xc4)
+            dac_sequence_adc_time) - 50) / self.adc.get_clock()  # get delay time in absolute units. WTF is 50?
+        if readout_delay>0:
+            readout_delay=0
+
+        plt.figure("Cross-correlated data")
         plt.plot(abs_xc)
-        plt.figure()
-        plt.plot(np.real(adc_sequence))
-        plt.plot(np.imag(adc_sequence))
-        plt.figure()
+        plt.figure("ADC data")
+        plt.plot(np.real(adc_sequence), label = "real")
+        plt.plot(np.imag(adc_sequence), label = "imag")
+        plt.legend()
         if save:
             self.delay_calibrations[ex_channel_name] = readout_delay
             self.abs_xc = abs_xc
@@ -131,9 +136,13 @@ class modem_readout(data_reduce.data_reduce):
         self.iq_readout_calibrations[ex_channel_name] = {
             'iq_calibration': [self.calibrations[ex_channel_name + '+'], self.calibrations[ex_channel_name + '-']],
             'feature': feature}
-        self.calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas,
+        if len(self.adc.get_points()[self.src_meas]) > 1:
+            axis_id = 1 - self.axis_mean
+        else:
+            axis_id = 0
 
-                                                                               1 - self.axis_mean, self.bg, feature)
+        self.calibrated_filters[ex_channel_name] = data_reduce.feature_reducer(self.adc, self.src_meas,
+                                                                               axis_id, self.bg, feature)
 
     def get_dc_bg_calibration(self):
         try:
@@ -185,7 +194,10 @@ class modem_readout(data_reduce.data_reduce):
         sequence.start()
 
         measurer = data_reduce.data_reduce(self.adc)
-        measurer.filters['bg'] = data_reduce.mean_reducer(self.adc, self.src_meas, self.axis_mean)
+        if len(self.get_points()) > 1:
+            measurer.filters['bg'] = data_reduce.mean_reducer(self.adc, self.src_meas, self.axis_mean)
+        else:
+            measurer.filters['bg'] = data_reduce.thru(self.adc, self.src_meas)
 
         dc_bg_calibration_measurement = sweep.sweep(measurer,
                                                     references={'delay_measurement': self.delay_measurement.id},
@@ -233,7 +245,9 @@ class modem_readout(data_reduce.data_reduce):
         sequence.start()
 
         calibration_measurement = self.adc.measure()
-        meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean))[
+        # meas_I = (np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean))[
+        #          :len(dac_sequence_adc_time)]
+        meas_I = [np.mean(calibration_measurement[self.src_meas], axis=self.axis_mean)][
                  :len(dac_sequence_adc_time)]
 
         A_I = (meas_I * np.asarray(

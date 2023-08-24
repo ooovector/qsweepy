@@ -1,21 +1,3 @@
-# Anritsu_VNA.py
-# hacked by Hannes Rotzinger hannes.rotzinger@kit.edu, 2011
-# derived from Anritsu_VNA.py (and whatever this is derived from)
-# Pascal Macha <pascalmacha@googlemail.com>, 2010
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from qsweepy.instrument_drivers.instrument import Instrument
 from matplotlib import pyplot as plt
@@ -48,6 +30,7 @@ class RS_ZVB20(Instrument):
 
 		self._address = address
 		self._visainstrument = visa.ResourceManager().open_resource(self._address)# no term_chars for GPIB!!!!!
+		# self._visainstrument: visa.resources.MessageBasedResource = visa_instrument
 		#Trace data format
 		self._visainstrument.write(':FORMAT REAL,32; FORMat:BORDer SWAP')
 		self._zerospan = False
@@ -455,7 +438,7 @@ class RS_ZVB20(Instrument):
 		else:
 		  return int(self._visainstrument.ask('SENS%i:AVER:COUN?' % self._ci))
 	
-	def do_set_power(self,pow):
+	def do_set_power(self, pow):
 		'''
 		Set probe power
 
@@ -829,7 +812,9 @@ class RS_ZVB20(Instrument):
 		  raise ValueError('Output status not specified : %s' % stat)
 		return
 	
-	
+	def reset(self):
+		self.write('*RST')
+
 	def read(self):
 		return self._visainstrument.read()
 	def write(self,msg):

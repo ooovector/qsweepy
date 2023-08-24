@@ -104,7 +104,13 @@ class interleaved_benchmarking:
 
     def return_hdawg_program(self, ex_seq, seq_len=0):
         random_gate_num = 24 #len(self.interleavers)
+        #TODO
+        #This is costil!!! You shouldn't add phase0 to the coupler channel (For the coupler phase0 should be ZERO)
+        #
+        coupler_seq_id = 3
+        #
         if self.two_qubit is not None:
+
             definition_part = textwrap.dedent('''
 const random_gate_num = {random_gate_num};
 setPRNGRange(0, random_gate_num-1);
@@ -115,21 +121,26 @@ const random_gate_num = {random_gate_num};
 setPRNGRange(0, random_gate_num-1);
 //const sequence_len = {sequence_len};'''.format(random_gate_num=random_gate_num, sequence_len=seq_len))
 
-        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
-                         "header": { "version": "0.2" },
-                         "table": [] }
+        # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+        #                  "header": { "version": "0.2" },
+        #                  "table": [] }
+        command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
+                         'header': {'version': '1.0.0'},
+                         'table': []}
         assign_waveform_indexes = {}
 
         random_command_id = 0
         waveform_id = -1
         # First gate
         for _i in range(24):
-            phase0 = 0
-            phase0 = (_i%4) * 90
+            if ex_seq.params['sequencer_id'] == coupler_seq_id:
+                phase0 = 0
+            else:
+                phase0 = (_i%4) * 90
 
             gate = self.interleavers['X/2']
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         # table_entry, definition_part, random_command_id, waveform_id = self.command_table_entry_creation(part,
                         #                             definition_part, random_command_id, waveform_id, phase0=phase0, phase1=0)
@@ -140,17 +151,19 @@ setPRNGRange(0, random_gate_num-1);
                         command_table['table'].append(table_entry)
         # Second gate
         for _i in range(24):
-            phase0 = 0
-            if _i<20:
-                phase0 = ((_i//4)%4) * 90
+            if ex_seq.params['sequencer_id'] == coupler_seq_id:
+                phase0 = 0
             else:
-                phase0 = 180
+                if _i<20:
+                    phase0 = ((_i//4)%4) * 90
+                else:
+                    phase0 = 180
             if _i<16:
                 gate = self.interleavers['I']
             else:
                 gate = self.interleavers['X/2']
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
                                             definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=phase0, phase1=0)
@@ -163,27 +176,29 @@ setPRNGRange(0, random_gate_num-1);
         if self.two_qubit is not None:
             gate = [v for v in self.two_qubit.values()][0]
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
                                             definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=0, phase1=0)
                         command_table['table'].append(table_entry)
             two_qubit_gate_index = random_command_id-1
 
-
+        phase0 = ex_seq.phaseI
+        phase1 = ex_seq.phaseQ
         table_entry = {'index': random_command_id}
-        #table_entry['amplitude0'] = {'value': 1}
-        table_entry['phase0'] = {'value': 0.0, 'increment': False}
-        #table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        # table_entry['amplitude0'] = {'value': 1}
+        table_entry['phase0'] = {'value': phase0, 'increment': False}
+        # table_entry['amplitude1'] = {'value': 1}
+        table_entry['phase1'] = {'value': phase1, 'increment': False}
         command_table['table'].append(table_entry)
-        random_command_id += 1
-        table_entry = {'index': random_command_id}
+
+        table_entry = {'index': random_command_id + 1}
         # table_entry['amplitude0'] = {'value': 1}
         table_entry['phase0'] = {'value': 0.0, 'increment': True}
         # table_entry['amplitude1'] = {'value': 1}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
+        table_entry['phase1'] = {'value': 0.0, 'increment': True}
         command_table['table'].append(table_entry)
+
         if self.two_qubit is not None:
             play_part = textwrap.dedent('''
 // Clifford play part
@@ -200,13 +215,15 @@ setPRNGRange(0, random_gate_num-1);
             executeTableEntry({random_gate_num}+1);
             executeTableEntry(rand_value2);//}}
         repeat ({two_qubit_num}){{
+            wait(5);
             executeTableEntry({random_gate_num}+1);
             executeTableEntry({two_qubit_gate_index});
+            wait(5);
             }}
     }}    
     executeTableEntry({random_gate_num});
     resetOscPhase();
-    '''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num = random_command_id-1,
+    '''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num = random_command_id,
                   two_qubit_num=self.two_qubit_num, sequence_len=seq_len))
         else:
             play_part = textwrap.dedent('''
@@ -223,24 +240,26 @@ setPRNGRange(0, random_gate_num-1);
             executeTableEntry(rand_value1);
             executeTableEntry({random_gate_num}+1);
             executeTableEntry(rand_value2);//}}
+            wait(5);
+            wait(5);
     }} 
     executeTableEntry({random_gate_num});
     resetOscPhase();
-    '''.format(random_gate_num=random_command_id-1, sequence_len=seq_len))
+    '''.format(random_gate_num=random_command_id, sequence_len=seq_len))
         self.instructions.append(command_table)
         # print(command_table)
         return definition_part, play_part
 
 
-    def create_hdawg_generator(self):
-        pulses = {}
-        control_seq_ids = []
-        self.instructions=[]
-        for ex_seq in self.ex_sequencers:
-            pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq, self.sequence_length)
-            control_seq_ids.append(ex_seq.params['sequencer_id'])
-
-        return [[pulses, control_seq_ids]]
+    # def create_hdawg_generator(self):
+    #     pulses = {}
+    #     control_seq_ids = []
+    #     self.instructions=[]
+    #     for ex_seq in self.ex_sequencers:
+    #         pulses[ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq, self.sequence_length)
+    #         control_seq_ids.append(ex_seq.params['sequencer_id'])
+    #
+    #     return [[pulses, control_seq_ids]]
 
     # for _i in group
 
@@ -249,6 +268,24 @@ setPRNGRange(0, random_gate_num-1);
     # higher budget functions require arbitrary rotation pulse generator
     # which we unfortunately don't have (yet)
     # maybe Chernogolovka control experiment will do this
+
+    def create_hdawg_generator(self):
+        pulses = {}
+        control_seq_ids = []
+        control_awg_ids = []
+        self.instructions = []
+
+
+        for ex_seq in self.ex_sequencers:
+            pulses.update({ex_seq.awg.device_id: {}})
+
+        for ex_seq in self.ex_sequencers:
+            pulses[ex_seq.awg.device_id][ex_seq.params['sequencer_id']] = self.return_hdawg_program(ex_seq, self.sequence_length)
+            control_seq_ids.append(ex_seq.params['sequencer_id'])
+            control_awg_ids.append(ex_seq.awg.device_id)
+        return [[pulses, control_seq_ids, control_awg_ids]]
+
+
     def state_to_zero_transformer(self, psi):
         good_interleavers_length = {}
         # try each of the interleavers available

@@ -8,7 +8,7 @@ from . import readout_classifier
 
 class multiqubit_tomography:
     def __init__(self, device, measurer, ex_sequencers, readout_sequencer, pulse_generator, proj_seq,
-                 qubit_ids, correspondence, reconstruction_basis={}, interleavers=None):
+                 qubit_ids, correspondence, reconstruction_basis={}, interleavers=None, two_qubit_num=1):
         # self.sz_measurer = sz_measurer
         # self.adc = adc
         self.pulse_generator = pulse_generator
@@ -45,6 +45,7 @@ class multiqubit_tomography:
         self.prepare_seq = None
         self.interleavers = {}
         self.instructions = []
+        self.two_qubit_num=two_qubit_num
         if interleavers is not None:
             for name, gate in interleavers.items():
                 self.add_interleaver(name, gate['pulses'], gate['unitary'])
@@ -95,6 +96,8 @@ class multiqubit_tomography:
                         command_table['table'].append(table_entry)
                         # command_table['table'].append(table_entry)
 
+        phase0 = ex_seq.phaseI
+        phase1 = ex_seq.phaseQ
         table_entry = {'index': random_gate_num}
         # table_entry['amplitude0'] = {'value': 1}
         table_entry['phase0'] = {'value': phase0, 'increment': False}
@@ -124,9 +127,11 @@ class multiqubit_tomography:
     executeTableEntry(variable_register1);
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register2);
-    
-    //executeTableEntry({random_gate_num}+1);
-    executeTableEntry({two_qubit_gate_index});
+    repeat({two_qubit_num}){{
+        wait(5);
+        //executeTableEntry({random_gate_num}+1);
+        executeTableEntry({two_qubit_gate_index});
+        wait(5);}}
     //Pulses
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register3);
@@ -136,7 +141,7 @@ class multiqubit_tomography:
     executeTableEntry(variable_register5);
 
     executeTableEntry({random_gate_num});
-    resetOscPhase();'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num=random_gate_num))
+    resetOscPhase();'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num=random_gate_num, two_qubit_num=self.two_qubit_num))
         else:
             play_part = textwrap.dedent('''
 // Tomography play part
@@ -150,7 +155,8 @@ class multiqubit_tomography:
     executeTableEntry(variable_register1);
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register2);
-
+    wait(2);
+    wait(2);
     //Pulses
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register3);

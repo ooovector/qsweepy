@@ -35,7 +35,8 @@ class awg_digital:
     def get_physical_devices(self):
         return [self.awg]
 
-    def validate_modem_delay_calibration(self, modem, ex_channel_name):
+    def validate_modem_delay_calibration(self, modem, ex_channel_name, default_delay=-220e-9):
+
         measured_delay = modem.calibrate_delay(ex_channel_name)
         # if this delay validation has been already been obtained with this calibration, don't save
         calibration_references, calibration_metadata = self.get_modem_delay_calibration_references(modem, ex_channel_name)
@@ -142,6 +143,7 @@ class awg_digital:
             self.measured_delay = float(calibration_measurement.metadata['measured_delay'])
             result = self.measured_delay
             self.delay = self.measured_delay
+
         except Exception as e:
             print(str(e), type(e))
             self.modem_delay_calibrate(modem, ex_channel_name)

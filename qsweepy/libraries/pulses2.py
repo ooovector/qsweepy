@@ -43,7 +43,7 @@ class Pulses:
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length1) * ex_channel.get_clock() / 16) * 16
+        length_samp = int(round((length) * ex_channel.get_clock()/16)*16)
         sigma_samp = int((sigma) * ex_channel.get_clock())
         # nrOfPeriods = int(np.round((length_samp) * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()))
         nrOfPeriods = length_samp * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()
@@ -117,7 +117,7 @@ wave wave_Q=join(w_1_qubit1_Q, w_2_qubit1_Q, w_x1_qubit1_Q, w_x2_qubit1_Q, w_2_q
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length1) * ex_channel.get_clock() / 16) * 16
+        length_samp = int(round((length) * ex_channel.get_clock()/16)*16)
         sigma_samp = int((sigma) * ex_channel.get_clock())
         # nrOfPeriods = int(np.round((length_samp) * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()))
         nrOfPeriods = length_samp * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()
@@ -199,7 +199,7 @@ wave wave_Q=join(w_1_qubit2_Q, w_2_qubit2_Q, w_x1_qubit2_Q, w_x2_qubit2_Q, w_2_q
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length1) * ex_channel.get_clock() / 16) * 16
+        length_samp = int(round((length) * ex_channel.get_clock()/16)*16)
         # nrOfPeriods = int(np.round((length_samp) * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()))
 
         tail_samp = int(np.round(length_tail * ex_channel.get_clock()))
@@ -273,7 +273,7 @@ wave wave_Q=join(w_1_coupler_Q, w_2_coupler_Q, w_x_coupler_Q, w_3_coupler_Q, w_1
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length) * ex_channel.get_clock() / 16) * 16
+        length_samp = int(round((length) * ex_channel.get_clock()/16)*16)
         sigma_samp = int((sigma) * ex_channel.get_clock())
         # nrOfPeriods = int(np.round((length_samp) * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()))
         nrOfPeriods = length_samp * np.abs(ex_channel.get_frequency()) / ex_channel.get_clock()
@@ -385,10 +385,10 @@ etic_gauss_modulation_{length_samp}_{signI}{realI}_{signQ}{imagQ}_{phase_round})
         assign_fragment = ''''''
         entry_table_index_constants = []
         ex_channel = self.channels[channel]
-        length_samp = round((length) * ex_channel.get_clock()/16)*16
+        length_samp = int(round((length) * ex_channel.get_clock()/16)*16)
         sigma_samp = int((sigma) * ex_channel.get_clock())
         #position_samp = round((length)*ex_channel.get_clock())/2
-        position_samp = (length_samp-1)/ 2
+        position_samp = (length_samp-1)/2
         definition_fragment += textwrap.dedent('''
 // Waveform definition gauss_hd_{length_samp}
 wave gauss_hd_{length_samp}_{sigma_samp} = gauss({length_samp}, {amp_x}, {position_samp}, {sigma_samp});
@@ -847,10 +847,10 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
         table_entry['waveform'] = {'index': 0}
 
         if ex_channel.is_iq():
-            #table_entry['phase0'] = {'value': np.round(np.angle(calib_rf['I']) * 360 / np.pi, 3), 'increment': False}
-            #table_entry['phase1'] = {'value': np.round(np.angle(calib_rf['Q']) * 360 / np.pi, 3), 'increment': False}
-            table_entry['phase0'] = {'value': 0, 'increment': True}
-            table_entry['phase1'] = {'value': 0, 'increment': True}
+            table_entry['phase0'] = {'value': np.round(np.angle(calib_rf['I']) * 360 / np.pi, 3), 'increment': False}
+            table_entry['phase1'] = {'value': np.round(np.angle(calib_rf['Q']) * 360 / np.pi, 3), 'increment': False}
+            #table_entry['phase0'] = {'value': 0, 'increment': True}
+            #table_entry['phase1'] = {'value': 0, 'increment': True}
         else:
             control_channel_id = ex_channel.channel % 2
             if control_channel_id == 0:
@@ -948,13 +948,22 @@ cvar resolution = {resolution};
         incrementSinePhase(0, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 if ex_channel.is_iq():
                     play_fragment += textwrap.dedent('''
+//
         incrementSinePhase(1, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
                 play_fragment += '''
+//
+        wait(1);
     } else {
         incrementSinePhase(0, 0.00000001);
-        incrementSinePhase(1, 0.00000001);
-    }
-    waitWave();'''
+'''
+                if ex_channel.is_iq():
+                    play_fragment += '''
+//
+        incrementSinePhase(1, 0.00000001);'''
+                play_fragment += '''
+//
+    wait(1);
+    }'''
 
         elif fast_control:
             definition_fragment += '''
