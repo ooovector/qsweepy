@@ -87,3 +87,4 @@ def relaxation_adaptive(device, qubit_id, transition='01', delay_seq_generator=N
             return device.exdir_db.select_measurement(measurement_type='fit_dataset_1d', references_that={'fit_source':measurement.id})
 
         lengths *= _range
+

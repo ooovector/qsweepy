@@ -873,6 +873,7 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
             definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry = self.rect_cos(channel, length, amp=0, length_tail=0, fast_control=fast_control)
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
+
     def pause2(self, channel, length):
         ex_channel = self.channels[channel]
         length_samp = int(np.round(length * ex_channel.get_clock()))

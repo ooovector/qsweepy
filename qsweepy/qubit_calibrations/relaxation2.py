@@ -4,12 +4,12 @@ from qsweepy import zi_scripts
 import numpy as np
 from qsweepy.qubit_calibrations import channel_amplitudes
 
-def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
-           readout_delay=0, delay_seq_generator=None, measurement_type='decay', ex_pulse=None, ex_pulse2=None, post_pulse=None, post_pulse2=None,
-           additional_references = {}, additional_metadata = {},gauss=True,sort='best', shots=False, dot_products=False, post_selection_flag=False,
-           pre_pulse_qp=False, pre_pulse_qp_length=0, nums_qp=0, wait_qp=0):
-    """
 
+def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
+               readout_delay=0, delay_seq_generator=None, measurement_type='decay', ex_pulse=None, ex_pulse2=None,
+               post_pulse=None, post_pulse2=None, additional_references={}, additional_metadata={}, gauss=True,
+               sort='best', shots=False, dot_products=False, post_selection_flag=False, exc_pre_pulses_seq=None):
+    """
     :param device:
     :param qubit_id:
     :param transition:
@@ -30,8 +30,7 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
     :param shots:
     :param dot_products:
     :param post_selection_flag:
-    :param pre_pulse_qp: if True when pre pulse for quasiparticles is used
-    :param pre_pulse_qp_length:
+    :param exc_pre_pulses_seq: excitation pre pulse sequence
     :return:
     """
     from .readout_pulse2 import get_uncalibrated_measurer
@@ -42,16 +41,17 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
     if post_selection_flag:
-        readouts_per_repetition = 2
+        readouts_per_repetition = 3
     else:
         readouts_per_repetition = 1
 
     #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, shots=shots, dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, shots=shots, dot_products=dot_products,
+                                                        readouts_per_repetition=readouts_per_repetition)
     if ex_pulse is None:
         ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi,
                                                          channel_amplitudes_override=channel_amplitudes,
-                                                         gauss=gauss,sort=sort)
+                                                         gauss=gauss, sort=sort)
 
 
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
@@ -68,33 +68,35 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag,
-                                               pre_pulse_qp=pre_pulse_qp)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[],
+                                               post_selection_flag=post_selection_flag)
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag,
-                                               pre_pulse_qp=pre_pulse_qp)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True,
+                                               post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             # print('control_sequence=',control_sequence)
-        if pre_pulse_qp:
-            channel_amplitudes_id = ex_pulse.references['channel_amplitudes']
-            channel_amplitudes_ref = device.exdir_db.select_measurement_by_id(channel_amplitudes_id)
-            qubit_excitation_channel = list(device.get_qubit_excitation_channel_list(qubit_id).keys())[0]
-
-            pre_pulse_qp_length = float(ex_pulse.metadata['length'])
-
-            if seq_id == device.awg_channels[qubit_excitation_channel].channel // 2:
-                ex_seq.set_pre_pulse_qp_params(pre_pulse_qp_length, float(channel_amplitudes_ref.metadata[qubit_excitation_channel]), nums_qp, wait_qp)
-            else:
-                ex_seq.set_pre_pulse_qp_params(pre_pulse_qp_length, 0.0, nums_qp, wait_qp)
-
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
             control_qubit_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
+
+    if exc_pre_pulses_seq:
+        #  Add excitation pre pulse sequence definition and play fragments
+        for _id, ex_sequence in enumerate(ex_sequencers):
+            ex_sequence.awg.stop_seq(ex_sequence.params['sequencer_id'])
+            ex_sequence.clear_pulse_sequence()
+            for prep_seq in exc_pre_pulses_seq:
+                for seq_id, single_sequence in prep_seq[0][ex_sequence.awg.device_id].items():
+                    if seq_id == ex_sequence.params['sequencer_id']:
+                        # print(single_sequence[0])
+                        # print(single_sequence[1])
+                        ex_sequence.add_exc_pre_pulse(single_sequence[0], single_sequence[1])
+            ex_sequence.awg.set_sequence(ex_sequence.params['sequencer_id'], ex_sequence)
+
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
@@ -167,16 +169,17 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
-                'extra_sweep_args':str(len(extra_sweep_args)),
-                'readout_delay':str(readout_delay),
-                'pre_pulse_qp': str(pre_pulse_qp),
-                'pre_pulse_qp_length': str(pre_pulse_qp_length)}
+                'extra_sweep_args': str(len(extra_sweep_args)),
+                'readout_delay': str(readout_delay)}
+    if exc_pre_pulses_seq:
+        metadata.update({'exc_pre_pulses_seq': str(True)})
+
     metadata.update(additional_metadata)
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                               *extra_sweep_args,
                                               (lengths, setter.set_delay, 'Delay','s'),
-                                              fitter_arguments = fitter_arguments,
+                                              fitter_arguments=fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,
                                               references=references)
@@ -184,10 +187,11 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
     return measurement
 
 
-def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=None, pre_pulse_delays = None,lengths=None,
-           readout_delay=0, delay_seq_generator=None, measurement_type='decay_prepulse', ex_pulse=None, ex_pulse2=None, post_pulse=None, post_pulse2=None,
-           additional_references = {}, additional_metadata = {}, gauss=True,sort='best', shots=False, dot_products=False, post_selection_flag=False,
-           pre_pulse_qp=False, pre_pulse_qp_length=0, nums_qp=0, wait_qp=0):
+def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=None, pre_pulse_delays = None, lengths=None,
+                        readout_delay=0, delay_seq_generator=None, measurement_type='decay_prepulse', ex_pulse=None,
+                        ex_pulse2=None, post_pulse=None, post_pulse2=None, additional_references={},
+                        additional_metadata={}, gauss=True,sort='best', shots=False, dot_products=False,
+                        post_selection_flag=False):
     """
 
     :param device:
@@ -222,7 +226,7 @@ def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=No
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
     if post_selection_flag:
-        readouts_per_repetition = 2
+        readouts_per_repetition = 3
     else:
         readouts_per_repetition = 1
 
@@ -248,27 +252,15 @@ def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=No
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag,
-                                               pre_pulse_qp=pre_pulse_qp)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[],
+                                               post_selection_flag=post_selection_flag)
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag,
-                                               pre_pulse_qp=pre_pulse_qp)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True,
+                                               post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             # print('control_sequence=',control_sequence)
-        if pre_pulse_qp:
-            channel_amplitudes_id = ex_pulse.references['channel_amplitudes']
-            channel_amplitudes_ref = device.exdir_db.select_measurement_by_id(channel_amplitudes_id)
-            qubit_excitation_channel = list(device.get_qubit_excitation_channel_list(qubit_id).keys())[0]
-
-            pre_pulse_qp_length = float(ex_pulse.metadata['length'])
-
-            if seq_id == device.awg_channels[qubit_excitation_channel].channel // 2:
-                ex_seq.set_pre_pulse_qp_params(pre_pulse_qp_length, float(channel_amplitudes_ref.metadata[qubit_excitation_channel]), nums_qp, wait_qp)
-            else:
-                ex_seq.set_pre_pulse_qp_params(pre_pulse_qp_length, 0.0, nums_qp, wait_qp)
-
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
             control_qubit_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
@@ -334,7 +326,6 @@ def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=No
                         ex_seq.set_length(length)
 
         def set_pre_pulse_delay(self, delay):
-
             for ex_seq in self.ex_sequencers:
                 ex_seq.set_prepulse_delay(delay)
 
@@ -354,19 +345,18 @@ def relaxation_prepulse(device, qubit_id, transition='01', channel_amplitudes=No
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
-                'extra_sweep_args':str(len((pre_pulse_delays, setter.set_pre_pulse_delay, 'Pre pulse Delay', 's'))),
-                'readout_delay':str(readout_delay),
-                'pre_pulse_qp': str(pre_pulse_qp),
-                'pre_pulse_qp_length': str(pre_pulse_qp_length)}
+                'extra_sweep_args': str(len((pre_pulse_delays, setter.set_pre_pulse_delay, 'Pre pulse Delay', 's'))),
+                'readout_delay': str(readout_delay)}
     metadata.update(additional_metadata)
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
-                                              (pre_pulse_delays, setter.set_pre_pulse_delay,'Pre pulse Delay', 's'),
-                                              (lengths, setter.set_delay, 'Delay','s'),
-                                              fitter_arguments = fitter_arguments,
-                                              measurement_type=measurement_type,
-                                              metadata=metadata,
-                                              references=references)
+                                                            (pre_pulse_delays, setter.set_pre_pulse_delay,
+                                                             'Pre pulse Delay', 's'),
+                                                            (lengths, setter.set_delay, 'Delay', 's'),
+                                                            fitter_arguments=fitter_arguments,
+                                                            measurement_type=measurement_type,
+                                                            metadata=metadata,
+                                                            references=references)
 
     return measurement
 

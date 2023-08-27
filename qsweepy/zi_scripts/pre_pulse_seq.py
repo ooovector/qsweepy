@@ -252,6 +252,12 @@ class SIMPLESequence:
         self.play_pre_pulses = '''
 // Pre pulses play'''
 
+        self.definition_exc_pre_pulses = '''
+// Excitation pre pulses definition'''
+        self.play_exc_pre_pulses = '''
+// Excitation pre pulses play'''
+
+
         # Initial settings
         self.set_awg_amp(self.params['awg_amp'])
         # You need to set phase in offset channel equal to 90 degrees
@@ -303,23 +309,29 @@ var variable_register15;
     def zicode(self):
         # In this fragment we collect pre_pulses from in device.pre_pulses
         definition_pre_pulses = self.definition_pre_pulses
+        # In this fragment we collect all excitation pre pulses
+        definition_exc_pre_pulses = self.definition_exc_pre_pulses
         # In this fragment we define all waveforms
         definition_fragments = self.definition_fragments
         # In this fragment we define work sequence for play
         play_fragment = self.play_fragment
         # In play_pre_pulses we play pre_pulses defined in definition_pre_pulses
         play_pre_pulses = self.play_pre_pulses
-        play_pre_pulses1 = self.play_pre_pulses # Grisha changes
+        # In play_exc_pre_pulse we play excitation pre pulses defined in definition_exc_pre_pulses
+        play_exc_pre_pulse = self.play_exc_pre_pulses
         # In play_fragment1 we wait for trigger from readout sequencer
         play_fragment1 = '''
 //'''
         # In play_fragment2 we set trigger for readout sequencer start to play readout waveform
         play_fragment2 = '''
 //'''
-
+        # In play_fragment1_ we set trigger for readout sequencer start to play readout waveform for post selection
+        play_fragment1_ = '''
+        //'''
+        # In play_fragment1__ we wait trigger from readout sequencer to play readout waveform for test readout pulse
         play_fragment1__ = '''
 //'''
-
+        # In play_fragment2__ we send trigger to readout sequencer to play readout waveform for test readout pulse
         play_fragment2__ = '''
 //'''
         if self.pre_pulses is not []:
@@ -423,7 +435,7 @@ while (true) {{
     setSinePhase(1, 90);
     '''.format(**self.params))
 
-            play_fragment1 += textwrap.dedent('''
+            play_fragment1_ += textwrap.dedent('''
 //
     // Send trigger for readout_channel to start waveform generation for post selection readout
     waitWave();
@@ -572,13 +584,18 @@ while (true) {{
 #     setSinePhase(1, 90);
 #     '''.format(**self.params))
 
-        # code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+        # code = ''.join(definition_pre_pulses + definition_exc_pre_pulses + definition_fragments + play_fragment1 \
+        #                + play_exc_pre_pulse + play_pre_pulses + play_fragment + play_fragment2)
         if not self.post_selection_flag:
-            code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
+            code = ''.join(
+                definition_pre_pulses + definition_exc_pre_pulses + definition_fragments + play_fragment1 \
+                + play_exc_pre_pulse + play_pre_pulses + play_fragment + play_fragment2)
         else:
             code = ''.join(
-            definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2 \
-            + play_fragment1__ + play_pre_pulses_ + play_fragment2__)
+                definition_pre_pulses + definition_exc_pre_pulses + definition_fragments + play_fragment1\
+                + play_exc_pre_pulse + play_fragment1_ \
+                + play_pre_pulses + play_fragment + play_fragment2 \
+                + play_fragment1__ + play_pre_pulses_ + play_fragment2__)
         return code
 
     def add_register(self, reg_name, value):
@@ -660,8 +677,10 @@ var variable_register15;
     def add_definition_fragment(self, definition_fragment):
         if definition_fragment in self.definition_fragments:
             Warning('The same definition fragment has already been added to the program')
+        elif definition_fragment in self.definition_exc_pre_pulses:
+            Warning('The same definition fragment has already been added to the program')
         else:
-            self.definition_fragments +=definition_fragment
+            self.definition_fragments += definition_fragment
 
     def add_play_fragment(self, play_fragment):
         self.play_fragment += play_fragment
@@ -684,7 +703,7 @@ var variable_register15;
 
     def set_amplitude_i(self, amplitude_i):
         assert (np.abs(amplitude_i) <= 0.5)
-        # self.awg.set_register(self.params['sequencer_id'], self.params['ia'], np.asarray(int(amplitude_i*0xffffffff), dtype=np.uint32))
+        # self.awg.set_set_prepulse_delay(self.params['sequencer_id'], self.params['ia'], np.asarray(int(amplitude_i*0xffffffff), dtype=np.uint32))
         self.awg.set_sin_amplitude(self.params['ic'], 0, amplitude_i)
 
     def set_amplitude_q(self, amplitude_q):

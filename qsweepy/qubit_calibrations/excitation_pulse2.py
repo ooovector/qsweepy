@@ -6,6 +6,8 @@ from qsweepy.qubit_calibrations import gauss_hd3 as gauss_hd
 from qsweepy.libraries import pulses2 as pulses
 
 
+
+
 def get_hadamard(device, qubit_id):
     pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2.)
     channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
@@ -92,6 +94,37 @@ def get_not(device, qubit_id):
     pi = get_excitation_pulse(device, qubit_id, np.pi)
     return pi.get_pulse_sequence(0.0)
 
+
+def get_pause(device, qubit_id, length):
+    fast_control = False
+    pi = get_excitation_pulse(device, qubit_id, np.pi)
+    channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+        device.exdir_db.select_measurement_by_id(pi.references['channel_amplitudes']))
+    pause = [(c, device.pg.rect_cos, 0, 0, fast_control) for c, a in channel_amplitudes_.items()]
+    return [device.pg.pmulti(device, length, *tuple(pause))]
+
+
+def get_qp_pulse_sequence(device, qubit_id, wait, num_pulses, gauss=True, sort='best'):
+    """
+    Create pulse sequence for quasiparticles
+    :param device:
+    :param qubit_id:
+    :param wait: wait time between pulses
+    :param num_pulses: number of pulses
+    :param gauss:
+    :param sort:
+    """
+    if gauss:
+        gauss_pi2 = get_excitation_pulse(device, qubit_id, np.pi/2, gauss=True)
+        exc_pulse = gauss_pi2.get_pulse_sequence(0) + gauss_pi2.get_pulse_sequence(0)
+    else:
+        exc_pulse = get_excitation_pulse(device, qubit_id, np.pi, gauss=False, sort=sort).get_pulse_sequence(0)
+    pause = get_pause(device, qubit_id, wait)
+    qp_sequence = []
+    for n in range(num_pulses):
+        qp_sequence += exc_pulse
+        qp_sequence += pause
+    return qp_sequence
 
 def get_rect_cos_pulse_sequence(device, channel_amplitudes, tail_length, length, phase = 0, fast_control=False):
     #if tail_length > 0:

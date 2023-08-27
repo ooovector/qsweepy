@@ -283,7 +283,7 @@ def post_selection_filter(source, src_meas, axis, threshold):
 
 		# in case of test readout
 		data = list(x[src_meas])
-		del data[2::3]
+		del data[2::3]  # del data[0::3]  # del data[1::3]
 		data = np.asarray(data)
 		data = np.expand_dims(data, axis=0)
 
