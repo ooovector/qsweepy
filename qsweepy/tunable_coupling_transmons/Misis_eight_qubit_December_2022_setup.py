@@ -46,6 +46,7 @@ device_settings = {  # 'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
     'hdawg1_address': 'hdawg-dev8108',
     'hdawg2_address': 'hdawg-dev8250',
     'sa_address': 'TCPIP0::10.1.0.80::inst0::INSTR',
+    'adc_address': '0009052001482f25',
     'adc_timeout': 30,
     'adc_trig_rep_period': 10,  # 12.5 MHz rate period
     'adc_trig_width': 2,  # 32 ns trigger length
@@ -243,13 +244,13 @@ class hardware_setup():
         #
         # self.c7z = awg_channel(self.hdawg1, 6)
 
-        self.q7z = awg_channel(self.awg_tek, 1)
-        self.q6z = awg_channel(self.awg_tek, 2)
+        self.q7z = awg_channel(self.awg_tek, 2)
+        self.q6z = awg_channel(self.awg_tek, 1)
         self.q8z = awg_channel(self.awg_tek, 4)
         self.q5z = awg_channel(self.awg_tek, 3)
 
 
-        self.c7z = awg_channel(self.hdawg1, 6)
+        # self.c7z = awg_channel(self.hdawg1, 6)
 
         # self.q6z = awg_channel(self.awg_tek, 2)
         # self.q4z = awg_channel(self.awg_tek, 1)
@@ -290,7 +291,7 @@ class hardware_setup():
         # self.c10z.set_offset(0)
         # self.c5z.set_offset(0)
         # self.c3z.set_offset(0)
-        self.c7z.set_offset(0)
+        # self.c7z.set_offset(0)
         # self.c6z.set_offset(0)
         # self.c7z.set_offset(0)
 
@@ -301,7 +302,7 @@ class hardware_setup():
         # self.c9z.set_offset(0)
         # self.c10z.set_offset(0)
 
-        self.adc_device = drv.Device("0009052001482f25")
+        self.adc_device = drv.Device(self.device_settings['adc_address'])
         self.data_capture_timeout = self.device_settings['adc_timeout']
         self.adc = instruments.TSW14J56_evm_reducer(self.adc_device)
         self.adc.output_raw = True
@@ -552,27 +553,27 @@ class hardware_setup():
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex6_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                                                                                 lo=self.lo_q1, exdir_db=exdir_db),
                            # 'iq_ex4': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
+                           'iq_ex7': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
                                                                                 lo=self.lo_q2, exdir_db=exdir_db)
                            }
 
         self.iq_devices['iq_ro'].name = 'ro'
         # self.iq_devices['iq_ex1'].name = 'ex1'
         # self.iq_devices['iq_ex6'].name = 'ex6'
-        self.iq_devices['iq_ex6'].name = 'ex6'
-        self.iq_devices['iq_ex6_12'].name = 'ex6_12'
+        self.iq_devices['iq_ex7'].name = 'ex6'
+        self.iq_devices['iq_ex7_12'].name = 'ex6_12'
         # self.iq_devices['iq_ex4'].name = 'ex4'
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex6'].name = 'ex6'
         self.iq_devices['iq_ro'].sa = self.sa
         # self.iq_devices['iq_ex1'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
-        self.iq_devices['iq_ex6'].sa = self.sa
-        self.iq_devices['iq_ex6_12'].sa = self.sa
+        self.iq_devices['iq_ex7'].sa = self.sa
+        self.iq_devices['iq_ex7_12'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
         # self.iq_devices['iq_ex2'].sa = self.sa
         # self.iq_devices['iq_ex4'].sa = self.sa
@@ -591,8 +592,9 @@ class hardware_setup():
                               # 'c5z':awg_channel(self.hdawg1, 6),
                               # 'c6z':awg_channel(self.hdawg1, 7),}
                               # 'c2z':awg_channel(self.hdawg1, 6),}
-                              'c7z':awg_channel(self.hdawg1, 6),}
-                              # 'c8z':awg_channel(self.hdawg1, 6),}
+                              # 'c7z':awg_channel(self.hdawg1, 6),}
+                              # 'c8z':awg_channel(self.hdawg1, 6),
+        }
 
 
     def get_readout_trigger_pulse_length(self):
