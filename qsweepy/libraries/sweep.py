@@ -139,7 +139,6 @@ def sweep(measurer, *parameters, shuffle=False,
     MeasurementState
         Structure after measurement dict of ndarrays each corresponding to a measurement in the sweep
     """
-
     sweep_parameters = [MeasurementParameter(*parameter) for parameter in parameters]
     point_parameters = measurer_point_parameters(measurer)
 

@@ -574,7 +574,6 @@ var variable_register15;
         self.play_pre_pulses += play_fragment
         # self.pre_pulses.append(pre_pulse)
 
-
     def add_exc_pre_pulse(self, definition, play_fragment):
         """
         Add definition and play fragment to excitation pre pulse fragment
@@ -582,6 +581,11 @@ var variable_register15;
         if definition in self.definition_exc_pre_pulses:
             Warning('The same definition fragment has already been added to the program')
             self.play_exc_pre_pulses += play_fragment
+
+        elif definition in self.definition_fragments:
+            Warning('The same definition fragment has already been added to the program')
+            self.play_exc_pre_pulses += play_fragment
+
         else:
             self.definition_exc_pre_pulses += definition
             self.play_exc_pre_pulses += play_fragment

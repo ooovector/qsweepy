@@ -83,7 +83,8 @@ def Ramsey_process(device, qubit_id1, qubit_id2, process, channel_amplitudes1=No
 
 def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes1=None, channel_amplitudes2=None, lengths=None,
            target_freq_offset=None, readout_delay=None, delay_seq_generator=None, pre_pulse_gate=None, measurement_type='Ramsey',
-           additional_references = {}, additional_metadata = {}, gauss = True , sort = 'best', qubit_readout_pulse=None, ro_channel=None):
+           additional_references = {}, additional_metadata = {}, gauss = True , sort = 'best', qubit_readout_pulse=None, ro_channel=None,
+           qutrit_readout=False):
     from .readout_pulse2 import get_uncalibrated_measurer
     if type(lengths) is type(None):
         lengths = np.arange(0,
@@ -93,9 +94,9 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
     # readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
 
     if not ro_channel:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, qutrit_readout=qutrit_readout)
     else:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition, qutrit_readout=qutrit_readout)
 
     if qubit_readout_pulse:
         readout_pulse = qubit_readout_pulse
@@ -185,9 +186,10 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             self.readout_sequencer.start()
 
         def set_delay(self, length):
-            #phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
-            phase = int(np.round((length) * self.control_sequence.clock)) / self.control_sequence.clock * target_freq_offset * 360 % 360
-            #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
+            phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
+            # phase = int(np.round((length) * self.control_sequence.clock)) / self.control_sequence.clock * target_freq_offset * 360 % 360
+
+            print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
 
             if self.delay_seq_generator is None:
                 #self.readout_sequencer.awg.stop_seq(self.readout_sequencer.params['sequencer_id'])
@@ -239,6 +241,9 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
         fitter_arguments = ('iq'+qubit_id, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
     else:
         fitter_arguments = ('iq' + ro_channel, exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
+
+    if qutrit_readout:
+        fitter_arguments = ('resultnumbers_states', exp_sin_fitter(), -1, np.arange(len(extra_sweep_args)))
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
@@ -346,7 +351,8 @@ def Ramsey_prepulse(device, qubit_id, transition='01', pre_pulse_delays = None, 
 
         def set_delay(self, length):
             phase = int(np.round((length+140e-9)*self.control_sequence.clock)+64)/self.control_sequence.clock*target_freq_offset*360 % 360
-            #print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
+
+            # print ('length: ', length, ', phase: ', phase, ', phase register: ', int(phase/360*(2**6)))
 
 
             for ex_seq in self.ex_sequencers:

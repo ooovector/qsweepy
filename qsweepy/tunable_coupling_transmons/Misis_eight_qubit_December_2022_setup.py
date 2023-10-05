@@ -74,11 +74,11 @@ pulsed_settings = {'lo1_power': 15,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq':  6.25e9, #6.35e9, #6.6e9, #6.45e9, для измерения 6-7 6.9e9,
+                   'lo1_freq':  6.29e9, #6.35e9, #6.6e9, #6.45e9, для измерения 6-7 6.9e9,
 
                    # 'pna_freq': 7.088455e9, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
                    # 'pna_freq': 7.219e9 - 20e6, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
-                   'pna_freq': 7.2338e9 + 20e6, #7.5515e9 + 20e6, #7.4e9, #7.2338e9 + 20e6, #7.4e9,
+                   'pna_freq': 7.105e9 + 20e6, #7.5515e9 + 20e6, #7.4e9, #7.2338e9 + 20e6, #7.4e9,
                    # 'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
@@ -188,8 +188,8 @@ class hardware_setup():
         self.pna = instruments.Agilent_N5242A('pna', address=self.device_settings['vna_address'])
         # sleep(1)
         self.lo_vna = instruments.AnaPicoAPSIN('lo1', address=self.device_settings['anapico_address'], channel=1)
-        self.lo_q1 = prokladka(self.lo_vna, name='lo2', channel=2)
-        self.lo_q2 = prokladka(self.lo_vna, name='lo2', channel=3)
+        self.lo_q1 = prokladka(self.lo_vna, name='lo_q1', channel=2)
+        self.lo_q2 = prokladka(self.lo_vna, name='lo_q2', channel=3)
         # sleep(1)
         self.sa = instruments.Agilent_N9030A('pxa', address=self.device_settings['sa_address'])
 
@@ -242,7 +242,8 @@ class hardware_setup():
         # self.q5z = awg_channel(self.awg_tek, 3)
         # self.q8z = awg_channel(self.awg_tek, 4)
         #
-        # self.c7z = awg_channel(self.hdawg1, 6)
+        self.c7z = awg_channel(self.hdawg1, 6)
+        self.c8z = awg_channel(self.hdawg1, 7)
 
         self.q7z = awg_channel(self.awg_tek, 2)
         self.q6z = awg_channel(self.awg_tek, 1)
@@ -277,7 +278,8 @@ class hardware_setup():
         # self.c9z = awg_channel(self.hdawg2, 3)
         # self.c10z = awg_channel(self.hdawg2, 4)
 
-        # self.c6z.set_offset(0)
+        self.c7z.set_offset(0)
+        self.c8z.set_offset(0)
         # self.q1z.set_offset(0)
         # self.q2z.set_offset(0)
         # self.q3z.set_offset(0)
@@ -564,8 +566,8 @@ class hardware_setup():
         self.iq_devices['iq_ro'].name = 'ro'
         # self.iq_devices['iq_ex1'].name = 'ex1'
         # self.iq_devices['iq_ex6'].name = 'ex6'
-        self.iq_devices['iq_ex7'].name = 'ex6'
-        self.iq_devices['iq_ex7_12'].name = 'ex6_12'
+        self.iq_devices['iq_ex7'].name = 'ex7'
+        self.iq_devices['iq_ex7_12'].name = 'ex7_12'
         # self.iq_devices['iq_ex4'].name = 'ex4'
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex6'].name = 'ex6'
@@ -592,8 +594,8 @@ class hardware_setup():
                               # 'c5z':awg_channel(self.hdawg1, 6),
                               # 'c6z':awg_channel(self.hdawg1, 7),}
                               # 'c2z':awg_channel(self.hdawg1, 6),}
-                              # 'c7z':awg_channel(self.hdawg1, 6),}
-                              # 'c8z':awg_channel(self.hdawg1, 6),
+                              'c7z':awg_channel(self.hdawg1, 6),
+                              'c8z':awg_channel(self.hdawg1, 7),
         }
 
 

@@ -929,7 +929,7 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None, phase=
                                 references=references,
                                 metadata=metadata)
 
-def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transition='01'):
+def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transition='01', ex_pre_pulse=None):
     # min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
     readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
 
@@ -1001,6 +1001,15 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
     control_awg, control_seq_id = device.pre_pulses.seq_in_use[0]
     ex_sequencers = []
 
+    if ex_pre_pulse:
+        if ex_pre_pulse.metadata['pulse_type'] == 'rect':
+            ex_pre_pulse_seq = ex_pre_pulse.get_pulse_sequence(0)
+        else:
+            # in case of gauss pulse we use two pulses with pi/2 rotation
+            ex_pre_pulse_seq = ex_pre_pulse.get_pulse_sequence(0) + ex_pre_pulse.get_pulse_sequence(0)
+    else:
+        ex_pre_pulse_seq = None
+
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
@@ -1019,6 +1028,17 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
         ex_sequencers.append(ex_seq)
     readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
 
+    if ex_pre_pulse_seq:
+        for _id, ex_sequence in enumerate(ex_sequencers):
+            ex_sequence.awg.stop_seq(ex_sequence.params['sequencer_id'])
+            ex_sequence.clear_pulse_sequence()
+            for prep_seq in ex_pre_pulse_seq:
+                for seq_id, single_sequence in prep_seq[0][ex_sequence.awg.device_id].items():
+                    if seq_id == ex_sequence.params['sequencer_id']:
+                        print(single_sequence[0])
+                        print(single_sequence[1])
+                        ex_sequence.add_exc_pre_pulse(single_sequence[0], single_sequence[1])
+            ex_sequence.awg.set_sequence(ex_sequence.params['sequencer_id'], ex_sequence)
 
     phase_guess = 0
     phase_range = 2*np.pi

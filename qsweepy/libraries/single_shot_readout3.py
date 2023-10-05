@@ -25,7 +25,7 @@ class SingleShotReadout:
 
         self.ro_delay_seq = ro_delay_seq
         self.control_seq = control_seq
-        self.repeat_samples = 2 #5
+        self.repeat_samples = 3 #5
         self.save_last_samples = False
         # self.train_test_split = 0.8 # 0.8
 

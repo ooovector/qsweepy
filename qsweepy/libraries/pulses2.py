@@ -946,7 +946,7 @@ assignWaveIndex(wave_zeros_{length_samp}, etic_zeros_{length_samp}_{signI}{realI
         table_entry['amplitude1'] = {'value': 1.0}
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
-    def virtual_z(self, channel, length, phase, fast_control = False, resolution = 8):
+    def virtual_z(self, channel, length, phase, fast_control = False, resolution=8):
         '''
         Parameters
         :param channel: channel name
