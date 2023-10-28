@@ -6,6 +6,47 @@ from qsweepy import zi_scripts
 import numpy as np
 from qsweepy.qubit_calibrations import excitation_pulse2 as excitation_pulse
 
+#
+# def simulation_angles(r, t):
+#     h = np.sqrt(1 - r ** 2 + 0j) + 0.00000001
+#     a = np.sqrt(np.abs(1 - r ** 2 * np.cos(h * t) ** 2))
+#     b = np.abs(r * np.sin(h * t))
+#
+#     sigma = (a - b) / (a + b + 0.00000001)
+#
+#     phi = np.arctan(np.tan(h * t) / h)
+#     theta = -2 * np.arccos(sigma)
+#
+#     return phi.real, theta.real
+
+#
+# def simulation_angles(r, t):
+#     h = np.sqrt(1 - r ** 2 + 0j) + 0.00000001
+#     a = np.sqrt(np.abs(1 - r ** 2 * np.cos(h * t) ** 2))
+#     b = np.abs(r * np.sin(h * t))
+#     sigma = (a - b) / (a + b + 0.00000001)
+#
+#     d = 0
+#     if (np.real(h * t) // (np.pi / 2)) % 2 == 1:
+#         d = np.pi
+#
+#     phi = np.arctan(np.tan(h * t) / h)
+#     theta = -2 * np.arccos(sigma)
+#
+#     #     return phi.real, theta.real
+#     if h * t < np.pi / 2:
+#         phi = phi
+#     elif h * t < np.pi / 2:
+#         phi = phi
+#     elif h * t < np.pi:
+#         phi = -phi
+#     elif h * t < 3 * np.pi / 2:
+#         phi = phi
+#     elif h * t < 4 * np.pi / 2:
+#         phi = -phi
+#
+#     return phi.real % (2 * np.pi), theta.real
+
 
 def simulation_angles(r, t):
     h = np.sqrt(1 - r ** 2 + 0j) + 0.00000001
@@ -13,21 +54,26 @@ def simulation_angles(r, t):
     b = np.abs(r * np.sin(h * t))
     sigma = (a - b) / (a + b + 0.00000001)
 
+    d = 0
+    if (np.real(h * t) // (np.pi / 2)) % 2 == 1:
+        d = np.pi
+
     phi = np.arctan(np.tan(h * t) / h)
     theta = -2 * np.arccos(sigma)
 
-    return phi.real, theta.real
-#
-# def simulation_angles(r, t):
-#     h = np.sqrt(1 - r ** 2 + 0j)
-#     a = np.sqrt(np.abs(1 - r ** 2 * np.cos(h * t) ** 2))
-#     b = np.abs(r * np.sin(h * t))
-#     sigma = (a - b) / (a + b )
-#
-#     phi = np.arctan(np.tan(h * t) / h)
-#     theta = -2 * np.arccos(sigma)
-#
-#     return phi.real, theta.real
+    #     return phi.real, theta.real
+    if h * t < np.pi / 2:
+        phi = phi
+    elif h * t < np.pi / 2:
+        phi = phi
+    elif h * t < np.pi:
+        phi = -phi
+    elif h * t < 3 * np.pi / 2:
+        phi = phi
+    elif h * t < 4 * np.pi / 2:
+        phi = -phi
+
+    return phi.real % (2 * np.pi), theta.real
 
 
 # def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=None, phis=None,
@@ -124,7 +170,9 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
             self.prepare_seq = []
 
             self.r = r
-
+            # self.correction = 0.01788
+            # self.correction = 0.013
+            self.correction = 0.0
             self.rx_01()
             self.rx_12()
             self.rx_01()
@@ -134,28 +182,35 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
             self.readout_sequencer.start()
 
 
+
+
         def rx_01(self):
             """
             Prepare sequence for Rx(01) rotation for transition 01 of qutrit system
             """
             # define phase (in grad)
             #
-            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
-                                                           phase=(2 * np.pi - np.pi / 3) * 180 / np.pi,
-                                                           fast_control=False, gauss=gauss, sort=sort,
-                                                           reference_pulse=self.qubit_excitation_pulses['01']))
+            # self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+            #                                                phase=(2 * np.pi - 2* np.pi / 3) * 180 / np.pi,
+            #                                                fast_control=False, gauss=gauss, sort=sort,
+            #                                                reference_pulse=self.qubit_excitation_pulses['01']))
+            #
+            # self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
+            #                                                phase=(2 * np.pi - 4 * np.pi / 3) * 180 / np.pi,
+            #                                                fast_control=False, gauss=gauss, sort=sort,
+            #                                                reference_pulse=self.qubit_excitation_pulses['12']))
 
-            self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
-                                                           phase=(2 * np.pi - 2 * np.pi / 3) * 180 / np.pi,
-                                                           fast_control=False, gauss=gauss, sort=sort,
-                                                           reference_pulse=self.qubit_excitation_pulses['12']))
-
             self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
-                                                           phase=np.pi / 2 * 180 / np.pi,
+                                                           phase=(np.pi / 2+self.correction) * 180 / np.pi,
                                                            fast_control=False, gauss=gauss, sort=sort,
                                                            reference_pulse=self.qubit_excitation_pulses['01']))
 
             self.prepare_seq.extend(self.qubit_excitation_pulses['01'].get_pulse_sequence(0))
+
+            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+                                                           phase=(np.pi + 2*self.correction) * 180 / np.pi,
+                                                           fast_control=False, gauss=gauss, sort=sort,
+                                                           reference_pulse=self.qubit_excitation_pulses['01']))
 
             self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
                                                            phase=0,
@@ -165,7 +220,7 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
             self.prepare_seq.extend(self.qubit_excitation_pulses['01'].get_pulse_sequence(0))
 
             self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
-                                                           phase=np.pi / 2 * 180 / np.pi,
+                                                           phase=(np.pi / 2 + 2*self.correction) * 180 / np.pi,
                                                            fast_control=False, gauss=gauss, sort=sort,
                                                            reference_pulse=self.qubit_excitation_pulses['01']))
 
@@ -175,22 +230,27 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
             Prepare sequence for Rx(12) rotation for transition 12 of qutrit system
             """
 
-            self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
-                                                           phase=np.pi / 3 * 180 / np.pi,
-                                                           fast_control=False, gauss=gauss, sort=sort,
-                                                           reference_pulse=self.qubit_excitation_pulses['12']))
+            # self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
+            #                                                phase=2 * np.pi / 3 * 180 / np.pi,
+            #                                                fast_control=False, gauss=gauss, sort=sort,
+            #                                                reference_pulse=self.qubit_excitation_pulses['12']))
+            #
+            # self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+            #                                                phase=4 * np.pi / 3 * 180 / np.pi,
+            #                                                fast_control=False, gauss=gauss, sort=sort,
+            #                                                reference_pulse=self.qubit_excitation_pulses['01']))
 
-            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
-                                                           phase=2 * np.pi / 3 * 180 / np.pi,
-                                                           fast_control=False, gauss=gauss, sort=sort,
-                                                           reference_pulse=self.qubit_excitation_pulses['01']))
-
             self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
-                                                           phase=np.pi / 2 * 180 / np.pi,
+                                                           phase=(np.pi / 2+self.correction) * 180 / np.pi,
                                                            fast_control=False, gauss=gauss, sort=sort,
                                                            reference_pulse=self.qubit_excitation_pulses['12']))
 
             self.prepare_seq.extend(self.qubit_excitation_pulses['12'].get_pulse_sequence(0))
+
+            self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
+                                                           phase=(np.pi+self.correction) * 180 / np.pi,
+                                                           fast_control=False, gauss=gauss, sort=sort,
+                                                           reference_pulse=self.qubit_excitation_pulses['12']))
 
             self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
                                                            phase=0,
@@ -200,7 +260,7 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
             self.prepare_seq.extend(self.qubit_excitation_pulses['12'].get_pulse_sequence(0))
 
             self.prepare_seq.extend(excitation_pulse.get_s(device, auxiliary_qubit_id,
-                                                           phase=np.pi / 2 * 180 / np.pi,
+                                                           phase=(np.pi / 2 +2*self.correction)* 180 / np.pi,
                                                            fast_control=False, gauss=gauss, sort=sort,
                                                            reference_pulse=self.qubit_excitation_pulses['12']))
 
@@ -209,39 +269,56 @@ def pt_symmetric_non_herm_ham(device, qubit_transitions_id, channel_amplitudes=N
 
         def set_t_param(self, t):
             phi, theta = simulation_angles(self.r, t)
+            # phi, theta = self.r, t
             # in case of quasi-binary fast control with resolution 8
-            phase_phi = (phi + np.pi) % (2 * np.pi)
-            phase_theta = (theta + np.pi) % (2 * np.pi)
+            # phase_phi = (phi + 0*np.pi + self.correction) % (2 * np.pi)
+            # phase_theta = (theta + 0*np.pi + self.correction) % (2 * np.pi)
+
+            # phase_phi = (np.abs(phi+ self.correction))  % (2 * np.pi) * np.sign(phi)
+            # phase_theta = (np.abs(theta+ self.correction) ) % (2 * np.pi) * np.sign(theta)
+
+            phase_phi = (phi + 8*self.correction) % (2 * np.pi)
+            phase_theta = (theta + 8*self.correction) % (2 * np.pi)
 
             # phase_phi = (phi + np.pi)
             # phase_theta = (theta + np.pi)
             print('phi', phi, 'theta', theta)
-            # print('phase_phi', phase_phi, 'phase_theta', phase_theta,
-            #       'phi_register', int(phase_phi / (2 * np.pi) * (2 ** 16)), 'theta_register',
-            #       int(phase_theta / (2 * np.pi) * (2 ** 16)))
-            #
+            print('phi', phase_phi, 'theta', phase_theta)
+
+
+            phi_reg = int(phase_phi / (2 * np.pi) * (2 ** 8))
+            theta_reg = int(phase_theta / (2 * np.pi) * (2 ** 8))
+
+
             # if phase_phi >= 0:
-            #     self.control_qubit_sequence['01'].set_phase(int(phase_phi / (2 * np.pi) * (2 ** 16)))
+            #     phi_reg = int(phase_phi / (2 * np.pi) * (2 ** 8))
             # else:
-            #     self.control_qubit_sequence['01'].set_phase(int((phase_phi + 2 * np.pi) / (2 * np.pi) * (2 ** 16)))
+            #     phi_reg = int((phase_phi + 2 * np.pi )/ (2 * np.pi) * (2 ** 8))
             #
             # if phase_theta >= 0:
-            #     self.control_qubit_sequence['12'].set_phase(int(phase_theta / (2 * np.pi) * (2 ** 16)))
+            #     theta_reg = int(phase_theta / (2 * np.pi) * (2 ** 8))
             # else:
-            #     self.control_qubit_sequence['12'].set_phase(int((phase_theta + 2 * np.pi) / (2 * np.pi) * (2 ** 16)))
+            #     theta_reg = int((phase_theta + 2 * np.pi) / (2 * np.pi) * (2 ** 8))
+
+
             print('phase_phi', phase_phi, 'phase_theta', phase_theta,
-                  'phi_register', int(phase_phi / (2 * np.pi) * (2 ** 8)), 'theta_register', int(phase_theta / (2 * np.pi) * (2 ** 8)))
-
-            if phase_phi >= 0:
-                self.control_qubit_sequence['01'].set_phase(int(phase_phi / (2 * np.pi) * (2 ** 8)))
-            else:
-                self.control_qubit_sequence['01'].set_phase(int((phase_phi + 2 * np.pi) / (2 * np.pi) * (2 ** 8)))
+                  'phi_register', phi_reg,
+                  'theta_register', theta_reg)
 
 
-            if phase_theta >= 0:
-                self.control_qubit_sequence['12'].set_phase(int(phase_theta / (2 * np.pi) * (2 ** 8)))
-            else:
-                self.control_qubit_sequence['12'].set_phase(int((phase_theta + 2 * np.pi) / (2 * np.pi) * (2 ** 8)))
+            self.control_qubit_sequence['01'].set_phase(int(phase_phi / (2 * np.pi) * (2 ** 8)))
+            self.control_qubit_sequence['12'].set_phase(int(phase_theta / (2 * np.pi) * (2 ** 8)))
+
+            # if phase_phi >= 0:
+            #     self.control_qubit_sequence['01'].set_phase(int(phase_phi / (2 * np.pi) * (2 ** 8)))
+            # else:
+            #     self.control_qubit_sequence['01'].set_phase(int((phase_phi + 2 * np.pi) / (2 * np.pi) * (2 ** 8)))
+            #
+            #
+            # if phase_theta >= 0:
+            #     self.control_qubit_sequence['12'].set_phase(int(phase_theta / (2 * np.pi) * (2 ** 8)))
+            # else:
+            #     self.control_qubit_sequence['12'].set_phase(int((phase_theta + 2 * np.pi) / (2 * np.pi) * (2 ** 8)))
 
 
 
