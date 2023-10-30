@@ -76,14 +76,14 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
         qubit_id = [qubit_id]
         exp_sin_fitter_mode = 'unsync'
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0], transition=transition).keys()][0]
     else: # otherwise use calibrated measurer
         readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
         if qubit_readout_pulse:
             readout_pulse = qubit_readout_pulse
         measurement_name = 'resultnumbers'
         exp_sin_fitter_mode = 'unsync'
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0], transition=transition).keys()][0]
 
 
     ex_channel = device.awg_channels[exitation_channel]
@@ -216,7 +216,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
                 'repeats': str(repeats),
-                'transition':transition,}
+                'transition': transition,}
     metadata.update(additional_metadata)
 
     measurer.save_dot_prods = True

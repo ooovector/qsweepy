@@ -123,7 +123,7 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
                                 metadata=metadata)
 
 
-def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalibrate=True, force_recalibration=False, raw=False,
+def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, transition='01', recalibrate=True, force_recalibration=False, raw=False,
                             internal_avg=False, readouts_per_repetition=1, get_thresholds=False):
     from .readout_pulse2 import get_multi_qubit_readout_pulse
 
@@ -135,7 +135,7 @@ def get_calibrated_measurer(device, qubit_ids, qubit_readout_pulse=None, recalib
     thresholds = []
 
     for qubit_id in qubit_ids:
-        metadata = {'qubit_id': qubit_id}
+        metadata = {'qubit_id': qubit_id, 'transition': transition}
         try:
             if force_recalibration:
                 raise ValueError('Forcing recalibration')
@@ -351,20 +351,24 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
     # TODO
     '''Warning'''
     if gauss:
-        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2, gauss=gauss,
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2,
+                                                                       transition=transition, gauss=gauss,
                                                                        sort = sort)
     else:
-        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi, gauss=gauss,
+        qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,
+                                                                       gauss=gauss, transition=transition,
                                                                        sort = sort)
 
     if ex_pre_pulse:
         metadata = {'qubit_id': qubit_id,
+                    'transition': transition,
                     'averages': nums,
                     'ignore_other_qubits': ignore_other_qubits,
                     'ex_pre_pulse': ex_pre_pulse.id,
                     'ex_pre_pulse_length': ex_pre_pulse.metadata['length']}
     else:
         metadata = {'qubit_id': qubit_id,
+                    'transition': transition,
                     'averages': nums,
                     'ignore_other_qubits': ignore_other_qubits}
 
@@ -379,7 +383,7 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
                        'delay_calibration': device.modem.delay_measurement.id})
 
     #TODO
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
     if ex_channel.is_iq():
 
@@ -499,12 +503,18 @@ def calibrate_readout(device, qubit_id, qubit_readout_pulse, transition='01', ig
     # classifier.repeat_samples = 2
 
 
-def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, ignore_other_qubits=None, dbg_storage=False,
-                      gauss=True, sort='best', dbg_storage_samples=False, post_selection_flag=False, pre_pulse_delay=None,M0_id=None):
+# def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, ignore_other_qubits=None, dbg_storage=False,
+#                              gauss=True, sort='best', dbg_storage_samples=False, post_selection_flag=False,
+#                              pre_pulse_delay=None, M0_id=None):
+
+def calibrate_qutrit_readout(device, qubit_id, qubit_readout_pulse, ignore_other_qubits=None,
+                             dbg_storage=False,
+                             gauss=True, sort='best', dbg_storage_samples=False, post_selection_flag=False,
+                             pre_pulse_delay=None, M0_id=None):
     """
     Calibrate readout
     :param device:
-    :param qubit_transitions_id:
+    :param qubit_id:
     :param qubit_readout_pulse:
     :param ignore_other_qubits:
     :param dbg_storage:
@@ -514,11 +524,13 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
     :return:
     """
     print('\x1b[5;35;46m' + 'Start qutrit calibration!' + '\x1b[0m')
-    qubit_id = qubit_transitions_id['01'] # for transition 01
-    internal_avg = False
 
-    qubit_ids = [qubit_transitions_id[t] for t in list(qubit_transitions_id.keys())]
-    print(qubit_ids)
+    # qubit_id = qubit_transitions_id['01'] # for transition 01
+    internal_avg = False
+    transitions_list = ['01', '12']
+
+    # qubit_ids = [qubit_transitions_id[t] for t in list(qubit_transitions_id.keys())]
+    # print(qubit_ids)
 
     if not post_selection_flag:
         adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True,  internal_avg=internal_avg)
@@ -542,7 +554,7 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
     references = {}
     if not ignore_other_qubits:
         for other_qubit_id in device.get_qubit_list():
-            if other_qubit_id not in qubit_ids:
+            if other_qubit_id not in [qubit_id]:
                 # TODO
                 '''Warning'''
                 half_excited_pulse = excitation_pulse.get_excitation_pulse(device, other_qubit_id,
@@ -554,19 +566,23 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
     '''Warning'''
     qubit_excitation_pulses = {}
     if gauss:
-        for t in list(qubit_transitions_id.keys()):
-            qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_transitions_id[t], rotation_angle=np.pi / 2, gauss=gauss,
-                                                                        sort=sort)
+        for t in transitions_list:
+            qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id,
+                                                                           rotation_angle=np.pi / 2, transition=t,
+                                                                           gauss=gauss,
+                                                                           sort=sort)
             qubit_excitation_pulses[t] = qubit_excitation_pulse
     else:
-        for t in list(qubit_transitions_id.keys()):
-            qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_transitions_id[t], rotation_angle=np.pi, gauss=gauss,
-                                                                        sort=sort)
+        for t in transitions_list:
+            qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id,
+                                                                           rotation_angle=np.pi, transition=t,
+                                                                           gauss=gauss,
+                                                                           sort=sort)
             qubit_excitation_pulses[t] = qubit_excitation_pulse
 
     metadata = {'qubit_id': qubit_id,
-                    'averages': nums,
-                    'ignore_other_qubits': ignore_other_qubits}
+                'averages': nums,
+                'ignore_other_qubits': ignore_other_qubits}
 
     if post_selection_flag:
         metadata.update({'post_selection': str(True)})
@@ -576,23 +592,23 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
     references.update({'readout_pulse': qubit_readout_pulse.id,
                        'delay_calibration': device.modem.delay_measurement.id})
 
-    for t in list(qubit_transitions_id.keys()):
+    for t in list(transitions_list):
         references.update({'excitation_pulse' + str(t): qubit_excitation_pulses[t].id})
 
     #TODO
     exitation_channels = {}
-    for t in list(qubit_transitions_id.keys()):
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_transitions_id[t]).keys()][0]
+    for t in transitions_list:
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=t).keys()][0]
         exitation_channels[t] = exitation_channel
 
     ex_channels = {}
-    for t in list(qubit_transitions_id.keys()):
+    for t in transitions_list:
         exitation_channel = exitation_channels[t]
         ex_channel = device.awg_channels[exitation_channel]
         ex_channels[t] = ex_channel
 
     awg_and_seq_id = {} # [awg, seq_id]
-    for t in list(qubit_transitions_id.keys()):
+    for t in transitions_list:
         ex_channel = ex_channels[t]
         if ex_channel.is_iq():
             control_qubit_awg = ex_channel.parent.awg
@@ -616,7 +632,7 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True,
                                                post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
-        for t in list(qubit_transitions_id.keys()):
+        for t in transitions_list:
             control_qubit_awg, control_qubit_seq_id = awg_and_seq_id[t]
             if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
                 control_qubit_sequence[t] = ex_seq
@@ -630,19 +646,18 @@ def calibrate_qutrit_readout(device, qubit_transitions_id, qubit_readout_pulse, 
 
     excitations = {}
     if gauss:
-        for t in list(qubit_transitions_id.keys()):
+        for t in transitions_list:
             excitation = qubit_excitation_pulses[t].get_pulse_sequence(0) + qubit_excitation_pulses[t].get_pulse_sequence(0)
             excitations[t] = excitation
     else:
-        for t in list(qubit_transitions_id.keys()):
+        for t in transitions_list:
             excitation = qubit_excitation_pulses[t].get_pulse_sequence(0)
             excitations[t] = excitation
 
     qubit_pulse_sequence = []
-    for t in list(qubit_transitions_id.keys()):
+    for t in transitions_list:
         qubit_pulse_sequence += excitations[t]
 
-    #TODO: somehow optimize this for qudits
     prepare_seqs = {0: other_qubit_pulse_sequence,
                     1: other_qubit_pulse_sequence + excitations['01'],
                     2: other_qubit_pulse_sequence + excitations['01'] + excitations['12']}
@@ -744,7 +759,8 @@ def get_qubit_readout_pulse_from_fidelity_scan(device, fidelity_scan):
 
 
 def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse_amplitudes, readout_frequency_offsets=None,
-                          recalibrate_excitation=True, ignore_other_qubits=False, channel_amplitudes=None, dbg_storage=False,
+                          recalibrate_excitation=True, ignore_other_qubits=False, channel_amplitudes=None,
+                          transition='01', dbg_storage=False,
                           gauss=True, sort = 'best', ex_pre_pulse=None, ro_channel=None, set_sequence=None, set_control_qubit_sequence=None):
 
     if not ro_channel:
@@ -783,11 +799,13 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
     if gauss:
         qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2,
                                                                    channel_amplitudes_override=channel_amplitudes,
+                                                                   transition=transition,
                                                                    recalibrate=recalibrate_excitation,
                                                                    gauss=gauss,sort = sort)
     else:
         qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,
                                                                    channel_amplitudes_override=channel_amplitudes,
+                                                                   transition=transition,
                                                                    recalibrate=recalibrate_excitation,sort = sort,
                                                                    gauss=gauss)
     if not ex_pre_pulse:
@@ -811,7 +829,7 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
                        'delay_calibration': device.modem.delay_measurement.id})
 
     #TODO
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
     if ex_channel.is_iq():
         control_qubit_awg = ex_channel.parent.awg
@@ -978,6 +996,7 @@ def readout_Zgate_scan(device, qubit_id, qubit_readout_pulse, Zgate, amplitudes,
     qubit_excitation_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,gauss=gauss,
                                                                    sort = sort)
     metadata = {'qubit_id': qubit_id,
+                'transition': transition,
                 'averages': nums,
                 'ignore_other_qubits': ignore_other_qubits}
 

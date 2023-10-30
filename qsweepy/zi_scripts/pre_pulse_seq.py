@@ -268,7 +268,7 @@ class SIMPLESequence:
                            pre_pulse_delay=pre_pulse_delay,
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
                            var_reg3=int(var_reg3), var_reg4=int(var_reg4), var_reg5=int(var_reg5),
-                           var_reg15=int(15),
+                           var_reg15=int(15), var_reg14=int(14),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
                            frequency=frequency, control_frequency=control_frequency,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
@@ -325,6 +325,7 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
+var variable_register14;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -435,6 +436,7 @@ while (true) {{
     variable_register4 = getUserReg(var_reg4);
     variable_register5 = getUserReg(var_reg5);
     variable_register15 = getUserReg(15);
+    variable_register14 = getUserReg(14);
     setPRNGSeed(variable_register1);
         '''.format(**self.params))
 
@@ -562,6 +564,7 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
+var variable_register14;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -692,8 +695,10 @@ var variable_register15;
             self.awg.set_register(self.params['sequencer_id'], self.params['var_reg1'], pause_cycles % 8)
 
     def set_phase(self, phase):
-
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg2'], phase)
+
+    def set_phase_(self, phase):
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg14'], phase)
 
     # def start(self, holder=0):
     #     #self.awg.start_seq(self.params['sequencer_id'])

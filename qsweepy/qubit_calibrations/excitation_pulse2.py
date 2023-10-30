@@ -53,15 +53,52 @@ def get_vf(device, qubit_id, freq):
     return sequence_f
 
 
-def get_s(device, qubit_id, phase=np.pi / 2., fast_control = False,  gauss=False, sort='best', reference_pulse=None):
+def get_s(device, qubit_id, phase=np.pi / 2., transition='01', fast_control = False,  gauss=False, sort='best', reference_pulse=None):
     if not reference_pulse:
-        pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., gauss=gauss, sort=sort)
+        pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition, gauss=gauss, sort=sort)
     else:
         pi2 = reference_pulse
     channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
         device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
 
     s_pulse = [(c, device.pg.virtual_z, phase, fast_control) for c, a in channel_amplitudes_.items()]
+
+    for name, two_qubit_gate in device.get_two_qubit_gates().items():
+        if two_qubit_gate.metadata['pulse_type'] == 'parametric':
+            if two_qubit_gate.metadata['q1'] == qubit_id:
+                factor = float(two_qubit_gate.metadata['carrier_harmonic'])
+                if two_qubit_gate.metadata['transition_q1'] == '01':
+                    factor *= 1
+                elif two_qubit_gate.metadata['transition_q1'] == '12':
+                    factor *= -1
+                else:
+                    factor = 0
+            elif two_qubit_gate.metadata['q2'] == qubit_id:
+                factor = -float(two_qubit_gate.metadata['carrier_harmonic'])
+                if two_qubit_gate.metadata['transition_q2'] == '01':
+                    factor *= 1
+                elif two_qubit_gate.metadata['transition_q2'] == '12':
+                    factor *= -1
+                else:
+                    factor = 0
+            else:
+                factor = 0
+            if not factor == 0.0:
+                s_pulse.append((two_qubit_gate.metadata['carrier_name'], pulses.vz, factor * phase))
+    '''Warning'''
+    sequence_z = [device.pg.pmulti(device, 0, *tuple(s_pulse))]
+
+    return sequence_z
+
+def get_s_(device, qubit_id, phase=np.pi / 2., transition='01', fast_control = False,  gauss=False, sort='best', reference_pulse=None):
+    if not reference_pulse:
+        pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition, gauss=gauss, sort=sort)
+    else:
+        pi2 = reference_pulse
+    channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+        device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
+
+    s_pulse = [(c, device.pg.virtual_z_, phase, fast_control) for c, a in channel_amplitudes_.items()]
 
     for name, two_qubit_gate in device.get_two_qubit_gates().items():
         if two_qubit_gate.metadata['pulse_type'] == 'parametric':

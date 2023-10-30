@@ -952,6 +952,7 @@ assignWaveIndex(wave_zeros_{length_samp}, etic_zeros_{length_samp}_{signI}{realI
         :param channel: channel name
         :param phase: virtual phase to be added to qubit pulses [phase] = grad
         :param fast_control: if true you can set phase from register
+        :param fast_control_reg:
         :return: definition_fragment, play_fragment for zurich sequencer
         '''
         definition_fragment = ''''''
@@ -1316,3 +1317,167 @@ wave ro_wave_q = add({add_wave_q});
 '''.format(name=channel))
 
         return definition_fragment, play_fragment
+
+    def virtual_z_(self, channel, length, phase, fast_control=False, resolution=8):
+        '''
+        Parameters
+        :param channel: channel name
+        :param phase: virtual phase to be added to qubit pulses [phase] = grad
+        :param fast_control: if true you can set phase from register
+        :param fast_control_reg:
+        :return: definition_fragment, play_fragment for zurich sequencer
+        '''
+        definition_fragment = ''''''
+        play_fragment = ''''''
+        assign_fragment = ''''''
+        entry_table_index_constants = []
+        ex_channel = self.channels[channel]
+        length_samp = int((length) * ex_channel.get_clock())
+        if fast_control == 'quasi-binary':
+            definition_fragment = '''
+cvar resolution = {resolution};
+'''.format(resolution=resolution)
+            play_fragment += textwrap.dedent('''
+//
+//    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
+            for bit in range(resolution):
+                bitval = 1 << bit
+                play_fragment += textwrap.dedent('''
+//
+    if (variable_register14 & {bitval}) {{
+        incrementSinePhase(0, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+                if ex_channel.is_iq():
+                    play_fragment += textwrap.dedent('''
+        incrementSinePhase(1, {increment});'''.format(bitval=bitval, increment=bitval / (1 << resolution) * 360.0))
+                play_fragment += '''
+//
+    } else {
+        incrementSinePhase(0, 0.00000001);
+'''
+                if ex_channel.is_iq():
+                    play_fragment += '''
+//
+        incrementSinePhase(1, 0.00000001);'''
+                play_fragment += '''
+// 
+        }
+    waitWave();'''
+
+        elif fast_control:
+            definition_fragment += '''
+//
+var i;
+var j;'''
+            play_fragment += textwrap.dedent('''
+//
+//    playWave(zeros({length_samp}));'''.format(length_samp=length_samp))
+            play_fragment += '''
+//
+    i=0;
+    for (i=0; i < variable_register0; i = i +1) {'''
+            if ex_channel.is_iq():
+                play_fragment += textwrap.dedent('''
+//
+        incrementSinePhase(0,{phase1});
+        incrementSinePhase(1,{phase1});
+        //playZero(0);
+        waitWave();'''.format(phase1=8 * phase))
+                play_fragment += '''
+//
+    }'''
+                play_fragment += textwrap.dedent('''
+//    
+    incrementSinePhase(0,{phase2});
+    incrementSinePhase(1,{phase2});
+    //playZero(0);
+    waitWave();'''.format(phase2=64 * phase))
+            else:
+                play_fragment += textwrap.dedent('''
+//
+        incrementSinePhase(0,{phase1});
+        //playZero(0);
+        waitWave();'''.format(phase1=8 * phase))
+                play_fragment += '''
+//
+    }'''
+                play_fragment += textwrap.dedent('''
+//    
+    incrementSinePhase(0,{phase2});
+    waitWave();'''.format(phase2=64 * phase))
+        else:
+            # TODO
+            definition_fragment += textwrap.dedent('''
+wave wave_zeros_{length_samp}= zeros({length_samp});'''.format(length_samp=length_samp,
+                                                               signP=(np.sign(phase) == 1),
+                                                               phase=int(np.abs(phase))))
+            entry_table_index_constants.append(
+                '''etic_zeros_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(length_samp=length_samp,
+                                                                                    signI=(np.sign(0) == 1),
+                                                                                    realI=0,
+                                                                                    signQ=(np.sign(0) == 1),
+                                                                                    imagQ=0,
+                                                                                    signP=(np.sign(phase) == 1),
+                                                                                    phase=int(np.abs(phase))))
+
+            if ex_channel.is_iq():
+                play_fragment += textwrap.dedent('''
+//
+//    playWave(zeros({length_samp}));
+    incrementSinePhase(0,{phase});
+    incrementSinePhase(1,{phase});
+    waitWave();'''.format(phase=phase, length_samp=length_samp))
+                assign_fragment += textwrap.dedent('''
+assignWaveIndex(1, wave_zeros_{length_samp}, 2, wave_zeros_{length_samp}, etic_zeros_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(
+                    length_samp=length_samp,
+                    signI=(np.sign(0) == 1), realI=0, signQ=(np.sign(0) == 1), imagQ=0, signP=(np.sign(phase) == 1),
+                    phase=int(np.abs(phase))))
+            else:
+                play_fragment += textwrap.dedent('''
+//
+//    playWave(zeros({length_samp}));
+    incrementSinePhase({channel}, {phase});
+    waitWave();'''.format(channel=ex_channel.channel % 2, phase=phase, length_samp=length_samp))
+                assign_fragment += textwrap.dedent('''
+assignWaveIndex(1, wave_zeros_{length_samp}, 1, wave_zeros_{length_samp}, etic_zeros_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(
+                    length_samp=length_samp,
+                    signI=(np.sign(0) == 1), realI=0, signQ=(np.sign(0) == 1), imagQ=0, signP=(np.sign(phase) == 1),
+                    phase=int(np.abs(phase))))
+
+        table_entry = {'index': 0}
+        table_entry['waveform'] = {'index': 0}
+
+        if ex_channel.is_iq():
+            # calib_dc = ex_channel.parent.calib_dc()
+            # calib_rf = ex_channel.parent.calib_rf(ex_channel)
+            # awg_channel = ex_channel.parent.sequencer_id
+            # ex_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+            # ex_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
+            # ex_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+            # ex_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
+            # ex_channel.parent.awg.set_sin_phase(2 * awg_channel, np.angle(calib_rf['I']) * 360 / np.pi)
+            # ex_channel.parent.awg.set_sin_phase(2 * awg_channel + 1, np.angle(calib_rf['Q']) * 360 / np.pi)
+            # ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel, 0, np.abs(calib_rf['I']))
+            # ex_channel.parent.awg.set_sin_amplitude(2 * awg_channel + 1, 1, np.abs(calib_rf['Q']))
+            #
+            # table_entry['phase0'] = {'value': np.round(np.angle(calib_rf['I']) * 360 / np.pi, 3),
+            #                          'increment': False}
+            # table_entry['phase1'] = {'value': np.round(np.angle(calib_rf['Q']) * 360 / np.pi, 3),
+            #                          'increment': False}
+
+            table_entry['phase0'] = {'value': phase, 'increment': True}
+            table_entry['phase1'] = {'value': phase, 'increment': True}
+        else:
+            control_channel_id = ex_channel.channel % 2
+            if control_channel_id == 0:
+                table_entry['phase0'] = {'value': phase, 'increment': True}
+                table_entry['phase1'] = {'value': 90.0, 'increment': False}
+
+            elif control_channel_id == 1:
+                table_entry['phase0'] = {'value': 90.0, 'increment': False}
+                table_entry['phase1'] = {'value': phase, 'increment': True}
+
+        table_entry['amplitude0'] = {'value': 1.0}
+        table_entry['amplitude1'] = {'value': 1.0}
+
+        return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
+

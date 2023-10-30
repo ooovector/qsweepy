@@ -101,19 +101,18 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
     if qubit_readout_pulse:
         readout_pulse = qubit_readout_pulse
 
-    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+    ex_pulse1 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., transition=transition,
                                                       channel_amplitudes_override=channel_amplitudes1, gauss = gauss,
                                                       sort = sort)
-    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2.,
+    ex_pulse2 = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi/2., transition=transition,
                                                       channel_amplitudes_override=channel_amplitudes2, gauss = gauss,
                                                       sort = sort)
 
 
 
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
-    ex_channel = device.awg_channels[exitation_channel]
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
-    ex_channel = device.awg_channels[exitation_channel]
+
+    excitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
+    ex_channel = device.awg_channels[excitation_channel]
     if ex_channel.is_iq():
         control_qubit_awg = ex_channel.parent.awg
         control_qubit_seq_id = ex_channel.parent.sequencer_id
@@ -174,7 +173,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
                 self.prepare_seq.extend(self.pre_pause)
                 self.prepare_seq.extend(self.delay_sequence)
                 self.prepare_seq.extend(self.post_pause)
-            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id,
+            self.prepare_seq.extend(excitation_pulse.get_s(device, qubit_id, transition=transition,
                                                            phase=(64/self.control_sequence.clock)*target_freq_offset*360 % 360,
                                                            fast_control='quasi-binary', gauss=gauss, sort=sort))
             self.prepare_seq.extend(ex_pulse2.get_pulse_sequence(0))
@@ -247,9 +246,9 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
-              'extra_sweep_args':str(len(extra_sweep_args)),
-              'target_offset_freq': str(target_freq_offset),
-              'readout_delay':str(readout_delay)}
+                'extra_sweep_args':str(len(extra_sweep_args)),
+                'target_offset_freq': str(target_freq_offset),
+                'readout_delay':str(readout_delay)}
     metadata.update(additional_metadata)
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,

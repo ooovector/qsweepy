@@ -268,9 +268,11 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples=False, 
     from .calibrated_readout2 import get_calibrated_measurer, get_qutrit_calibrated_measurer
     print (device, qubit_id, transition)
     try:
-       assert transition == '01'
+       # assert transition == '01'
        if not qutrit_readout:
-           qubit_readout_pulse_, measurer, thresholds, features = get_calibrated_measurer(device, [qubit_id], recalibrate=False,
+           qubit_readout_pulse_, measurer, thresholds, features = get_calibrated_measurer(device, [qubit_id],
+                                                                                          recalibrate=False,
+                                                                                          transition=transition,
                                                                     readouts_per_repetition=readouts_per_repetition,
                                                                     get_thresholds=True)
        else:

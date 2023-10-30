@@ -259,12 +259,13 @@ def gauss_hd_ape_alpha(device, qubit_id, alphas, num_pulses, ex_sequencers, cont
     return measurement
 
 
-def gauss_hd_ape_phase(device, qubit_id, phases, num_pulses, ex_sequencers, control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+'):
-    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
-    pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id,
+def gauss_hd_ape_phase(device, qubit_id, transition, phases, num_pulses, ex_sequencers, control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+'):
+    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id, transition=transition)
+    pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id, transition=transition,
                                                                   rotation_angle=np.pi / 2.)
     channel_amplitudes_ = device.exdir_db.select_measurement_by_id(pi2_pulse.references['channel_amplitudes'])
     metadata = {'qubit_id': qubit_id,
+                'transition': transition,
                 'phase_sign': phase_sign,
                 'num_pulses': num_pulses}
     references = {'channel_amplitudes': channel_amplitudes_.id,
@@ -608,26 +609,27 @@ def per_amplitude_angle_guess(length, sigma):
     return result
 
 
-def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha, phase,
+def gauss_hd_Rabi_amplitude(device, qubit_id, transition, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha, phase,
                             num_pulses, inverse_rotation_cycles, control_sequence, control_qubit_sequence, ex_sequencers,
                             readout_sequencer, ro_channel=None):
     # readout_pulse = get_qubit_readout_pulse(device, qubit_id)
 
     if ro_channel:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition=transition)
 
     else:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition)
 
 
     metadata = {'qubit_id': qubit_id,
+                'transition': transition,
                 'rotation_angle': rotation_angle,
                 'sigma': sigma,
                 'length': length,
                 'num_pulses': num_pulses, }
     references = {'channel_amplitudes': channel_amplitudes.id}
 
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     for ex_sequence in ex_sequencers:
         ex_sequence.awg.set_register(ex_sequence.params['sequencer_id'], ex_sequence.params['var_reg0'], num_pulses)
 
@@ -931,7 +933,7 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None, phase=
 
 def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transition='01', ex_pre_pulse=None):
     # min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
-    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
+    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id, transition=transition)
 
     #scan_points = int(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_alpha_scan_points'))
     scan_points = 32
@@ -953,7 +955,7 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
         return phases[np.argmin(measurement_interpolated_combined)]
 
     pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id,
-                                                                  rotation_angle=np.pi / 2.)
+                                                                  rotation_angle=np.pi / 2., transition=transition)
     channel_amplitudes_ = device.exdir_db.select_measurement_by_id(pi2_pulse.references['channel_amplitudes'])
     if len(channel_amplitudes_.metadata) > 2:
         raise ValueError('Default excitation pulse has more than one excitation channel')
@@ -988,9 +990,9 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
     prepare_seq.append(device.pg.pmulti(device, length, *tuple(channel_pulses_xm)))
 
     #TODO
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
     if ex_channel.is_iq():
         control_qubit_awg = ex_channel.parent.awg
@@ -1043,7 +1045,7 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
     phase_guess = 0
     phase_range = 2*np.pi
     phases = np.linspace(phase_guess - 0.5 * phase_range, phase_guess + 0.5 * phase_range, scan_points)
-    measurement = gauss_hd_ape_phase(device, qubit_id, phases, 0, ex_sequencers,
+    measurement = gauss_hd_ape_phase(device, qubit_id, transition, phases, 0, ex_sequencers,
                                      control_sequence,control_qubit_sequence, readout_sequencer, phase_sign='+')
     adaptive_measurements.append(measurement)
     phase_range /= int(_range)
@@ -1191,10 +1193,10 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     # get default (rectangular) excitation pulse
 
     if ro_channel:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition=transition)
 
     else:
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition)
 
 
 
@@ -1247,9 +1249,9 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     sigma = pulse_length / sigmas_in_gauss
 
     #TODO
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
-    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
+    exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
     if ex_channel.is_iq():
         control_qubit_awg = ex_channel.parent.awg
@@ -1311,7 +1313,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
                                           int(inverse_rotation_cycles))
 
 
-        measurement = gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes,
+        measurement = gauss_hd_Rabi_amplitude(device, qubit_id, transition, channel_amplitudes, rotation_angle, amplitudes,
                                               pulse_length, sigma, alpha, phase, int(num_pulses/int(inverse_rotation_cycles)),
                                               int(inverse_rotation_cycles),
                                               control_sequence, control_qubit_sequence, ex_sequencers, readout_sequencer,
@@ -1328,6 +1330,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     references['frequency_controls'] = device.get_frequency_control_measurement_id(qubit_id)
     metadata = {'amplitude_guess': amplitude_guess,
                 'qubit_id': qubit_id,
+                'transition': transition,
                 'alpha': alpha,
                 'phase': phase,
                 'inverse_rotation_cycles': inverse_rotation_cycles,

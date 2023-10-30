@@ -71,7 +71,8 @@ class SingleShotReadout:
         X = []
         y = []
 
-        print(self.adc.adc.nsegm)
+        self.adc.set_adc_nums(int(self.device.get_sample_global('calibrated_readout_nums')))
+        print('Number of adc segments ', self.adc.adc.nsegm)
 
         if not self.post_selection_flag:
             for i in range(self.repeat_samples):
