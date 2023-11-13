@@ -13,12 +13,18 @@ import numpy as np
 import traceback
 
 
-def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, force_recalibration=False,gauss=True, sort='best'):
+def get_confusion_matrix(device, qubit_ids, pause_length=0, recalibrate=True, force_recalibration=False, gauss=True, sort='best'):
     qubit_readout_pulse, readout_device = get_calibrated_measurer(device, qubit_ids)
     # TODO
     '''Warning'''
-    excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi,gauss=gauss, sort=sort) for
-                         qubit_id in qubit_ids}
+    if gauss:
+        excitation_pulses = {
+            qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi / 2, gauss=True, sort=sort) for
+            qubit_id in qubit_ids}
+    else:
+        excitation_pulses = {
+            qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi, gauss=False, sort=sort) for
+            qubit_id in qubit_ids}
     ''''''
     references = {('excitation_pulse', qubit_id): pulse.id for qubit_id, pulse in excitation_pulses.items()}
     references['readout_pulse'] = qubit_readout_pulse.id
@@ -43,8 +49,7 @@ def calibrate_preparation_and_readout_confusion(device, qubit_readout_pulse, rea
                                                 gauss=True, sort='best'):
     qubit_ids = qubit_readout_pulse.metadata['qubit_ids'].split(',')
     target_qubit_states = [0] * len(qubit_ids)
-    # TODO
-    '''Warning'''
+
     excitation_pulses = {qubit_id: excitation_pulse.get_excitation_pulse(device, qubit_id, rotation_angle=np.pi/2.,gauss=gauss, sort=sort) for
                          qubit_id in qubit_ids}
     ''''''

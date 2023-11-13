@@ -700,6 +700,12 @@ var variable_register14;
     def set_phase_(self, phase):
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg14'], phase)
 
+    def set_phase_index(self, index):
+        """
+        Set phase variable register for command table
+        """
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg2'], index)
+
     # def start(self, holder=0):
     #     #self.awg.start_seq(self.params['sequencer_id'])
     #     self.awg.set_sin_enable(self.params['ic'], 0, 0)

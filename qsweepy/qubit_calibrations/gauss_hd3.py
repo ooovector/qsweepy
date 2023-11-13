@@ -259,7 +259,8 @@ def gauss_hd_ape_alpha(device, qubit_id, alphas, num_pulses, ex_sequencers, cont
     return measurement
 
 
-def gauss_hd_ape_phase(device, qubit_id, transition, phases, num_pulses, ex_sequencers, control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+'):
+def gauss_hd_ape_phase(device, qubit_id, transition, phases, num_pulses, ex_sequencers, control_sequence,
+                       control_qubit_sequence, readout_sequencer, phase_sign='+'):
     readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id, transition=transition)
     pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id, transition=transition,
                                                                   rotation_angle=np.pi / 2.)
@@ -678,7 +679,9 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, transition, channel_amplitudes, ro
             random_command_id = 0
             waveform_id = -1
 
+            # cycle for all prepare seqs
             for prep_seq in self.prepare_seq:
+                # cycle for all used hdawg
                 for seq_id, single_sequence in prep_seq[0][ex_seq.awg.device_id].items():
                         if seq_id == ex_seq.params['sequencer_id']:
                             phase0 = ex_seq.phaseI
@@ -1053,7 +1056,7 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
     while (num_pulses <= max_num_pulses):
         # adaptive_measurements = []
         phases = np.linspace(phase_guess - 0.5 * phase_range, phase_guess + 0.5 * phase_range, scan_points)
-        measurement = gauss_hd_ape_phase(device, qubit_id, phases, num_pulses, ex_sequencers,
+        measurement = gauss_hd_ape_phase(device, qubit_id, transition, phases, num_pulses, ex_sequencers,
                                          control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+')
 
         adaptive_measurements.append(measurement)

@@ -717,6 +717,14 @@ wave w_{wave_length}_{amp} = join(zeros(32-{wave_length}), rect({wave_length}, 1
                                                                                               n_samp=n_samp, amp=int(np.abs(amp)// 0.01)))
 
 
+            if tail_samp > 2:
+                definition_fragment += textwrap.dedent('''
+wave tail_fall_{amp} = cut(tail_wave_0_{amp}, tail_samp_{amp}, 2*tail_samp_{amp}-1);'''.format(amp=int(np.abs(amp) // 0.01)))
+            else:
+                definition_fragment += textwrap.dedent('''
+wave tail_fall_{amp}  = zeros(32);'''.format(amp=int(np.abs(amp) // 0.01)))
+                
+                
             play_fragment += textwrap.dedent('''
 //
 
@@ -736,17 +744,16 @@ wave w_{wave_length}_{amp} = join(zeros(32-{wave_length}), rect({wave_length}, 1
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
                     assign_fragment += textwrap.dedent('''
-assignWaveIndex(1, {ampI}*w_{wave_length}, 2, {ampQ}*w_{wave_length}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+assignWaveIndex(1, {ampI}*w_{wave_length}_{amp}, 2, {ampQ}*w_{wave_length}_{amp}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                    entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                    assign_fragment += textwrap.dedent('''
-assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 2, {ampQ}*tail_fall_{wave_length}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-
+                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
+#                     entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+#                     assign_fragment += [textwrap.dedent('''
+# assignWaveIndex(1, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))]
                     if wave_length==n_samp:
                         play_fragment += '''
 //
@@ -766,16 +773,17 @@ assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 2, {ampQ}*tail_fall_{wave_len
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
                         assign_fragment += textwrap.dedent('''
-assignWaveIndex(1, {ampI}*w_{wave_length}, 1, {ampQ}*w_{wave_length}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+assignWaveIndex(1, {ampI}*w_{wave_length}_{amp}, 1, {ampQ}*w_{wave_length}_{amp}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                        entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                        assign_fragment += textwrap.dedent('''
-assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 1, {ampQ}*tail_fall_{wave_length}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
+
+#                         entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+#                         assign_fragment += [textwrap.dedent('''
+# assignWaveIndex(1, {ampI}*tail_fall_{wave_length}_{amp}, 1, {ampQ}*tail_fall_{wave_length}_{amp}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))]
 
                         if wave_length == n_samp:
                             play_fragment +='''
@@ -795,21 +803,58 @@ assignWaveIndex(1, {ampI}*tail_fall_{wave_length}, 1, {ampQ}*tail_fall_{wave_len
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
                         assign_fragment += textwrap.dedent('''
-assignWaveIndex(2, {ampI}*w_{wave_length}, 2, {ampQ}*w_{wave_length}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+assignWaveIndex(2, {ampI}*w_{wave_length}_{amp}, 2, {ampQ}*w_{wave_length}_{amp}, etic_w_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
+
                         entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
                         assign_fragment += textwrap.dedent('''
-assignWaveIndex(2, {ampI}*tail_fall_{wave_length}, 2, {ampQ}*tail_fall_{wave_length}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+assignWaveIndex(2, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
 
                         if wave_length == n_samp:
                             play_fragment += '''
 //
         }'''
+            if ex_channel.is_iq():
+                entry_table_index_constants.append('etic_tail_fall_{signI}{realI}_{signQ}{imagQ}'.format(
+                    signI=(np.sign(np.real(amp)) == 1), signQ=(np.sign(np.imag(amp)) == 1),
+                    realI=int(np.abs(np.real(amp)) // 0.01), imagQ=int(np.abs(np.imag(amp)) // 0.01)))
+                assign_fragment += textwrap.dedent('''
+assignWaveIndex(1, {ampI}*tail_fall_{amp}, 2, {ampQ}*tail_fall_{amp}, etic_tail_fall_{signI}{realI}_{signQ}{imagQ});''').format(
+                    signI=(np.sign(np.real(amp)) == 1), ampI=np.real(amp),
+                    realI=int(np.abs(np.real(amp)) // 0.01),
+                    signQ=(np.sign(np.imag(amp)) == 1), ampQ=np.imag(amp),
+                    imagQ=int(np.abs(np.imag(amp)) // 0.01),
+                    amp=int(np.abs(amp) // 0.01))
+
+            else:
+                if control_channel_id == 0:
+                    entry_table_index_constants.append('etic_tail_fall_{signI}{realI}_{signQ}{imagQ}'.format(
+                        signI=(np.sign(np.real(amp)) == 1), signQ=(np.sign(np.imag(amp)) == 1),
+                        realI=int(np.abs(np.real(amp)) // 0.01), imagQ=int(np.abs(np.imag(amp)) // 0.01)))
+                    assign_fragment += textwrap.dedent('''
+assignWaveIndex(1, {ampI}*tail_fall_{amp}, 1, {ampQ}*tail_fall_{amp}, etic_tail_fall_{signI}{realI}_{signQ}{imagQ});''').format(
+                        signI=(np.sign(np.real(amp)) == 1), ampI=np.real(amp),
+                        realI=int(np.abs(np.real(amp)) // 0.01),
+                        signQ=(np.sign(np.imag(amp)) == 1), ampQ=np.imag(amp),
+                        imagQ=int(np.abs(np.imag(amp)) // 0.01),
+                        amp=int(np.abs(amp) // 0.01))
+                elif control_channel_id == 1:
+                    entry_table_index_constants.append('etic_tail_fall_{signI}{realI}_{signQ}{imagQ}'.format(
+                        signI=(np.sign(np.real(amp)) == 1), signQ=(np.sign(np.imag(amp)) == 1),
+                        realI=int(np.abs(np.real(amp)) // 0.01), imagQ=int(np.abs(np.imag(amp)) // 0.01)))
+                    assign_fragment += textwrap.dedent('''
+assignWaveIndex(2, {ampI}*tail_fall_{amp}, 2, {ampQ}*tail_fall_{amp}, etic_tail_fall_{signI}{realI}_{signQ}{imagQ});''').format(
+                        signI=(np.sign(np.real(amp)) == 1), ampI=np.real(amp),
+                        realI=int(np.abs(np.real(amp)) // 0.01),
+                        signQ=(np.sign(np.imag(amp)) == 1), ampQ=np.imag(amp),
+                        imagQ=int(np.abs(np.imag(amp)) // 0.01),
+                        amp=int(np.abs(amp) // 0.01))
+
 
         else:
             if tail_samp > 2:
@@ -864,10 +909,11 @@ assignWaveIndex(1, {ampI}*rect_cos_{length_samp}_{tail_samp}, 1, {ampQ}*rect_cos
                     entry_table_index_constants.append('etic_rect_cos_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
                         length_samp=length_samp, tail_samp=tail_samp, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                         signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                    assign_fragment += textwrap.dedent('''
+                    assign_fragment += [textwrap.dedent('''
 assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos_{length_samp}_{tail_samp}, etic_rect_cos_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(
                         length_samp=length_samp, tail_samp=tail_samp, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                        signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+                        signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))]
+
 
         table_entry = {'index': 0}
         table_entry['waveform'] = {'index': 0}
@@ -1104,6 +1150,10 @@ assignWaveIndex(1, wave_zeros_{length_samp}, 1, wave_zeros_{length_samp}, etic_z
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
     def pmulti(self, device, length, *params):
+        """
+        :param device:
+        :param length: float or list value of lengths in ns
+        """
         try:
             length_set = length[0]
             fast_control = True

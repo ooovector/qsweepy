@@ -553,10 +553,10 @@ class hardware_setup():
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg2, sequencer_id=1,
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
-                           # 'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
-                           #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                                                                                 lo=self.lo_q1, exdir_db=exdir_db),
+                           # 'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           #                                                      lo=self.lo_q1, exdir_db=exdir_db),
                            # 'iq_ex4': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
                            'iq_ex7': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
@@ -565,17 +565,17 @@ class hardware_setup():
 
         self.iq_devices['iq_ro'].name = 'ro'
         # self.iq_devices['iq_ex1'].name = 'ex1'
-        # self.iq_devices['iq_ex6'].name = 'ex6'
+        self.iq_devices['iq_ex6'].name = 'ex6'
         self.iq_devices['iq_ex7'].name = 'ex7'
-        self.iq_devices['iq_ex7_12'].name = 'ex7_12'
+        # self.iq_devices['iq_ex7_12'].name = 'ex7_12'
         # self.iq_devices['iq_ex4'].name = 'ex4'
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex6'].name = 'ex6'
         self.iq_devices['iq_ro'].sa = self.sa
         # self.iq_devices['iq_ex1'].sa = self.sa
-        # self.iq_devices['iq_ex6'].sa = self.sa
+        self.iq_devices['iq_ex6'].sa = self.sa
         self.iq_devices['iq_ex7'].sa = self.sa
-        self.iq_devices['iq_ex7_12'].sa = self.sa
+        # self.iq_devices['iq_ex7_12'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
         # self.iq_devices['iq_ex2'].sa = self.sa
         # self.iq_devices['iq_ex4'].sa = self.sa
@@ -595,7 +595,7 @@ class hardware_setup():
                               # 'c6z':awg_channel(self.hdawg1, 7),}
                               # 'c2z':awg_channel(self.hdawg1, 6),}
                               'c7z':awg_channel(self.hdawg1, 6),
-                              'c8z':awg_channel(self.hdawg1, 7),
+                              # 'c8z':awg_channel(self.hdawg1, 7),
         }
 
 
