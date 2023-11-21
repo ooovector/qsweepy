@@ -11,7 +11,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
               readout_delay=0,
               pre_pulses=tuple(), repeats=1, measurement_type='Rabi_rect', samples=False, additional_metadata={}, comment = '',
               ex_pre_pulse=None, ex_pre_pulse2=None, ex_post_pulse=None, ex_post_pulse2=None, shots=False, frequency_goodness_test = None,
-              dot_products=False, post_selection_flag=False, gauss=True, sort='newest'):
+              dot_products=False, post_selection_flag=False, ro_channel = None, readout_offsets = []):
 
 # def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=None, *extra_sweep_args, tail_length=0,
 #               readout_delay=0,
@@ -51,14 +51,24 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
         readouts_per_repetition = 1
 
     if type(qubit_id) is not list and type(qubit_id) is not tuple:  # if we are working with a single qubit, use uncalibrated measurer
-        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples,
+        if ro_channel is None:
+            readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition=transition, samples=samples,
                                                             shots=shots, dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
-        measurement_name = 'iq' + qubit_id
+            measurement_name = 'iq' + qubit_id
+        else:
+            readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition=transition,
+                                                                samples=samples,
+                                                                shots=shots, dot_products=dot_products,
+                                                                readouts_per_repetition=readouts_per_repetition)
+            measurement_name = 'iq' + ro_channel
         qubit_id = [qubit_id]
         exp_sin_fitter_mode = 'unsync'
         exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
     else: # otherwise use calibrated measurer
-        readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
+        if ro_channel is None:
+            readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
+        else:
+            readout_pulse, measurer = get_calibrated_measurer(device, ro_channel)
         measurement_name = 'resultnumbers'
         exp_sin_fitter_mode = 'unsync'
         exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
@@ -118,12 +128,12 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], readout_offsets=readout_offsets, post_selection_flag=post_selection_flag)
 
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], readout_offsets=readout_offsets, control=True, post_selection_flag=post_selection_flag)
 
             control_sequence = ex_seq
         device.pre_pulses.set_seq_offsets(ex_seq)
@@ -196,7 +206,6 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
     measurer.save_dot_prods = True
     # print('TYPE', measurer.source)
-
 
     measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
                                                             *extra_sweep_args,

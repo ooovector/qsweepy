@@ -38,8 +38,8 @@ pulsed_settings = {'lo1_power': 14,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
                    # 'lo1_freq': 3.2e9, #1.5e9,
-                   'lo1_freq': 2.5e9, #1.5e9,
-                   'pna_freq': 6.75e9, #6.96e9, #6.66e9
+                   'lo1_freq': 2.8e9, #4.5e9, #1.5e9,
+                   'pna_freq': 6.77e9, #6.75e9,6.96e9, #6.66e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,

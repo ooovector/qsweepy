@@ -164,9 +164,11 @@ class TSW14J56_evm_reducer():
 		if self.resultnumber:
 			resultnumbers = np.zeros(self.resultnumbers_dimension)
 
+
 			states = np.asarray(dot_prods > self.adc.threshold, dtype=int)
 			# print(self.adc.threshold)
 			# print(states.shape)
+			print('DIM', dot_prods.shape)
 
 			for s in states:
 				s_int = 0

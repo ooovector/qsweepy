@@ -55,8 +55,9 @@ def get_vf(device, qubit_id, freq):
     return sequence_f
 
 
-def get_s(device, qubit_id, phase=np.pi / 2., fast_control = False, gauss=True, sort='best'):
-    pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., gauss=gauss, sort=sort)
+def get_s(device, qubit_id, phase=np.pi / 2., fast_control = False, gauss=True, sort='best', pi2 = None):
+    if pi2 is None:
+        pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., gauss=gauss, sort=sort)
     channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
         device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
 

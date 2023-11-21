@@ -281,7 +281,7 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
            measurer.all_cov = False
        if dot_products:
            measurer.dot_prods = True
-           reducer.filters['dot_products0'] = data_reduce.thru(measurer, 'disc_ch0') # if you want to manually postselect data
+           # reducer.filters['dot_products0'] = data_reduce.thru(measurer, 'disc_ch0') # if you want to manually postselect data
            # reducer.filters['dot_products1'] = data_reduce.thru(measurer, 'disc_ch1')
            if measurer.adc.trig_src_mode != 'when_ready':
                 measurer.adc.set_trig_src_mode('when_ready')
@@ -324,7 +324,7 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
         adc_reducer.all_cov = False
     if dot_products:
         adc_reducer.dot_prods = True
-        measurer.filters['dot_products0'] = data_reduce.thru(adc_reducer, 'disc_ch0')
+        # measurer.filters['dot_products0'] = data_reduce.thru(adc_reducer, 'disc_ch0')
         # measurer.filters['dot_products1'] = data_reduce.thru(adc_reducer, 'disc_ch1')
     else:
         adc_reducer.dot_prods = False

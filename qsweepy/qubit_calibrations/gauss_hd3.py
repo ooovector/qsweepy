@@ -261,8 +261,19 @@ def gauss_hd_ape_alpha(device, qubit_id, alphas, num_pulses, ex_sequencers, cont
     return measurement
 
 
-def gauss_hd_ape_phase(device, qubit_id, phases, num_pulses, ex_sequencers, control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+'):
-    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
+def gauss_hd_ape_phase(device, qubit_id, phases, num_pulses, ex_sequencers, control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+', post_selection_flag=False):
+
+
+    if post_selection_flag:
+        readouts_per_repetition = 3 # 2
+        dot_products = True
+        print("Postselection")
+    else:
+        readouts_per_repetition = 1
+        dot_products = False
+
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, dot_products=dot_products, readouts_per_repetition = readouts_per_repetition)
+    # readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
     pi2_pulse = get_excitation_pulse_from_gauss_hd_Rabi_amplitude(device=device, qubit_id=qubit_id,
                                                                   rotation_angle=np.pi / 2.)
     channel_amplitudes_ = device.exdir_db.select_measurement_by_id(pi2_pulse.references['channel_amplitudes'])
@@ -612,9 +623,19 @@ def per_amplitude_angle_guess(length, sigma):
 
 
 def gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes, length, sigma, alpha, phase,
-                            num_pulses, inverse_rotation_cycles, control_sequence, control_qubit_sequence, ex_sequencers, readout_sequencer):
+                            num_pulses, inverse_rotation_cycles, control_sequence, control_qubit_sequence, ex_sequencers, readout_sequencer,
+                            post_selection_flag = False):
     # readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+
+    if post_selection_flag:
+        readouts_per_repetition = 3 # 2
+        dot_products = True
+        print("Postselection")
+    else:
+        readouts_per_repetition = 1
+        dot_products = False
+
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, dot_products=dot_products, readouts_per_repetition = readouts_per_repetition)
 
     metadata = {'qubit_id': qubit_id,
                 'rotation_angle': rotation_angle,
@@ -1052,9 +1073,19 @@ def gauss_hd_Rabi_alpha_adaptive(device, qubit_id, preferred_length=None, transi
                                 references=references,
                                 metadata=metadata)
 
-def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transition='01'):
+def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transition='01', post_selection_flag = False):
     # min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
-    readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
+    if post_selection_flag:
+        readouts_per_repetition = 3  # 2
+        dot_products = True
+    else:
+        readouts_per_repetition = 1
+        dot_products = False
+
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, dot_products=dot_products,
+                                                        readouts_per_repetition=readouts_per_repetition)
+
+    # readout_pulse, measurer = get_uncalibrated_measurer(device=device, qubit_id=qubit_id)
 
     #scan_points = int(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_alpha_scan_points'))
     scan_points = 32
@@ -1127,11 +1158,11 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             #print('control_sequence=',control_sequence)
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
@@ -1140,13 +1171,13 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
 
     phase_guess = 0
     phase_range = 2*np.pi
     phases = np.linspace(phase_guess - 0.5 * phase_range, phase_guess + 0.5 * phase_range, scan_points)
     measurement = gauss_hd_ape_phase(device, qubit_id, phases, 0, ex_sequencers,
-                                     control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+')
+                                     control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+', post_selection_flag=post_selection_flag)
     adaptive_measurements.append(measurement)
     phase_range /= int(_range)
 
@@ -1154,7 +1185,7 @@ def gauss_hd_Rabi_phase_adaptive(device, qubit_id, preferred_length=None, transi
         # adaptive_measurements = []
         phases = np.linspace(phase_guess - 0.5 * phase_range, phase_guess + 0.5 * phase_range, scan_points)
         measurement = gauss_hd_ape_phase(device, qubit_id, phases, num_pulses, ex_sequencers,
-                                         control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+')
+                                         control_sequence, control_qubit_sequence, readout_sequencer, phase_sign='+', post_selection_flag=post_selection_flag)
         adaptive_measurements.append(measurement)
         phase_guess = infer_phase_from_measurements()
         num_pulses *= int(_range)
@@ -1280,14 +1311,22 @@ def get_excitation_pulse_from_gauss_hd_Rabi_phase(device, qubit_id, rotation_ang
                                          channel_amplitudes=meas.references['channel_amplitudes'])
 
 def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, preferred_length=None, transition='01',
-                                     alpha=0, phase=0, sort='best'):
+                                     alpha=0, phase=0, sort='best', post_selection_flag = False):
     from .excitation_pulse2 import get_rect_excitation_pulse
     # max_num_pulses =
     # get T2 result
     # coherence_measurement = get_Ramsey_coherence_measurement(device=device, qubit_id=qubit_id)
     # T2 = float(coherence_measurement.metadata['T'])
     # get default (rectangular) excitation pulse
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
+
+    if post_selection_flag:
+        readouts_per_repetition = 3 # 2
+        dot_products = True
+    else:
+        readouts_per_repetition = 1
+        dot_products = False
+
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id,dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
 
     #min_step = float(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_min_step'))
     #scan_points = int(device.get_qubit_constant(qubit_id=qubit_id, name='adaptive_Rabi_amplitude_scan_points'))
@@ -1354,11 +1393,11 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[],post_selection_flag=post_selection_flag)
             #ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             #print('control_sequence=',control_sequence)
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
@@ -1367,7 +1406,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
         device.pre_pulses.set_seq_prepulses(ex_seq)
         ex_seq.start()
         ex_sequencers.append(ex_seq)
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     #readout_sequencer.start()
 
     while (num_pulses <= max_num_pulses):
@@ -1383,7 +1422,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
         measurement = gauss_hd_Rabi_amplitude(device, qubit_id, channel_amplitudes, rotation_angle, amplitudes,
                                               pulse_length, sigma, alpha, phase, int(num_pulses/int(inverse_rotation_cycles)),
                                               int(inverse_rotation_cycles),
-                                              control_sequence, control_qubit_sequence, ex_sequencers, readout_sequencer)
+                                              control_sequence, control_qubit_sequence, ex_sequencers, readout_sequencer, post_selection_flag = post_selection_flag)
 
         adaptive_measurements.append(measurement)
         amplitude_guess = infer_amplitude_from_measurements()

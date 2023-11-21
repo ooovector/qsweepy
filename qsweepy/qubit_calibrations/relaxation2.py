@@ -6,9 +6,10 @@ from qsweepy.qubit_calibrations import channel_amplitudes
 
 
 def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
-               readout_delay=0, delay_seq_generator=None, measurement_type='decay', ex_pulse=None, ex_pulse2=None,
+               readout_delay=0, delay_seq_generator=None, measurement_type='decay', comment = '', ex_pulse=None, ex_pulse2=None,
                post_pulse=None, post_pulse2=None, additional_references={}, additional_metadata={}, gauss=True,
-               sort='best', shots=False, dot_products=False, post_selection_flag=False, exc_pre_pulses_seq=None):
+               sort='best', shots=False, dot_products=False, post_selection_flag=False, exc_pre_pulses_seq=None,
+               shuffle=False,ro_channel = None):
     """
     :param device:
     :param qubit_id:
@@ -46,8 +47,15 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
         readouts_per_repetition = 1
 
     #readout_pulse = get_qubit_readout_pulse(device, qubit_id)
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, shots=shots, dot_products=dot_products,
+    if ro_channel is None:
+        readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, shots=shots, dot_products=dot_products,
                                                         readouts_per_repetition=readouts_per_repetition)
+        measurement_name = 'iq'+qubit_id
+    else:
+        readout_pulse, measurer = get_uncalibrated_measurer(device, ro_channel, transition, shots=shots,
+                                                            dot_products=dot_products,
+                                                            readouts_per_repetition=readouts_per_repetition)
+        measurement_name = 'iq' + ro_channel
     if ex_pulse is None:
         ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi,
                                                          channel_amplitudes_override=channel_amplitudes,
@@ -165,7 +173,7 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
     if hasattr(measurer, 'references'):
         references.update(measurer.references)
 
-    fitter_arguments = ('iq'+qubit_id, exp_fitter(), -1, np.arange(len(extra_sweep_args)))
+    fitter_arguments = (measurement_name, exp_fitter(), -1, np.arange(len(extra_sweep_args)))
 
     metadata = {'qubit_id': qubit_id,
                 'transition': transition,
@@ -182,7 +190,8 @@ def relaxation(device, qubit_id, transition='01', *extra_sweep_args, channel_amp
                                               fitter_arguments=fitter_arguments,
                                               measurement_type=measurement_type,
                                               metadata=metadata,
-                                              references=references)
+                                              references=references,
+                                              shuffle=shuffle, comment = comment)
 
     return measurement
 

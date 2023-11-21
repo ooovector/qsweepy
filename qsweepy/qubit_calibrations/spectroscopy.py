@@ -46,9 +46,10 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, span=None, power
     print ('fr_guess: ', fr_guess)
     try:
         device.hardware.set_cw_mode()
+        #### Закомментировать , если измеряешь фотонный шум резонатора
         if device.hardware.lo1 is not None:
             device.hardware.lo1.set_status(0)
-
+        ####
         if span is None:
             span = float(device.get_qubit_constant(qubit_id=qubit_id, name='single_tone_spectrum_span'))
         if power is None:
@@ -110,8 +111,8 @@ def measure_fr(device, qubit_id, fr_guess):
 def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, power_readout=None, span=None, nop=None, bandwidth=None, lo=None, **kwargs):
     try:
         device.hardware.set_cw_mode()
-        # device.hardware.lo1.set_status(1)
-        lo.set_status(1)
+        device.hardware.lo1.set_status(1)
+        # lo.set_status(1)
 
         if span is None:
             span = float(device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_span'))
@@ -128,8 +129,8 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, 
 
         #fit_type = device.get_qubit_constant(qubit_id=qubit_id, name='two_tone_spectrum_fit_type')
 
-        # device.hardware.lo1.set_power(power_excite)
-        lo.set_power(power_excite)
+        device.hardware.lo1.set_power(power_excite)
+        # lo.set_power(power_excite)
         device.hardware.pna.set_power(power_readout)
         device.hardware.pna.set_xlim(fr, fr)
         device.hardware.pna.set_nop(1)
@@ -143,17 +144,17 @@ def two_tone_spectroscopy(device, qubit_id, fq_guess, *args, power_excite=None, 
         metadata = {'qubit_id': qubit_id, 'pna_power': device.hardware.pna.get_power(),
                     'resonator_frequency': fr, 'lo_power': device.hardware.lo1.get_power()}
         metadata.update(kwargs)
-        # result = device.sweeper.sweep(device.hardware.pna,
-        #                     *args,
-        #                     (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
-        #                     measurement_type='qubit_frequency',
-        #                     metadata=metadata)
-
         result = device.sweeper.sweep(device.hardware.pna,
-                                      *args,
-                                      (frequencies, lo.set_frequency, 'excitation_frequency'),
-                                      measurement_type='qubit_frequency',
-                                      metadata=metadata)
+                            *args,
+                            (frequencies, device.hardware.lo1.set_frequency, 'excitation_frequency'),
+                            measurement_type='qubit_frequency',
+                            metadata=metadata)
+
+        # result = device.sweeper.sweep(device.hardware.pna,
+        #                               *args,
+        #                               (frequencies, lo.set_frequency, 'excitation_frequency'),
+        #                               measurement_type='qubit_frequency',
+        #                               metadata=metadata)
     except:
         raise
 
