@@ -39,5 +39,13 @@ setup(name='qsweepy',
           'lmfit>=0.9.5',
           'scipy>=0.17',
           'h5py>=2.6',
+          'matplotlib',
+          'scipy',
+          'plotly',
+          'pony',
+          'scikit-learn',
+          'psycopg2',
+          'pandas',
+          'exdir',
       ]
       )
