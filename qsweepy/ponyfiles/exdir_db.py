@@ -6,6 +6,9 @@ from pony.orm import desc, count
 import datetime
 from typing import List, Mapping
 
+import ntpath
+import os
+
 
 class Exdir_db:
     """
@@ -86,6 +89,7 @@ class Exdir_db:
             edited_filename = filename
         else:
             edited_filename = self.new_prefix + filename[len(self.old_prefix):]
+        edited_filename = edited_filename.replace(ntpath.sep, os.sep)
         return edited_filename
 
     # try:
