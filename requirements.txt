@@ -3,3 +3,7 @@ numpy
 scipy
 plotly
 pony
+scikit-learn
+psycopg2
+pandas
+exdir
