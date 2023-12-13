@@ -766,7 +766,8 @@ def get_qubit_readout_pulse_from_fidelity_scan(device, fidelity_scan):
 def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse_amplitudes, readout_frequency_offsets=None,
                           recalibrate_excitation=True, ignore_other_qubits=False, channel_amplitudes=None,
                           transition='01', dbg_storage=False,
-                          gauss=True, sort = 'best', ex_pre_pulse=None, ro_channel=None, set_sequence=None, set_control_qubit_sequence=None):
+                          gauss=True, sort = 'best', ex_pre_pulse=None, ro_channel=None, set_sequence=None, set_control_qubit_sequence=None,
+                          qubit_readout_pulse=None):
 
     if not ro_channel:
         adc, mnames = device.setup_adc_reducer_iq(qubit_id, raw=True)
@@ -832,6 +833,8 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
 
     references.update({'excitation_pulse': qubit_excitation_pulse.id,
                        'delay_calibration': device.modem.delay_measurement.id})
+    if qubit_readout_pulse:
+        references.update({'qubit_readout_pulse': qubit_readout_pulse.id})
 
     #TODO
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id, transition=transition).keys()][0]
@@ -892,8 +895,12 @@ def readout_fidelity_scan(device, qubit_id, readout_pulse_lengths, readout_pulse
     re_channel = device.awg_channels[readout_channel]
     readout_sequencer = zi_scripts.READSequence(device,re_channel.parent.sequencer_id, device.modem.awg)
 
+
     def_frag, play_frag = device.pg.readout_rect(channel=readout_channel, length=readout_pulse_lengths[0],
                                                  amplitude=readout_pulse_amplitudes[0])
+    if qubit_readout_pulse:
+        def_frag, play_frag = qubit_readout_pulse.definition_fragment, qubit_readout_pulse.play_fragment
+
     readout_sequencer.add_readout_pulse(def_frag, play_frag)
     readout_sequencer.stop()
     device.modem.awg.set_sequence(readout_sequencer.params['sequencer_id'], readout_sequencer)

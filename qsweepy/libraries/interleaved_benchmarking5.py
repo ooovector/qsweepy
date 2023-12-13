@@ -208,6 +208,7 @@ setPRNGRange(0, random_gate_num-1);
 
         phase0 = ex_seq.phaseI
         phase1 = ex_seq.phaseQ
+        print('Command table phases {} and {}'.format(phase0, phase1))
 
         # table_entry = {'index': random_command_id}
         # #table_entry['amplitude0'] = {'value': 1}
@@ -253,10 +254,12 @@ setPRNGRange(0, random_gate_num-1);
         executeTableEntry(rand_value1);
         executeTableEntry({random_gate_num2});
         executeTableEntry(rand_value2);//}}
-        wait(1);
+        //wait(1);
         repeat ({two_qubit_num}){{
+            wait(5);
             executeTableEntry({random_gate_num2});
             executeTableEntry({two_qubit_gate_index});
+            wait(5);
 //'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num1 = random_command_id-1, random_gate_num2 = random_command_id,
                   two_qubit_num=self.two_qubit_num, sequence_len=seq_len))
             if self.two_qubit2 is not None:
@@ -264,6 +267,7 @@ setPRNGRange(0, random_gate_num-1);
 //
             executeTableEntry({random_gate_num2});
             executeTableEntry({two_qubit_gate_index2});
+            wait(10);
 //'''.format(two_qubit_gate_index2=two_qubit_gate_index2, random_gate_num2=random_command_id))
             play_part += textwrap.dedent('''
 //
@@ -299,6 +303,7 @@ setPRNGRange(0, random_gate_num-1);
     '''.format(random_gate_num1=random_command_id-1, random_gate_num2=random_command_id, sequence_len=seq_len))
         self.instructions.append(command_table)
         # print('command_table', command_table)
+        print('Command table for sequencer id {}'.format(ex_seq.params['sequencer_id']), command_table)
         return definition_part, play_part
 
 

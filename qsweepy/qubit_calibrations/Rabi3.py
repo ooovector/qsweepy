@@ -162,6 +162,9 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                         # add waveform definition part
                         if single_sequence[0] not in definition_part:
                             definition_part += single_sequence[0]
+
+                        assign_fragments = single_sequence[3].split(';')[:-1]
+
                         for id_, entry_table_index_constant in enumerate(single_sequence[2]):
                             table_entry = {'index': random_command_id}  # define command table id index
                             random_command_id += 1
@@ -170,7 +173,8 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                                 definition_part += '\nconst ' + entry_table_index_constant + '={_id};'.format(
                                     _id=waveform_id)
                                 assign_waveform_indexes[entry_table_index_constant] = waveform_id
-                                definition_part += single_sequence[3][id_]
+                                # definition_part += single_sequence[3][id_]
+                                definition_part += assign_fragments[id_] + ';'
                                 table_entry['waveform'] = {'index': waveform_id}
                             else:
                                 table_entry['waveform'] = {'index': assign_waveform_indexes[entry_table_index_constant]}

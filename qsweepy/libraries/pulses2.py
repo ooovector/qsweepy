@@ -807,13 +807,13 @@ assignWaveIndex(2, {ampI}*w_{wave_length}_{amp}, 2, {ampQ}*w_{wave_length}_{amp}
                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
 
-                        entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                        assign_fragment += textwrap.dedent('''
-assignWaveIndex(2, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
-                            wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                            signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
+#                         entry_table_index_constants.append('etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ}'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
+#                         assign_fragment += textwrap.dedent('''
+# assignWaveIndex(2, {ampI}*tail_fall_{wave_length}_{amp}, 2, {ampQ}*tail_fall_{wave_length}_{amp}, etic_tail_fall_{wave_length}_{signI}{realI}_{signQ}{imagQ});'''.format(
+#                             wave_length=wave_length, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
+#                             signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01), amp=int(np.abs(amp)// 0.01)))
 
                         if wave_length == n_samp:
                             play_fragment += '''
@@ -909,10 +909,10 @@ assignWaveIndex(1, {ampI}*rect_cos_{length_samp}_{tail_samp}, 1, {ampQ}*rect_cos
                     entry_table_index_constants.append('etic_rect_cos_{length_samp}_{signI}{realI}_{signQ}{imagQ}'''.format(
                         length_samp=length_samp, tail_samp=tail_samp, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                         signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
-                    assign_fragment += [textwrap.dedent('''
+                    assign_fragment += textwrap.dedent('''
 assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos_{length_samp}_{tail_samp}, etic_rect_cos_{length_samp}_{signI}{realI}_{signQ}{imagQ});'''.format(
                         length_samp=length_samp, tail_samp=tail_samp, signI=(np.sign(np.real(amp))==1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
-                        signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))]
+                        signQ=(np.sign(np.imag(amp))==1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
 
 
         table_entry = {'index': 0}
@@ -926,12 +926,12 @@ assignWaveIndex(2, {ampI}*rect_cos_{length_samp}_{tail_samp}, 2, {ampQ}*rect_cos
         else:
             control_channel_id = ex_channel.channel % 2
             if control_channel_id == 0:
-                table_entry['phase0'] = {'value': 0.0 * 360 / 2 / np.pi, 'increment': True}
+                table_entry['phase0'] = {'value': 0.0 , 'increment': True}
                 table_entry['phase1'] = {'value': 90.0, 'increment': False}
 
             elif control_channel_id == 1:
                 table_entry['phase0'] = {'value': 90.0, 'increment': False}
-                table_entry['phase1'] = {'value': 0.0 * 360 / 2 / np.pi, 'increment': True}
+                table_entry['phase1'] = {'value': 0.0, 'increment': True}
 
         table_entry['amplitude0'] = {'value': 1.0}
         table_entry['amplitude1'] = {'value': 1.0}
@@ -1256,12 +1256,8 @@ assignWaveIndex(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples}, et
                     samples=nrOfsampl, signI=(np.sign(np.real(amp)) == 1), ampI=np.real(amp), realI=int(np.abs(np.real(amp))// 0.01),
                     signQ=(np.sign(np.imag(amp)) == 1), ampQ=np.imag(amp), imagQ=int(np.abs(np.imag(amp))// 0.01)))
 
-        table_entry = {'index': 0}
-        table_entry['waveform'] = {'index': 0}
-        table_entry['phase0'] = {'value': 0.0, 'increment': True}
-        table_entry['phase1'] = {'value': 90.0, 'increment': False}
-        table_entry['amplitude0'] = {'value': 1.0}
-        table_entry['amplitude1'] = {'value': 1.0}
+        ta
+
 
         return definition_fragment, play_fragment, entry_table_index_constants, assign_fragment, table_entry
 
@@ -1300,6 +1296,8 @@ assignWaveIndex(1, {ampI}*sine_wave_{samples}, 1, {ampQ}*sine_wave_{samples}, et
         awg_channel = re_channel.parent.sequencer_id
         re_channel.parent.awg.set_amplitude(2 * awg_channel, amplitude)
         re_channel.parent.awg.set_amplitude(2*awg_channel + 1, amplitude)
+        # re_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+        # re_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
         re_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
         re_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
         definition_fragment = textwrap.dedent('''
@@ -1365,6 +1363,62 @@ wave ro_wave_q = add({add_wave_q});
 //
     playWave(ro_wave_i_marker, ro_wave_q_marker);
 '''.format(name=channel))
+
+        return definition_fragment, play_fragment
+
+    def readout_rect_multiplexed(self, length, *params):
+        """
+        Multiplexed readout pulse
+        """
+        # TODO: this method works only for single readout seq
+        definition_fragment = ''''''
+        play_fragment = ''''''
+        if len(params) == 1:
+            return self.readout_rect(params[0][0], length, params[0][1])
+        else:
+            n = len(params)
+            name = ''
+            nrOfsampl = 0
+            amplitude_i = 0
+            amplitude_q = 0
+            phaseOffset_i = 0
+            phaseOffset_q = 0
+            nrOfPeriods = 0
+
+            for param in params:
+                channel = param[0]
+                amplitude = param[1]
+                re_channel = self.channels[channel]
+                calib_dc = re_channel.parent.calib_dc()
+                calib_rf = re_channel.parent.calib_rf(re_channel)
+                name += channel + '_'
+                amplitude_i += amplitude * np.abs(calib_rf['I'])
+                amplitude_q += amplitude * np.abs(calib_rf['Q'])
+
+                phaseOffset_i += np.angle(calib_rf['I']) * 2
+                phaseOffset_q += np.angle(calib_rf['Q']) * 2
+
+                nrOfsampl = round((length) * re_channel.get_clock() / 16) * 16
+                nrOfPeriods += nrOfsampl * np.abs(re_channel.get_if()) / re_channel.get_clock()
+                awg_channel = re_channel.parent.sequencer_id
+                re_channel.parent.awg.set_amplitude(2 * awg_channel, 1)
+                re_channel.parent.awg.set_amplitude(2 * awg_channel + 1, 1)
+                re_channel.parent.awg.set_offset(channel=2 * awg_channel, offset=np.real(calib_dc['dc']))
+                re_channel.parent.awg.set_offset(channel=2 * awg_channel + 1, offset=np.imag(calib_dc['dc']))
+            definition_fragment += textwrap.dedent('''
+wave {name}_wave_i = join(sine({samples}, {amplitude_i}, {phaseOffset_i}, {nrOfPeriods}), zeros(16));
+wave {name}_wave_q = join(sine({samples}, {amplitude_q}, {phaseOffset_q}, {nrOfPeriods}), zeros(16));
+
+wave ro_wave_i = {name}_wave_i;
+wave ro_wave_q = {name}_wave_q;
+'''.format(name=name, samples=nrOfsampl, amplitude_i=amplitude_i, amplitude_q=amplitude_q,
+           phaseOffset_i=phaseOffset_i / n, phaseOffset_q=phaseOffset_q / n,
+           nrOfPeriods=int(np.round(nrOfPeriods / n))))
+
+            play_fragment += textwrap.dedent('''
+//
+    playWave(ro_wave_i_marker, ro_wave_q_marker);
+'''.format(name=name))
 
         return definition_fragment, play_fragment
 

@@ -120,8 +120,10 @@ def CPhase_calibration(device, qubit_ids, gate, amplitude, length, transition='0
                 if pulse_U == 'I':
                     self.prepare_seq.extend(self.pre_pulse1.get_pulse_sequence(0))
                 elif pulse_U == 'X':
-                    self.prepare_seq.extend(self.pre_pulse1.get_pulse_sequence(0))
                     self.prepare_seq.extend(self.pre_pulse2.get_pulse_sequence(0))
+                    self.prepare_seq.extend(self.pre_pulse2.get_pulse_sequence(0))
+                    self.prepare_seq.extend(self.pre_pulse1.get_pulse_sequence(0))
+
                 else:
                     raise ValueError('Prepulse can be only I or X!')
 

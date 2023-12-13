@@ -9,7 +9,7 @@ from . import readout_classifier
 class multiqubit_tomography:
     def __init__(self, device, measurer, ex_sequencers, readout_sequencer, pulse_generator, proj_seq,
                  qubit_ids, correspondence, reconstruction_basis={}, interleavers=None, virtual_phase1=0,
-                 virtual_phase2=0, sign=False):
+                 virtual_phase2=0, sign=False, repeats=1):
         # self.sz_measurer = sz_measurer
         # self.adc = adc
         self.pulse_generator = pulse_generator
@@ -26,6 +26,7 @@ class multiqubit_tomography:
         self.virtual_phase_1 = virtual_phase1
         self.virtual_phase_2 = virtual_phase2
         self.sign = sign
+        self.repeats = repeats
         # self.adc_reducer = data_reduce.data_reduce(self.sz_measurer.adc)
         # self.adc_reducer.filters['SZ'] = {k:v for k,v in self.sz_measurer.filter_binary.items()}
         # self.adc_reducer.filters['SZ']['filter'] = lambda x: 1-2*self.sz_measurer.filter_binary_func(x)
@@ -142,6 +143,7 @@ class multiqubit_tomography:
         if self.prepare_seq is not None:
             play_part = textwrap.dedent('''
 //  Tomography play part
+    cvar j;
     variable_register0 = getUserReg(var_reg0);
     executeTableEntry({random_gate_num});
     wait(5);
@@ -154,8 +156,14 @@ class multiqubit_tomography:
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register2);
     
+    for (j=0;j<{repeats}; j++){{
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry({two_qubit_gate_index});
+    }}
+    
+    //executeTableEntry({random_gate_num}+1);
+    //executeTableEntry({two_qubit_gate_index});
+    
     //Pulses
     //executeTableEntry({random_gate_num}+1);
     executeTableEntry(variable_register3);
@@ -165,7 +173,7 @@ class multiqubit_tomography:
     executeTableEntry(variable_register5);
 
     executeTableEntry({random_gate_num});
-    resetOscPhase();'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num=random_gate_num))
+    resetOscPhase();'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num=random_gate_num, repeats=self.repeats))
         else:
             play_part = textwrap.dedent('''
 // Tomography play part
