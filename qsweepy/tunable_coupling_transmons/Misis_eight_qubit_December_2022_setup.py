@@ -12,7 +12,7 @@ import qsweepy.instrument_drivers._QubitDAQ.driver as drv
 import numpy as np
 from time import sleep
 # import rpyc
-import visa
+import pyvisa as visa
 
 # device_settings = {  # 'vna_address': 'TCPIP0::10.20.61.157::inst0::INSTR',
 #     #'vna_address': 'TCPIP0::10.20.61.147::inst0::INSTR',

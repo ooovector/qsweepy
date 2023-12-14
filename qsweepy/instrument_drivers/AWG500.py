@@ -320,7 +320,7 @@ class AWG500(Instrument):
 	# setting AWG pulse
 	def set_waveform(self, waveform, channel):
 		import numpy as np
-		self.pulses[channel] = np.asarray(waveform*8127.5, dtype=np.int)
+		self.pulses[channel] = np.asarray(waveform*8127.5, dtype=int)
 		self.LoadRAM(channel, self.pulses[channel])
 
 	def get_waveform(self, channel_id):

@@ -231,8 +231,8 @@ class hardware_setup():
 
         for sequencer in range(4):
             self.hdawg.send_cur_prog(sequencer=sequencer)
-            self.hdawg.set_marker_out(channel=np.int(2 * sequencer), source=4)  # set marker 1 to awg mark out 1 for sequencer
-            self.hdawg.set_marker_out(channel=np.int(2 * sequencer + 1),
+            self.hdawg.set_marker_out(channel=int(2 * sequencer), source=4)  # set marker 1 to awg mark out 1 for sequencer
+            self.hdawg.set_marker_out(channel=int(2 * sequencer + 1),
                                       source=7)  # set marker 2 to awg mark out 2 for sequencer
         self.uhfqa.send_cur_prog(sequencer=0)
         self.uhfqa.set_marker_out(channel=0, source=32)  # set marker 1 to awg mark out 1 for sequencer

@@ -1,4 +1,4 @@
-import visa
+import pyvisa as visa
 import logging
 import numpy
 
@@ -28,7 +28,7 @@ class RSVNA():
 		
 	def ask(self, cmd):
 		#I want just ask it motherfucka!
-		return self._visainstrument.ask(cmd)
+		return self._visainstrument.query(cmd)
 
 	def query(self, cmd):
 		#I want just ask it motherfucka!
@@ -165,7 +165,7 @@ class RSVNA():
 		Output:
 			span (float) : Span in Hz
 		'''
-		span = self._visainstrument.ask('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.ask('SENS1:FREQ:SPAN?'))
+		span = self._visainstrument.query('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.ask('SENS1:FREQ:SPAN?'))
 		return span
 	
 	def set_startfreq(self, val):
@@ -194,7 +194,7 @@ class RSVNA():
 		Output:
 			span (float) : Start Frequency in Hz
 		'''
-		self._start = float(self._visainstrument.ask(':SENS%i:FREQ:STAR?' % (self._ci)))
+		self._start = float(self._visainstrument.query(':SENS%i:FREQ:STAR?' % (self._ci)))
 		return  self._start
 	
 	def get_centerfreq(self):
@@ -207,7 +207,7 @@ class RSVNA():
 		Output:
 			cf (float) :Center Frequency in Hz
 		'''
-		self._cwfreq = float(self._visainstrument.ask(':SENS%i:FREQ:CENT?'%(self._ci)))
+		self._cwfreq = float(self._visainstrument.query(':SENS%i:FREQ:CENT?'%(self._ci)))
 		return  self._cwfreq
 	
 	def set_stopfreq(self, val):
@@ -250,7 +250,7 @@ class RSVNA():
 		Output:
 			val (float) : Start Frequency in Hz
 		'''
-		self._stop = float(self._visainstrument.ask(':SENS%i:FREQ:STOP?' %(self._ci) ))
+		self._stop = float(self._visainstrument.query(':SENS%i:FREQ:STOP?' %(self._ci) ))
 		return  self._stop
 	
 	
@@ -262,7 +262,7 @@ class RSVNA():
 		return self._freqpoints
 	
 	def get_nop(self):
-		self._nop = int(self._visainstrument.ask(':SENSe%i:SWEep:POINts?'%self._ci))
+		self._nop = int(self._visainstrument.query(':SENSe%i:SWEep:POINts?'%self._ci))
 		return self._nop
 	
 	def get_points(self):

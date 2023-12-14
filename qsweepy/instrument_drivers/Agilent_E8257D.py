@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA	 02110-1301	 USA
 
 from qsweepy.instrument_drivers.instrument import Instrument
-import visa
+import pyvisa as visa
 import types
 import logging
 import numpy
@@ -112,7 +112,7 @@ class Agilent_E8257D(Instrument):
 			ampl (?) : power in ?
 		'''
 		logging.debug(__name__ + ' : get power')
-		return float(self._visainstrument.ask('POW:AMPL?'))
+		return float(self._visainstrument.query('POW:AMPL?'))
 
 	def do_set_power(self, amp):
 		'''
@@ -138,7 +138,7 @@ class Agilent_E8257D(Instrument):
 			phase (float) : Phase in radians
 		'''
 		logging.debug(__name__ + ' : get phase')
-		return float(self._visainstrument.ask('PHASE?'))
+		return float(self._visainstrument.query('PHASE?'))
 
 	def do_set_phase(self, phase):
 		'''
@@ -164,7 +164,7 @@ class Agilent_E8257D(Instrument):
 			freq (float) : Frequency in Hz
 		'''
 		logging.debug(__name__ + ' : get frequency')
-		return float(self._visainstrument.ask('FREQ:CW?'))
+		return float(self._visainstrument.query('FREQ:CW?'))
 
 	def do_set_frequency(self, freq):
 		'''
@@ -177,7 +177,7 @@ class Agilent_E8257D(Instrument):
 			None
 		'''
 		logging.debug(__name__ + ' : set frequency to %f' % freq)
-		self._visainstrument.ask('FREQ:CW %s;*OPC?' % freq)
+		self._visainstrument.query('FREQ:CW %s;*OPC?' % freq)
 
 	def do_get_status(self):
 		'''
@@ -190,7 +190,7 @@ class Agilent_E8257D(Instrument):
 			status (string) : 'On' or 'Off'
 		'''
 		logging.debug(__name__ + ' : get status')
-		stat = self._visainstrument.ask('OUTP?')
+		stat = self._visainstrument.query('OUTP?')
 		
 		if (stat[0]=='1' or stat == 1):
 		  return True

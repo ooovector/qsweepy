@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from qsweepy.instrument_drivers.instrument import Instrument
-import visa
+import pyvisa as visa
 import types
 import time
 import logging
@@ -101,11 +101,11 @@ class Yokogawa_GS210(Instrument):
 
     def get_id(self):
         '''Get basic info on device'''
-        return self._visainstrument.ask("*IDN?")
+        return self._visainstrument.query("*IDN?")
 
     def do_set_current(self, current):
         '''Set current'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
             print("Tough luck, mode is voltage source, cannot set current.")
             return False
         else:
@@ -117,14 +117,14 @@ class Yokogawa_GS210(Instrument):
 
     def do_get_current(self):
         '''Get current'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
             print("Tough luck, mode is voltage source, cannot get current.")
             return False
-        return float(self._visainstrument.ask("SOUR:LEVEL?"))
+        return float(self._visainstrument.query("SOUR:LEVEL?"))
 
     def do_set_voltage(self, voltage):
         '''Set voltage'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
             print("Tough luck, mode is current source, cannot get voltage.")
             return False
         else:
@@ -136,10 +136,10 @@ class Yokogawa_GS210(Instrument):
 
     def do_get_voltage(self):
         '''Get voltage'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
             print("Tough luck, mode is current source, cannot get voltage.")
             return False
-        return float(self._visainstrument.ask("SOUR:LEVEL?"))
+        return float(self._visainstrument.query("SOUR:LEVEL?"))
 
     def do_set_status(self, status):
         '''
@@ -158,40 +158,40 @@ class Yokogawa_GS210(Instrument):
 
     def do_get_voltage_compliance(self):
         '''Get compliance voltage'''
-        return float(self._visainstrument.ask("SOUR:PROT:VOLT?"))
+        return float(self._visainstrument.query("SOUR:PROT:VOLT?"))
 
     def do_set_voltage_compliance(self, compliance):
         '''Set compliance voltage'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
             print("Tough luck, mode is voltage source, cannot set voltage compliance.")
             return False
         self._visainstrument.write("SOUR:PROT:VOLT %e"%compliance)
 
     def do_get_current_compliance(self):
         '''Get compliance voltage'''
-        return float(self._visainstrument.ask("SOUR:PROT:CURR?"))
+        return float(self._visainstrument.query("SOUR:PROT:CURR?"))
 
     def do_set_current_compliance(self, compliance):
         '''Set compliance current'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
             print("Tough luck, mode is current source, cannot set current compliance.")
             return False
         self._visainstrument.write("SOUR:PROT:CURR %e"%compliance)
 
     def do_get_range(self):
         '''Get current range in A'''
-        currange = self._visainstrument.ask("SOUR:RANG?")[:-1]
+        currange = self._visainstrument.query("SOUR:RANG?")[:-1]
         return float(currange)
 
     def do_set_range(self, maxval):
         '''Set current range in A'''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
             if not (maxval in self.current_ranges_supported):
                 print("Given current range is invalid. Please enter valid current range in !!!Amperes!!!\nValid ranges are (in A): {0}".format(self.current_ranges_supported))
                 return False
             else:
                 self._visainstrument.write("SOUR:RANG %e"%maxval)
-        if(self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+        if(self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
             if not (maxval in self.voltage_ranges_supported):
                 print("Given voltage range is invalid. Please enter valid voltage range in !!!Volts!!!\nValid ranges are (in A): {0}".format(self.voltage_ranges_supported))
                 return False
@@ -218,7 +218,7 @@ class Yokogawa_GS210(Instrument):
         Returns:
             True if the mode was changed, False otherwise
         '''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
             return False
         else:
             self._visainstrument.write(":SOUR:FUNC VOLT")
@@ -232,7 +232,7 @@ class Yokogawa_GS210(Instrument):
         Returns:
             True if the mode was changed, False otherwise
         '''
-        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+        if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
             return False
         else:
             self._visainstrument.write(":SOUR:FUNC CURR")
@@ -241,7 +241,7 @@ class Yokogawa_GS210(Instrument):
 
     def set_current_limits(self, mincurrent = -1E-3, maxcurrent = 1E-3):
     	''' Sets a limits within the range if needed for safe sweeping'''
-    	if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+    	if (self._visainstrument.query(":SOUR:FUNC?") == "CURR\n"):
     		if mincurrent >= -1.2*self.get_range():
        			self._mincurrent = mincurrent
     		else:
@@ -255,7 +255,7 @@ class Yokogawa_GS210(Instrument):
 
     def set_voltage_limits(self, minvoltage = -1E-3, maxvoltage = 1E-3):
     	''' Sets a voltage limits within the range if needed for safe sweeping'''
-    	if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+    	if (self._visainstrument.query(":SOUR:FUNC?") == "VOLT\n"):
     		if minvoltage >= -1*self.get_range():
        			self._minvoltage = minvoltage
     		else:

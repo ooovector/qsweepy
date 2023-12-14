@@ -1,4 +1,4 @@
-import visa  # -> We use the VISA standard for communicating with
+import pyvisa as visa  # -> We use the VISA standard for communicating with
 # visa.log_to_screen()
 from qsweepy.instrument_drivers.instrument import Instrument
 # Actual Driver

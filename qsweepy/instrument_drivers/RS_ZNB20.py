@@ -19,7 +19,7 @@
 
 from qsweepy.instrument_drivers.instrument import Instrument
 from matplotlib import pyplot as plt
-import visa
+import pyvisa as visa
 import types
 import logging
 from time import sleep
@@ -207,7 +207,7 @@ class RS_ZNB20(Instrument):
 
 	def ask(self, cmd):
 	#I want just ask it motherfucka!
-		return self._visainstrument.ask(cmd)
+		return self._visainstrument.query(cmd)
 		
 	def write(self, cmd):
 	#I want just write it motherfucka!
@@ -226,7 +226,7 @@ class RS_ZNB20(Instrument):
 		
 		#defines the S21 measurement in the PNA X
 		
-		resp = self._visainstrument.ask('CALC:PAR:CAT?').strip('"')
+		resp = self._visainstrument.query('CALC:PAR:CAT?').strip('"')
 		names = resp.split(',')
 		for i in range(0, len(names), 2):
 			if names[i]=='my_ch1_{0}'.format(select):
@@ -240,13 +240,13 @@ class RS_ZNB20(Instrument):
 	def select_measurement(self,Mnum):
 		#Select Mnum = 1 after default preset
 		self._visainstrument.write("CALC:PAR:MNUM {:d}".format(Mnum) )
-		self._visainstrument.ask("*OPC?")
+		self._visainstrument.query("*OPC?")
 	'''
 	def set_measurement(self,Mtype):
 		#Mtype = "S11"|"S21"|"S22"|"S12"
 		#Select measurement before doing this
 		self._visainstrument.write("CALC:PAR:MOD "+Mtype)
-		self._visainstrument.ask("*OPC?")
+		self._visainstrument.query("*OPC?")
 		
 	def reset_windows(self):
 		self._visainstrument.write('DISP:WIND Off')
@@ -284,7 +284,7 @@ class RS_ZNB20(Instrument):
 		Output:
 			None
 		'''
-		return self._visainstrument.ask('SENS%i:FREQ:CW?' % (self._ci))
+		return self._visainstrument.query('SENS%i:FREQ:CW?' % (self._ci))
 	
 	def get_sweep(self):
 		self._visainstrument.write( "ABORT; INITiate:IMMediate;*wai")
@@ -294,11 +294,11 @@ class RS_ZNB20(Instrument):
 
 	def avg_status(self):
 		# this does not work the same way than the VNA:
-		#return int(self._visainstrument.ask(':SENS%i:AVER:COUN?' %(self._ci))
+		#return int(self._visainstrument.query(':SENS%i:AVER:COUN?' %(self._ci))
 		pass
 		
 	def get_avg_status(self):
-		return self._visainstrument.ask('STAT:OPER:AVER1:COND?')
+		return self._visainstrument.query('STAT:OPER:AVER1:COND?')
 			
 	def still_avg(self): 
 		if int(self.get_avg_status()) == 1: return True
@@ -377,9 +377,9 @@ class RS_ZNB20(Instrument):
 				time in ms
 		"""
 		#if self.get_average_mode() != "POIN":
-		#	return self.get_averages()*float(self._visainstrument.ask(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
+		#	return self.get_averages()*float(self._visainstrument.query(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
 		#else:
-		return float(self._visainstrument.ask(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
+		return float(self._visainstrument.query(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
 	###
 	# SET and GET functions
 	###
@@ -420,7 +420,7 @@ class RS_ZNB20(Instrument):
 		if self._zerospan:
 		  return 1
 		else:
-			self._nop = int(self._visainstrument.ask(':SENS%i:SWE:POIN?' %(self._ci)))	
+			self._nop = int(self._visainstrument.query(':SENS%i:SWE:POIN?' %(self._ci)))
 		return self._nop 
 	
 	def do_set_average_mode(self, mode):
@@ -430,7 +430,7 @@ class RS_ZNB20(Instrument):
 		self._visainstrument.write("SENS:AVER:MODE "+mode)
 
 	def do_get_average_mode(self):
-		return self._visainstrument.ask('SENS:AVER:MODE?')	   
+		return self._visainstrument.query('SENS:AVER:MODE?')
 
 	def do_set_average(self, status):
 		'''
@@ -462,7 +462,7 @@ class RS_ZNB20(Instrument):
 			Status of Averaging ('on' or 'off) (string)
 		'''
 		logging.debug(__name__ + ' : getting average status')
-		return bool(int(self._visainstrument.ask('SENS%i:AVER:STAT?' %(self._ci))))
+		return bool(int(self._visainstrument.query('SENS%i:AVER:STAT?' %(self._ci))))
 					
 	def do_set_averages(self, av):
 		'''
@@ -491,9 +491,9 @@ class RS_ZNB20(Instrument):
 		'''
 		logging.debug(__name__ + ' : getting Number of Averages')
 		if self._zerospan:
-		  return int(self._visainstrument.ask('SWE%i:POIN?' % self._ci))
+		  return int(self._visainstrument.query('SWE%i:POIN?' % self._ci))
 		else:
-		  return int(self._visainstrument.ask('SENS%i:AVER:COUN?' % self._ci))
+		  return int(self._visainstrument.query('SENS%i:AVER:COUN?' % self._ci))
 	
 	def do_set_power(self,pow):
 		'''
@@ -518,7 +518,7 @@ class RS_ZNB20(Instrument):
 			pow (float) : Power in dBm
 		'''
 		logging.debug(__name__ + ' : getting power')
-		return float(self._visainstrument.ask('SOUR%i:POW1:LEV:IMM:AMPL?' % (self._ci)))
+		return float(self._visainstrument.query('SOUR%i:POW1:LEV:IMM:AMPL?' % (self._ci)))
 		
 #Frequency	
 	def get_freqpoints(self):
@@ -569,7 +569,7 @@ class RS_ZNB20(Instrument):
 	
 	def do_get_cw_freq(self):
 		logging.debug(__name__ + ' : getting CW frequency')
-		return  float(self._visainstrument.ask('SENS%i:FREQ:CW?'%(self._ci)))
+		return  float(self._visainstrument.query('SENS%i:FREQ:CW?'%(self._ci)))
 		
 	def do_set_centerfreq(self,cf):
 		'''
@@ -597,7 +597,7 @@ class RS_ZNB20(Instrument):
 			cf (float) :Center Frequency in Hz
 		'''
 		logging.debug(__name__ + ' : getting center frequency')
-		self._cwfreq = float(self._visainstrument.ask('SENS%i:FREQ:CENT?'%(self._ci)))
+		self._cwfreq = float(self._visainstrument.query('SENS%i:FREQ:CENT?'%(self._ci)))
 		return  self._cwfreq
 		
 	def do_set_span(self,span):
@@ -626,7 +626,7 @@ class RS_ZNB20(Instrument):
 			span (float) : Span in Hz
 		'''
 		#logging.debug(__name__ + ' : getting center frequency')
-		span = self._visainstrument.ask('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.ask('SENS1:FREQ:SPAN?'))
+		span = self._visainstrument.query('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.ask('SENS1:FREQ:SPAN?'))
 		return span
 
 	
@@ -658,7 +658,7 @@ class RS_ZNB20(Instrument):
 			span (float) : Start Frequency in Hz
 		'''
 		logging.debug(__name__ + ' : getting start frequency')
-		self._start = float(self._visainstrument.ask('SENS%i:FREQ:STAR?' % (self._ci)))
+		self._start = float(self._visainstrument.query('SENS%i:FREQ:STAR?' % (self._ci)))
 		return  self._start
 
 	def do_set_stopfreq(self,val):
@@ -688,7 +688,7 @@ class RS_ZNB20(Instrument):
 			val (float) : Start Frequency in Hz
 		'''
 		logging.debug(__name__ + ' : getting stop frequency')
-		self._stop = float(self._visainstrument.ask('SENS%i:FREQ:STOP?' %(self._ci) ))
+		self._stop = float(self._visainstrument.query('SENS%i:FREQ:STOP?' %(self._ci) ))
 		return  self._stop
 			   
 	def do_set_bandwidth(self,band):
@@ -715,7 +715,7 @@ class RS_ZNB20(Instrument):
 		'''
 		logging.debug(__name__ + ' : getting bandwidth')
 		# getting value from instrument
-		return  float(self._visainstrument.ask('SENS%i:BWID:RES?'%self._ci))				
+		return  float(self._visainstrument.query('SENS%i:BWID:RES?'%self._ci))
 
 	def do_set_zerospan(self,val):
 		'''
@@ -792,7 +792,7 @@ class RS_ZNB20(Instrument):
 			source (string) : AUTO | MANual | EXTernal | REMote
 		'''
 		logging.debug(__name__ + ' : getting trigger source')
-		return self._visainstrument.ask('TRIG:SOUR?')		
+		return self._visainstrument.query('TRIG:SOUR?')
 		
 
 	def do_set_sweep_mode(self, mode):
@@ -803,7 +803,7 @@ class RS_ZNB20(Instrument):
 			raise ValueError('set_sweep_mode(mode): mode must be LIN | LOG | POW | CW | SEGM | PHASE')	
 	
 	def do_get_sweep_mode(self):
-		return self._visainstrument.ask('SENS:SWE:TYPE?')
+		return self._visainstrument.query('SENS:SWE:TYPE?')
 	
 	def do_set_channel_index(self,val):
 		'''
@@ -858,7 +858,7 @@ class RS_ZNB20(Instrument):
 			status (string) : 'On' or 'Off'
 		'''
 		logging.debug(__name__ + ' : get status')
-		stat = self._visainstrument.ask('OUTP?')
+		stat = self._visainstrument.query('OUTP?')
 
 		if (stat=='1' or stat == 1 or stat):
 		  return True
@@ -874,4 +874,4 @@ class RS_ZNB20(Instrument):
 	def write(self,msg):
 		return self._visainstrument.write(msg)	
 	def ask(self,msg):
-		return self._visainstrument.ask(msg)
+		return self._visainstrument.query(msg)

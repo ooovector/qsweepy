@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from qsweepy.instrument_drivers.instrument import Instrument
-import visa
+import pyvisa as visa
 import types
 import logging
 import struct
@@ -256,7 +256,7 @@ class Tektronix_AWG5014(Instrument):
 			state (int) : on (1) or off (0)
 		'''
 		logging.debug(__name__ + ' : Get channel output state')
-		return self._visainstrument.ask('OUTP%s:STAT?' % channel)
+		return self._visainstrument.query('OUTP%s:STAT?' % channel)
 
 	def do_set_file(self, waveform, channel):
 		'''
@@ -285,7 +285,7 @@ class Tektronix_AWG5014(Instrument):
 			waveform (str) : the waveform filename as loaded in waveform list
 		'''
 		logging.debug(__name__ + ' : Get the output waveform for channel %s' % channel)
-		return self._visainstrument.ask('SOUR%s:WAV?' % channel)
+		return self._visainstrument.query('SOUR%s:WAV?' % channel)
 
 	def do_get_wlist(self):
 		'''
@@ -296,10 +296,10 @@ class Tektronix_AWG5014(Instrument):
 		Output:
 			wlist (array) : the waveform list in an array.
 		'''
-		size = int(self._visainstrument.ask('WLIST:SIZE?'))
+		size = int(self._visainstrument.query('WLIST:SIZE?'))
 		wlist = []
 		for i in range(0, size):
-			wname = self._visainstrument.ask('WLIST:NAME? %f' % i)
+			wname = self._visainstrument.query('WLIST:NAME? %f' % i)
 			wname = wname.replace('"','')
 			wlist.append(wname)
 		return wlist
@@ -462,7 +462,7 @@ class Tektronix_AWG5014(Instrument):
 			mode (string) : 'Trig' or 'Cont' depending on the mode
 		'''
 		logging.debug(__name__  + ' : Get trigger mode from instrument')
-		return self._visainstrument.ask('AWGC:RMOD?')
+		return self._visainstrument.query('AWGC:RMOD?')
 
 	def do_get_trigger_impedance(self):
 		'''
@@ -475,7 +475,7 @@ class Tektronix_AWG5014(Instrument):
 			impedance (??) : 1e3 or 50 depending on the mode
 		'''
 		logging.debug(__name__  + ' : Get trigger impedance from instrument')
-		return self._visainstrument.ask('TRIG:IMP?')
+		return self._visainstrument.query('TRIG:IMP?')
 
 	def do_set_trigger_impedance(self, mod):
 		'''
@@ -505,7 +505,7 @@ class Tektronix_AWG5014(Instrument):
 			None
 		'''
 		logging.debug(__name__  + ' : Get trigger level from instrument')
-		return float(self._visainstrument.ask('TRIG:LEV?'))
+		return float(self._visainstrument.query('TRIG:LEV?'))
 
 	def do_set_trigger_level(self, level):
 		'''
@@ -594,9 +594,9 @@ class Tektronix_AWG5014(Instrument):
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
-		w = np.zeros((num_points,),dtype=np.float)
-		m1 = np.zeros((num_points,),dtype=np.int)
-		m2 = np.zeros((num_points,),dtype=np.int)
+		w = np.zeros((num_points,),dtype=float)
+		m1 = np.zeros((num_points,),dtype=int)
+		m2 = np.zeros((num_points,),dtype=int)
 		# add markers
 		if not(self._markers[channel-1] is None):
 			if len(self._markers[channel-1])<len(m1):
@@ -640,9 +640,9 @@ class Tektronix_AWG5014(Instrument):
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
-		w = np.zeros((num_points,),dtype=np.float)
-		m1 = np.zeros((num_points,),dtype=np.int)
-		m2 = np.zeros((num_points,),dtype=np.int)
+		w = np.zeros((num_points,),dtype=float)
+		m1 = np.zeros((num_points,),dtype=int)
+		m2 = np.zeros((num_points,),dtype=int)
 		# add markers
 		
 		if len(marker)<len(m1):
@@ -721,7 +721,7 @@ class Tektronix_AWG5014(Instrument):
 			logging.debug(__name__  + ' : File does not exist in memory, \
 			reading from instrument')
 			#there is no "MAIN". Fix this. N_N
-			lijst = self._visainstrument.ask('MMEM:CAT? "MAIN"')
+			lijst = self._visainstrument.query('MMEM:CAT? "MAIN"')
 			bool = False
 			bestand=""
 			for i in range(len(lijst)):
@@ -736,7 +736,7 @@ class Tektronix_AWG5014(Instrument):
 		if exists:
 			self._visainstrument.write('SOUR%s:FUNC:USER "%s"' % (channel, name))
 			
-			# data = self._visainstrument.ask('MMEM:DATA? "%s"' % name)
+			# data = self._visainstrument.query('MMEM:DATA? "%s"' % name)
 			# logging.debug(__name__  + ' : File exists on instrument, loading \
 			# into local memory')
 			# print (data)
@@ -795,7 +795,7 @@ class Tektronix_AWG5014(Instrument):
 		'''
 		logging.debug(__name__ + ' : Get amplitude of channel %s from instrument'
 			% channel)
-		return float(self._visainstrument.ask('SOUR%s:VOLT:LEV:IMM:AMPL?' % channel))
+		return float(self._visainstrument.query('SOUR%s:VOLT:LEV:IMM:AMPL?' % channel))
 
 	def do_set_amplitude(self, amp, channel):
 		'''
@@ -823,7 +823,7 @@ class Tektronix_AWG5014(Instrument):
 			offset (float) : offset of designated channel in Volts
 		'''
 		logging.debug(__name__ + ' : Get offset of channel %s' % channel)
-		return float(self._visainstrument.ask('SOUR%s:VOLT:LEV:IMM:OFFS?' % channel))
+		return float(self._visainstrument.query('SOUR%s:VOLT:LEV:IMM:OFFS?' % channel))
 
 	def do_set_offset(self, offset, channel):
 		'''
@@ -850,7 +850,7 @@ class Tektronix_AWG5014(Instrument):
 			low (float) : low level in Volts
 		'''
 		logging.debug(__name__ + ' : Get lower bound of marker1 of channel %s' % channel)
-		return float(self._visainstrument.ask('SOUR%s:MARK1:VOLT:LEV:IMM:LOW?' % channel))
+		return float(self._visainstrument.query('SOUR%s:MARK1:VOLT:LEV:IMM:LOW?' % channel))
 
 	def do_set_marker1_low(self, low, channel):
 		'''
@@ -878,7 +878,7 @@ class Tektronix_AWG5014(Instrument):
 			high (float) : high level in Volts
 		'''
 		logging.debug(__name__ + ' : Get upper bound of marker1 of channel %s' % channel)
-		return float(self._visainstrument.ask('SOUR%s:MARK1:VOLT:LEV:IMM:HIGH?' % channel))
+		return float(self._visainstrument.query('SOUR%s:MARK1:VOLT:LEV:IMM:HIGH?' % channel))
 
 	def do_set_marker1_high(self, high, channel):
 		'''
@@ -906,7 +906,7 @@ class Tektronix_AWG5014(Instrument):
 			low (float) : low level in Volts
 		'''
 		logging.debug(__name__ + ' : Get lower bound of marker2 of channel %s' % channel)
-		return float(self._visainstrument.ask('SOUR%s:MARK2:VOLT:LEV:IMM:LOW?' % channel))
+		return float(self._visainstrument.query('SOUR%s:MARK2:VOLT:LEV:IMM:LOW?' % channel))
 
 	def do_set_marker2_low(self, low, channel):
 		'''
@@ -934,7 +934,7 @@ class Tektronix_AWG5014(Instrument):
 			high (float) : high level in Volts
 		'''
 		logging.debug(__name__ + ' : Get upper bound of marker2 of channel %s' % channel)
-		return float(self._visainstrument.ask('SOUR%s:MARK2:VOLT:LEV:IMM:HIGH?' % channel))
+		return float(self._visainstrument.query('SOUR%s:MARK2:VOLT:LEV:IMM:HIGH?' % channel))
 
 	def do_set_marker2_high(self, high, channel):
 		'''
@@ -962,7 +962,7 @@ class Tektronix_AWG5014(Instrument):
 			None
 		'''
 		logging.debug(__name__ + ' : Get status of channel %s' % channel)
-		outp = self._visainstrument.ask('OUTP%s?' % channel)
+		outp = self._visainstrument.query('OUTP%s?' % channel)
 		if (outp=='0'):
 			return 0
 		elif (outp=='1'):
@@ -995,7 +995,7 @@ class Tektronix_AWG5014(Instrument):
 	#  Ask for string with filenames
 	def get_filenames(self):
 		logging.debug(__name__ + ' : Read filenames from instrument')
-		return self._visainstrument.ask('MMEM:CAT? "MAIN"')
+		return self._visainstrument.query('MMEM:CAT? "MAIN"')
 
 	# Send waveform to the device
 	def send_waveform(self,w,m1,m2,filename,clock):
