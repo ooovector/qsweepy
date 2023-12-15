@@ -476,4 +476,4 @@ class Signal_Hound_SA(Instrument):
 			# source (string) : AUTO | MANual | EXTernal | REMote
 		# '''
 		# logging.debug(__name__ + ' : getting trigger source')
-		# return self._visainstrument.ask('TRIG:SOUR?')        
+		# return self._visainstrument.query('TRIG:SOUR?')
