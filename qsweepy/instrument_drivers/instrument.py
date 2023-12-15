@@ -1013,7 +1013,7 @@ class Instrument():
 		if hasattr(f, '__doc__'):
 			options['doc'] = getattr(f, '__doc__')
 
-		options['argspec'] = self.get_argspec_dict(inspect.getargspec(f))
+		options['argspec'] = self.get_argspec_dict(inspect.getfullargspec(f))
 
 		self._functions[name] = options
 
