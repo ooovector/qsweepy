@@ -595,8 +595,8 @@ class Tektronix_AWG5014(Instrument):
 		# pad waveform with zeros
 		# or maybe something better?
 		w = np.zeros((num_points,),dtype=np.float)
-		m1 = np.zeros((num_points,),dtype=np.int)
-		m2 = np.zeros((num_points,),dtype=np.int)
+		m1 = np.zeros((num_points,),dtype=int)
+		m2 = np.zeros((num_points,),dtype=int)
 		# add markers
 		if not(self._markers[channel-1] is None):
 			if len(self._markers[channel-1])<len(m1):
@@ -641,8 +641,8 @@ class Tektronix_AWG5014(Instrument):
 		# pad waveform with zeros
 		# or maybe something better?
 		w = np.zeros((num_points,),dtype=np.float)
-		m1 = np.zeros((num_points,),dtype=np.int)
-		m2 = np.zeros((num_points,),dtype=np.int)
+		m1 = np.zeros((num_points,),dtype=int)
+		m2 = np.zeros((num_points,),dtype=int)
 		# add markers
 		
 		if len(marker)<len(m1):
