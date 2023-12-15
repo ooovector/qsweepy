@@ -594,7 +594,7 @@ class Tektronix_AWG5014(Instrument):
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
-		w = np.zeros((num_points,),dtype=np.float)
+		w = np.zeros((num_points,),dtype=float)
 		m1 = np.zeros((num_points,),dtype=int)
 		m2 = np.zeros((num_points,),dtype=int)
 		# add markers
@@ -640,7 +640,7 @@ class Tektronix_AWG5014(Instrument):
 		num_points = self.get_nop()
 		# pad waveform with zeros
 		# or maybe something better?
-		w = np.zeros((num_points,),dtype=np.float)
+		w = np.zeros((num_points,),dtype=float)
 		m1 = np.zeros((num_points,),dtype=int)
 		m2 = np.zeros((num_points,),dtype=int)
 		# add markers

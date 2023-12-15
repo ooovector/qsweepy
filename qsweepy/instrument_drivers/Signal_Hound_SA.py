@@ -145,8 +145,8 @@ class Signal_Hound_SA(Instrument):
 			while end < nop:
 				begin, end = _signal_hound.get_partial_sweep_32f(self._device, min, max)
 				plt.pause(0.05)
-			datamin += 10.**(np.asarray(max, dtype=np.float)/10.)
-			datamax += 10.**(np.asarray(min, dtype=np.float)/10.)
+			datamin += 10.**(np.asarray(max, dtype=float)/10.)
+			datamax += 10.**(np.asarray(min, dtype=float)/10.)
 			
 		datax = np.linspace(start_freq, start_freq+bin_size*(nop-1), nop)
 		datamin = datamin/self.averages
@@ -163,7 +163,7 @@ class Signal_Hound_SA(Instrument):
 		return {'Power':[('Frequency',self.get_freqpoints())]}
 		
 	def get_dtype(self):
-		return {'Power':np.float}
+		return {'Power':float}
 		
 	def get_opts(self):
 		return {'Power': {'log': 10}}
