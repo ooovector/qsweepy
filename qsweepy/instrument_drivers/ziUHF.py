@@ -324,7 +324,7 @@ class ziUHF(ZIDevice):
 
     @property
     def crosstalk_matrix(self) -> np.ndarray:
-        matrix = np.zeros((10, 10), np.float)
+        matrix = np.zeros((10, 10), float)
         for raw in range(10):
             for column in range(10):
                 matrix[raw][column] = self.daq.getDouble('/' + self.device + '/qas/0/crosstalk/rows/{}/cols/{}'.format(raw, column))

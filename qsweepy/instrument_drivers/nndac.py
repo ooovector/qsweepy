@@ -1,5 +1,5 @@
 from qsweepy.instrument_drivers.instrument import Instrument
-import visa
+import pyvisa as visa
 import numpy
 import time
 
@@ -19,22 +19,22 @@ class nndac(Instrument):
 		if numpy.abs(value) < self.max_abs:
 			#print ('Channel {}, current voltage: {}, setting: {}'.format(channel_number, self.cached_voltages[channel_number], value))
 			try:
-				self._visainstrument.ask('VOLT {:d},{:f}'.format(channel,value))
+				self._visainstrument.query('VOLT {:d},{:f}'.format(channel,value))
 			except:
 				time.sleep(1)
 				self._visainstrument = visa.ResourceManager().open_resource(self._resource)
 				time.sleep(1)
-				self._visainstrument.ask('VOLT {:d},{:f}'.format(channel,value))
+				self._visainstrument.query('VOLT {:d},{:f}'.format(channel,value))
 			self.cached_voltages[channel] = value
 			
 	def get_voltage(self,channel):
 		try:
-			return(float(self._visainstrument.ask('VOLT {:d}?'.format(channel))))
+			return(float(self._visainstrument.query('VOLT {:d}?'.format(channel))))
 		except:
 			time.sleep(1)
 			self._visainstrument = visa.ResourceManager().open_resource(self._resource)
 			time.sleep(1)
-			return(float(self._visainstrument.ask('VOLT {:d}?'.format(channel))))
+			return(float(self._visainstrument.query('VOLT {:d}?'.format(channel))))
 
 	def get_voltage_cache(self, channel):
 		return self.cached_voltages[channel]

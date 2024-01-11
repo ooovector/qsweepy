@@ -132,11 +132,11 @@ class paramp:
 
 	def get_dtype(self):
 		res =  {'S-parameter': np.complex,
-				'SNR': np.float,
-				'Pump_power': np.float,
-				'Bias': np.float}
+				'SNR': float,
+				'Pump_power': float,
+				'Bias': float}
 		if self.optimize_pump_frequency:
-			res['Pump_frequency'] = np.float
+			res['Pump_frequency'] = float
 		return res
 
 	def set_parameters(self, f, power, bias):

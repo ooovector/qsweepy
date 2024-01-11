@@ -254,7 +254,7 @@ def plot(selected_traces, cross_sections, db, max_data_size=None):
 				title_y = '{name} ({unit})'.format(name=parameter.name, unit=parameter.unit)
 				y_axis_id = parameter_id
 
-		data_flat = dataset.data[indexes]
+		data_flat = dataset.data[tuple(indexes)]
 		if trace['style'] != '2d':
 			trace_data = data_flat
 		else:
