@@ -331,7 +331,6 @@ def plot(selected_traces, cross_sections, db, max_data_size=None):
 
 	for measurement_id, measurement in measurements.items():
 		measurement.exdir.close()
-
 	return figure
 
 # def plot(selected_traces, cross_sections, db):

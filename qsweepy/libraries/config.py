@@ -1,6 +1,6 @@
 import os
 import sys
-from yaml import load, dump
+from yaml import load, dump, Loader
 import logging
 
 DEFAULT_CONFIG_FILENAME = 'qtlab.cfg'
@@ -62,7 +62,7 @@ class Config:
 		try:
 			logging.debug('Loading settings from %s', filename)
 			with open(filename, 'r') as f:
-				self._config.update(load(f))
+				self._config.update(load(f, Loader=Loader))
 		except Exception as e:
 			logging.warning('Unable to load config file %s', filename)
 			logging.warning(str(e))

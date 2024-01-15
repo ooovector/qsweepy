@@ -216,7 +216,9 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
                 'repeats': str(repeats),
-                'transition': transition,}
+                'transition': transition,
+                'amplitude': channel_amplitudes.metadata[exitation_channel],
+                'command_table': str(False)}
     metadata.update(additional_metadata)
 
     measurer.save_dot_prods = True

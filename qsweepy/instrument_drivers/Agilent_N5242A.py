@@ -240,6 +240,7 @@ class Agilent_N5242A(Instrument):
     def clear(self):
         self._visainstrument.write("*CLS")
 
+
     def select_measurement(self,Mnum):
         #Select Mnum = 1 after default preset
         self._visainstrument.write("CALC:PAR:MNUM {:d}".format(Mnum) )
@@ -333,7 +334,7 @@ class Agilent_N5242A(Instrument):
         #self.write("*OPC?")
         #Wait until ready and let plots to handle events (mouse drag and so on)
         #print(self.query("*ESR?"))
-        while int(self.query("*ESR?"))==0:
+        while int(self.ask("*ESR?"))==0:
             sleep(0.002)
 
 

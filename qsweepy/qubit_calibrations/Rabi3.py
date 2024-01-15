@@ -141,23 +141,30 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
             """
             definition_part = ''''''
 
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': {'version': '0.2'},
+            #                  'table': []}
             command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
-                             'header': {'version': '0.2'},
+                             'header': {'version': '1.0'},
                              'table': []}
+            #
+            # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
+            #                  'header': {'version': '1.2.0'},
+            #                  'table': []}
 
             assign_waveform_indexes = {}
             random_command_id = 2
             waveform_id = -1
+
+            # get information about I and Q phases from calibrations in case of iq excitation channel
+            phase0 = ex_seq.phaseI
+            phase1 = ex_seq.phaseQ
 
             # cycle for all prepare seqs
             for prep_seq in self.prepare_seq:
                 # cycle for all used hdawg
                 for seq_id, single_sequence in prep_seq[0][ex_seq.awg.device_id].items():
                     if seq_id == ex_seq.params['sequencer_id']:
-                        # get information about I and Q phases from calibrations in case of iq excitation channel
-                        phase0 = ex_seq.phaseI
-                        phase1 = ex_seq.phaseQ
-
 
                         # add waveform definition part
                         if single_sequence[0] not in definition_part:
@@ -209,8 +216,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     wait(variable_register0);
     executeTableEntry(11);
     
-    //executeTableEntry(0);
-    //resetOscPhase();
+    resetOscPhase();
     ''')
             self.instructions.append(command_table)
             print('Command table for sequencer id {}'.format(ex_seq.params['sequencer_id']), command_table)
@@ -239,7 +245,8 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
                 'repeats': str(repeats),
-                'amplitude': channel_amplitudes.metadata[excitation_channel]
+                'amplitude': channel_amplitudes.metadata[excitation_channel],
+                'command_table': str(True)
                 }
     metadata.update(additional_metadata)
 

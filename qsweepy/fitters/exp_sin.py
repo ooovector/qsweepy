@@ -84,17 +84,27 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
 
         from scipy.optimize import leastsq
         cost_mod = lambda p: (np.abs(model(x, p)-y)**2/np.log(np.sum(np.std(model(x, p)**2, axis=1)))).ravel()
-        cost = lambda p: (np.abs(model(x, p) - y) ** 2).ravel()
+        residuals = lambda p: (model(x, p) - y).ravel()
+        cost = lambda p: np.abs(residuals(p))**2
         fitresults = leastsq (cost_mod, p0, maxfev=200)
+        fitresults_full = leastsq(residuals, fitresults[0], full_output=True)
         #print (np.std(model(x, p0))**2, axis=1)
         if mode == 'sync':
-            parameters_new = {'phi':fitresults[0][0], 'f':fitresults[0][1], 'T': fitresults[0][2], 'inf': fitresults[0][3], 'A': fitresults[0][4:]}
+            parameters_new = {'phi':fitresults[0][0],
+                              'f':fitresults[0][1],
+                              'T': fitresults[0][2],
+                              'inf': fitresults[0][3],
+                              'A': fitresults[0][4:]
+                              }
         elif mode == 'unsync':
             A_inf = fitresults[0][3:]
-            parameters_new = {'phi': fitresults[0][0], 'f': fitresults[0][1], 'T': fitresults[0][2],
-                              'inf': A_inf[:len(A_inf)//2], 'A': A_inf[len(A_inf)//2:]}
+            parameters_new = {'phi': fitresults[0][0],
+                              'f': fitresults[0][1],
+                              'T': fitresults[0][2],
+                              'inf': A_inf[:len(A_inf)//2],
+                              'A': A_inf[len(A_inf)//2:]}
 
-
+        mse = np.sum(cost(fitresults[0])) / (len(x) - len(p0))
         MSE_rel_calculator = lambda parameters: np.sum(cost(parameters_flat(parameters)))/np.sum(np.abs(y.T-np.mean(y, axis=1))**2)
 
         MSE_rel_new = MSE_rel_calculator(parameters_new)
@@ -128,14 +138,48 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         parameters['phi'] -= np.floor(parameters['phi']/(2*np.pi)+1.)*2*np.pi
 
         p0 = parameters_flat(parameters)
-        fitresults = leastsq (cost, p0, maxfev=200)
+        fitresults = leastsq(cost, p0, maxfev=200)
         if mode == 'sync':
-            parameters = {'phi':fitresults[0][0], 'f':fitresults[0][1], 'T': fitresults[0][2], 'inf': fitresults[0][3], 'A': fitresults[0][4:]}
+            parameters = {'phi':fitresults[0][0],
+                          'f':fitresults[0][1],
+                          'T': fitresults[0][2],
+                          'inf': fitresults[0][3],
+                          'A': fitresults[0][4:]}
+            hessian = fitresults_full[1]
+
+            if hessian is None:
+                hessian = np.nan*np.ones(len(fitresults[0]))
+            error_estimates = np.sqrt(np.diag(mse * hessian))
+            parameters.update({'phi_error': error_estimates[0],
+                               'f_error': error_estimates[1],
+                               'T_error': error_estimates[2],
+                               'inf_error': error_estimates[3],
+                               'A_error': error_estimates[4:]})
         elif mode == 'unsync':
             A_inf = fitresults[0][3:]
-            parameters = {'phi': fitresults[0][0], 'f': fitresults[0][1], 'T': fitresults[0][2],
-                              'inf': A_inf[:len(A_inf)//2], 'A': A_inf[len(A_inf)//2:]}
+            parameters = {'phi': fitresults[0][0],
+                          'f': fitresults[0][1],
+                          'T': fitresults[0][2],
+                          'inf': A_inf[:len(A_inf)//2],
+                          'A': A_inf[len(A_inf)//2:]}
+            hessian = fitresults_full[1]
 
+            if hessian is None:
+                hessian = np.nan*np.ones(len(fitresults[0]))
+            error_estimates = np.sqrt(np.diag(mse * hessian))
+
+            A_inf_errors = error_estimates[3:]
+            # TODO: check these two variants
+            # parameters.update({'phi_error': error_estimates[0],
+            #                    'f_error': error_estimates[1],
+            #                    'T_error': error_estimates[2],
+            #                    'inf_error': A_inf_errors[:len(A_inf) // 2],
+            #                    'A_error': A_inf_errors[len(A_inf) // 2:]})
+            parameters.update({'phi_error': error_estimates[0],
+                               'f_error': error_estimates[1],
+                               'T_error': error_estimates[2],
+                               'inf_error': error_estimates[3],
+                               'A_error': error_estimates[4:]})
 
         #sampling fitted curve
         fitted_curve = model(fit_dataset.resample_x_fit(x_full), parameters_flat(parameters))
@@ -148,14 +192,31 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         parameters['points_per_period'] = 1/((x[1]-x[0])*parameters['f'])
         parameters['decays_in_scan_length'] = (np.max(x)-np.min(x))/parameters['T']
     except IndexError as e:
-        #traceback.print_exc()
+        traceback.print_exc()
         fitted_curve = np.zeros((y_full.shape[0], len(fit_dataset.resample_x_fit(x_full))))*np.nan
         MSE_rel = np.nan
         if mode == 'sync':
-            parameters = {'phi':np.nan, 'f':np.nan, 'T': np.nan, 'inf':np.nan, 'A':np.asarray([np.nan]*y_full.shape[0])}
+            parameters = {'phi': np.nan,
+                          'f': np.nan,
+                          'T': np.nan,
+                          'inf': np.nan,
+                          'A': np.asarray([np.nan]*y_full.shape[0]),
+                          'phi_error': np.nan,
+                          'f_error': np.nan,
+                          'T_error': np.nan,
+                          'inf_error': np.nan,
+                          'A_error': np.asarray([np.nan]*y_full.shape[0])}
         elif mode == 'unsync':
-            parameters = {'phi': np.nan, 'f': np.nan, 'T': np.nan, 'inf': np.asarray([np.nan] * y_full.shape[0]),
-                          'A': np.asarray([np.nan] * y_full.shape[0])}
+            parameters = {'phi': np.nan,
+                          'f': np.nan,
+                          'T': np.nan,
+                          'inf': np.asarray([np.nan] * y_full.shape[0]),
+                          'A': np.asarray([np.nan] * y_full.shape[0]),
+                          'phi_error': np.nan,
+                          'f_error': np.nan,
+                          'T_error': np.nan,
+                          'inf_error': np.asarray([np.nan] * y_full.shape[0]),
+                          'A_error': np.asarray([np.nan]*y_full.shape[0])}
 
         parameters['MSE_rel'] = np.nan
         parameters['num_periods_decay'] = np.nan

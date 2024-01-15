@@ -440,7 +440,7 @@ class AWGIQMulti:
             return result
 
         #solution = fmin(tfunc, [0.3,0.3], maxiter=30, xtol=2**(-14))
-        solution = fmin(tfunc, [0.1,0.1], maxiter=50, xtol=2**(-13))
+        solution = fmin(tfunc, [0.1, 0.1], maxiter=50, xtol=2**(-13))
         x = self.clip_dc(solution[0]+1j*solution[1])
         self.zero = x
 

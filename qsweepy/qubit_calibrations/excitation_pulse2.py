@@ -53,13 +53,16 @@ def get_vf(device, qubit_id, freq):
     return sequence_f
 
 
-def get_s(device, qubit_id, phase=np.pi / 2., transition='01', fast_control = False,  gauss=False, sort='best', reference_pulse=None):
-    if not reference_pulse:
-        pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition, gauss=gauss, sort=sort)
-    else:
-        pi2 = reference_pulse
-    channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
-        device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
+def get_s(device, qubit_id, phase=np.pi / 2., transition='01', fast_control = False, channel_amplitudes_=None,
+          gauss=False, sort='best', reference_pulse=None):
+    resolution = 6
+    if not channel_amplitudes_:
+        if not reference_pulse:
+            pi2 = get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition, gauss=gauss, sort=sort)
+        else:
+            pi2 = reference_pulse
+        channel_amplitudes_ = channel_amplitudes.channel_amplitudes(
+            device.exdir_db.select_measurement_by_id(pi2.references['channel_amplitudes']))
 
     s_pulse = [(c, device.pg.virtual_z, phase, fast_control) for c, a in channel_amplitudes_.items()]
 

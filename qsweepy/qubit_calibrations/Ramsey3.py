@@ -81,8 +81,16 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
                 self.incrementation_type = 'quasi-binary'
 
             self.prepare_seq = []
+            self.instructions_dict = {'rf_calibration': 0, 'ref_incrementation': 1}
+
             self.prepare_seq.append(ex_pulse.get_pulse_sequence(0)[0])
+            self.instructions_dict.update({'rx2': 2})
+
             self.prepare_seq.append(device.pg.pmulti(device, self.lengths))
+
+            for i in range(9):
+                self.instructions_dict.update({'w' + str(i): 3 + i})
+            self.instructions_dict.update({'tail_fall': list(self.instructions_dict.values())[-1] + 1})
 
         def virtual_phase(self, length):
             """
@@ -98,8 +106,12 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
             """
             definition_part = ''''''
 
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': {'version': '0.2'},
+            #                  'table': []}
+
             command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
-                             'header': {'version': '0.2'},
+                             'header': {'version': '1.0'},
                              'table': []}
 
             # get information about I and Q phases from calibrations in case of iq excitation channel
@@ -193,21 +205,21 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
 
             play_part = textwrap.dedent('''
 // Table entry play part
-    executeTableEntry(0);
-    executeTableEntry(1);
+    executeTableEntry({rf_calibration});
+    executeTableEntry({ref_incrementation});
     
-    executeTableEntry(2);
+    executeTableEntry({rx2});
     
     executeTableEntry(variable_register1+3);
     wait(variable_register0);
-    executeTableEntry(13);
+    executeTableEntry({tail_fall});
     
-    executeTableEntry(13+variable_register2);
-    executeTableEntry(2);
+    executeTableEntry({tail_fall} + 1 + variable_register2);
+    executeTableEntry({rx2});
     
-    //executeTableEntry(0);
-    //resetOscPhase();
-''')
+    executeTableEntry({rf_calibration});
+    resetOscPhase();
+''').format(**self.instructions_dict)
             self.instructions.append(command_table)
             print('Command table for sequencer id {}'.format(ex_seq.params['sequencer_id']), command_table)
             return definition_part, play_part

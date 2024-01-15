@@ -228,81 +228,23 @@ class hardware_setup():
         self.awg_tek.do_set_output(1, 3)
         self.awg_tek.do_set_output(1, 4)
 
-        # self.q3z = awg_channel(self.awg_tek, 1)
-        # self.q4z = awg_channel(self.awg_tek, 2)
-        # self.q1z = awg_channel(self.awg_tek, 3)
-        # self.q2z = awg_channel(self.awg_tek, 4)
-
-        # self.q6z = awg_channel(self.awg_tek, 1)
-        # self.q7z = awg_channel(self.awg_tek, 2)
-
-        # self.q7z = awg_channel(self.awg_tek, 1)
-        # self.q6z = awg_channel(self.awg_tek, 2)
-        #
-        # self.q5z = awg_channel(self.awg_tek, 3)
-        # self.q8z = awg_channel(self.awg_tek, 4)
-        #
         self.c7z = awg_channel(self.hdawg1, 6)
-        self.c6z = awg_channel(self.hdawg1, 7)
+        self.c8z = awg_channel(self.hdawg1, 7)
 
-        self.q5z = awg_channel(self.awg_tek, 2)
+        self.q7z = awg_channel(self.awg_tek, 2)
         self.q6z = awg_channel(self.awg_tek, 1)
         self.q8z = awg_channel(self.awg_tek, 3)
-        self.q7z = awg_channel(self.awg_tek, 4)
+        self.q5z = awg_channel(self.awg_tek, 3)
 
 
-        # self.c7z = awg_channel(self.hdawg1, 6)
-
-        # self.q6z = awg_channel(self.awg_tek, 2)
-        # self.q4z = awg_channel(self.awg_tek, 1)
-        #
-        # self.q7z = awg_channel(self.awg_tek, 3)
-        # self.q8z =  awg_channel(self.awg_tek, 4)
-
-
-        # self.c8z =  awg_channel(self.awg_tek, 3)
-        # self.c10z = awg_channel(self.awg_tek, 4)
-
-        # self.c8z = awg_channel(self.awg_tek, 3)
-        # self.c5z = awg_channel(self.awg_tek, 4)
-        # self.c8z = awg_channel(self.hdawg1, 6)
-        # self.c6z = awg_channel(self.hdawg1, 6)
-        # self.q5z = awg_channel(self.hdawg1, 4)
-        # self.q6z = awg_channel(self.hdawg1, 5)
-        # self.c7z = awg_channel(self.hdawg1, 3)
-        # self.q4z = awg_channel(self.awg_tek, 2)
-
-        # self.c2z = awg_channel(self.hdawg2, 0)
-        # self.c3z = awg_channel(self.hdawg2, 1)
-        # self.c4z = awg_channel(self.hdawg2, 2)
-        # self.c9z = awg_channel(self.hdawg2, 3)
-        # self.c10z = awg_channel(self.hdawg2, 4)
 
         self.c7z.set_offset(0)
-        self.c6z.set_offset(0)
-        # self.q1z.set_offset(0)
-        # self.q2z.set_offset(0)
-        # self.q3z.set_offset(0)
-        # self.q4z.set_offset(0)
-        self.q6z.set_offset(0)
+        self.c8z.set_offset(0)
         self.q7z.set_offset(0)
-        self.q5z.set_offset(0)
+        self.q6z.set_offset(0)
         self.q8z.set_offset(0)
-        # self.q8z.set_offset(0)
+        self.q5z.set_offset(0)
 
-        # self.c10z.set_offset(0)
-        # self.c5z.set_offset(0)
-        # self.c3z.set_offset(0)
-        # self.c7z.set_offset(0)
-        # self.c6z.set_offset(0)
-        # self.c7z.set_offset(0)
-
-
-        # self.c2z.set_offset(0)
-        # self.c3z.set_offset(0)
-        # self.c4z.set_offset(0)
-        # self.c9z.set_offset(0)
-        # self.c10z.set_offset(0)
 
         self.adc_device = drv.Device(self.device_settings['adc_address'])
         self.data_capture_timeout = self.device_settings['adc_timeout']
@@ -405,8 +347,9 @@ class hardware_setup():
         self.lo_vna.set_status(1)  # turn on lo1 output
         self.lo_vna.set_power(self.pulsed_settings['vna_power'])
         self.lo_vna.set_frequency(self.pulsed_settings['pna_freq'])
-        self.pna.write("SOUR1:POW1:MODE OFF")
-        self.pna.write("SOUR1:POW2:MODE OFF")
+        if self.pna:
+            self.pna.write("SOUR1:POW1:MODE OFF")
+            self.pna.write("SOUR1:POW2:MODE OFF")
 
         #
         # self.pna.do_set_status(1)
@@ -418,10 +361,6 @@ class hardware_setup():
         # self.pna.set_sweep_mode("CW")  # privet RS ZVB20
         # # self.pna.set_trigger_source("ON")
         # self.pna.set_frequency(self.pulsed_settings['pna_freq'])
-
-
-
-
 
         self.hdawg1.stop()
         # self.hdawg2.stop()
@@ -553,29 +492,30 @@ class hardware_setup():
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg2, sequencer_id=1,
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
-                           'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
-                                                                                lo=self.lo_q1, exdir_db=exdir_db),
-                           # 'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           # 'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
+                           'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                                                                                lo=self.lo_q1, exdir_db=exdir_db),
                            # 'iq_ex4': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex5': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
+                           'iq_ex7': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
                                                                                 lo=self.lo_q2, exdir_db=exdir_db)
                            }
 
         self.iq_devices['iq_ro'].name = 'ro'
         # self.iq_devices['iq_ex1'].name = 'ex1'
-        self.iq_devices['iq_ex6'].name = 'ex6'
-        self.iq_devices['iq_ex5'].name = 'ex5'
-        # self.iq_devices['iq_ex7_12'].name = 'ex7_12'
+        # self.iq_devices['iq_ex6'].name = 'ex6'
+        # self.iq_devices['iq_ex5'].name = 'ex5'
+        self.iq_devices['iq_ex7'].name = 'ex7'
+        self.iq_devices['iq_ex7_12'].name = 'ex7_12'
         # self.iq_devices['iq_ex4'].name = 'ex4'
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex6'].name = 'ex6'
         self.iq_devices['iq_ro'].sa = self.sa
         # self.iq_devices['iq_ex1'].sa = self.sa
-        self.iq_devices['iq_ex6'].sa = self.sa
-        self.iq_devices['iq_ex5'].sa = self.sa
-        # self.iq_devices['iq_ex7_12'].sa = self.sa
+        # self.iq_devices['iq_ex6'].sa = self.sa
+        self.iq_devices['iq_ex7'].sa = self.sa
+        self.iq_devices['iq_ex7_12'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
         # self.iq_devices['iq_ex2'].sa = self.sa
         # self.iq_devices['iq_ex4'].sa = self.sa
@@ -594,7 +534,7 @@ class hardware_setup():
                               # 'c5z':awg_channel(self.hdawg1, 6),
                               # 'c6z':awg_channel(self.hdawg1, 7),}
                               'c7z':awg_channel(self.hdawg1, 6),
-                              'c6z':awg_channel(self.hdawg1, 7),
+                              'c8z':awg_channel(self.hdawg1, 7),
                               # 'c8z':awg_channel(self.hdawg1, 7),
         }
 

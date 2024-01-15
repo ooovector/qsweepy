@@ -38,7 +38,8 @@ class Sweeper:
         self.on_finish = [# (sweep_fit.fit_on_finish, (db, )),
                           (db.update_in_database,tuple()),
                           (save_exdir.close_exdir, tuple()),
-                          (plotly_plot.save_default_plot,(self.db,))]
+                          (plotly_plot.save_default_plot,(self.db,))
+        ]
 
         self.on_start_fit = [(lambda x: db.create_in_database(x.fit), tuple()),
                              (lambda x: save_exdir.save_exdir(x.fit, True), tuple()),
@@ -50,7 +51,8 @@ class Sweeper:
 
         self.on_finish_fit = [(lambda x: db.update_in_database(x.fit), tuple()),
                               (lambda x: save_exdir.close_exdir(x.fit), tuple()),
-                              (lambda x: plotly_plot.save_default_plot(x, db), tuple())]
+                              (lambda x: plotly_plot.save_default_plot(x, db), tuple())
+                              ]
 
     def sweep(self, *args, on_start=[], on_update=[], on_finish=[], **kwargs):
         """

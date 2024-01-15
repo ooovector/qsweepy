@@ -3,14 +3,23 @@ import pandas as pd
 from qsweepy.ponyfiles import data_structures
 
 
-def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-1, sweep_parameter_ids=[], allow_unpack_complex=True, use_resample_x_fit=True, mode=None) -> data_structures.MeasurementState:
-    ''' Fits an n-d array of measurements with 1d curve, for example exp-sin or exp (theoretical curve for Rabi, Ramsey, delay in Markov approximation).
+def fit_dataset_1d(source_measurement,
+                   dataset_name,
+                   fitter,
+                   time_parameter_id=-1,
+                   sweep_parameter_ids=[],
+                   allow_unpack_complex=True,
+                   use_resample_x_fit=True,
+                   mode=None) -> data_structures.MeasurementState:
+    ''' Fits an n-d array of measurements with 1d curve, for example exp-sin or
+        exp (theoretical curve for Rabi, Ramsey, delay in Markov approximation).
         This function is a frontend that uses data_structures, specifically, measurement_parameter.
 
         :param measurement_dataset dataset: source data
         :param int time_parameter_id: id of the parameter that is the "t" in the sine and exponent
-        :param iterable_of_ints linear_parameter_ids: ids of the parameters that enumerate different measurements. For example, if you
-        measure the V(t_ro) of dispersive readout after a Rabi pulse (of length t_ex), each t_r point contains signal
+        :param iterable_of_ints linear_parameter_ids: ids of the parameters that enumerate different measurements.
+               For example, if you measure the V(t_ro) of dispersive readout after a Rabi pulse (of length t_ex),
+               each t_r point contains signal
         that performs Rabi oscillations. t_ro would be a linear_parameter (see example)
         :param iterable_of_ints sweep_parameter_ids: ids of the parameters that are
 
@@ -27,7 +36,7 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
     linear_parameter_ids=list(set(np.arange(len(data.shape)))-set([time_parameter_id])-set(sweep_parameter_ids_positive))
     initial_axes_order = [(0, p) for p in sweep_parameter_ids_positive]+[(1, p) for p in linear_parameter_ids]+[(2, time_parameter_id)]
     initial_axes_order = [(a[0],a[1]) for i, a in enumerate(initial_axes_order)]
-    print('initial_axes_order', initial_axes_order)
+    # print('initial_axes_order', initial_axes_order)
     sorted_axes_order = sorted(initial_axes_order)
 
     transposition = [a[1] for a in sorted_axes_order]
@@ -191,8 +200,10 @@ def fit_dataset_1d(source_measurement, dataset_name, fitter, time_parameter_id=-
             #A_unsorted = A_sorted
             amplitudes_unsorted = amplitudes_sorted
 
-        if len(sweep_parameter_shape):								fit_parameters_unsorted = {k: np.transpose(v, order_fit_parameters) for k,v in fit_parameters_sorted.items()}
-        else:														fit_parameters_unsorted = fit_parameters_sorted
+        if len(sweep_parameter_shape):
+            fit_parameters_unsorted = {k: np.transpose(v, order_fit_parameters) for k,v in fit_parameters_sorted.items()}
+        else:
+            fit_parameters_unsorted = fit_parameters_sorted
         #print('fit_parameters_pd', fit_parameters_pd)
         #print ('fit_parameters_unsorted ', fit_parameters_unsorted)
         #print ('amplitides_unsorted ', amplitudes_unsorted)

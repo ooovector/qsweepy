@@ -146,9 +146,12 @@ def gauss_hd_ape_alpha(device, qubit_id, alphas, num_pulses, ex_sequencers, cont
         def return_hdawg_program(self, ex_seq):
 
             definition_part = ''''''
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': { 'version': '0.2' },
+            #                  'table': [  ] }
             command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
-                             'header': { 'version': '0.2' },
-                             'table': [  ] }
+                             'header': {'version': '1.0'},
+                             'table': []}
             # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
             #                  'header': {'version': '1.0.0'},
             #                  'table': []}
@@ -331,9 +334,12 @@ def gauss_hd_ape_phase(device, qubit_id, transition, phases, num_pulses, ex_sequ
         def return_hdawg_program(self, ex_seq):
 
             definition_part = ''''''
-            command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
-                             "header": { "version": "0.2" },
-                             "table": [  ] }
+            # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+            #                  "header": { "version": "0.2" },
+            #                  "table": [  ] }
+            command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+                             'header': {'version': '1.0'},
+                             'table': []}
             # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
             #                  'header': {'version': '1.0.0'},
             #                  'table': []}
@@ -668,8 +674,16 @@ def gauss_hd_Rabi_amplitude(device, qubit_id, transition, channel_amplitudes, ro
             definition_part = ''''''
 
 
-            command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
-                             'header': {'version': '0.2'},
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': {'version': '0.2'},
+            #                  'table': []}
+
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': {'version': '1.0'},
+            #                  'table': []}
+
+            command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
+                             'header': {'version': '1.0.0'},
                              'table': []}
 
             # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',

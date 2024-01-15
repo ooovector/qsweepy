@@ -211,7 +211,7 @@ class modem_readout(data_reduce.data_reduce):
         dac_sequence_Q, dac_sequence_adc_time_Q = self.random_alignment_sequence(ex_channel,
                                                                                  shot_noise_time=shot_noise_time)
 
-        dac_sequence = np.asarray(dac_sequence_I + 1j * dac_sequence_Q, dtype=np.complex) * amplitude
+        dac_sequence = np.asarray(dac_sequence_I + 1j * dac_sequence_Q, dtype=complex) * amplitude
         dac_sequence_adc_time = dac_sequence_adc_time_I + 1j * dac_sequence_adc_time_Q
         demodulation = self.demodulation(ex_channel, sign=True)
         # set sequence in sequencer with amplitude & phase

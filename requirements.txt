@@ -7,3 +7,6 @@ scikit-learn
 psycopg2
 pandas
 exdir
+ftd2xx
+pyvisa
+zhinst

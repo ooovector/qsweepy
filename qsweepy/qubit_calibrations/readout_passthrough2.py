@@ -75,7 +75,7 @@ def readout_passthrough(device, qubit_id, length, amplitudes):
         parameters = [MeasurementParameter(values=amplitudes[2:], name='amplitude', setter=False)]
         measurement.datasets['cos_dist'] = MeasurementDataset(parameters, np.zeros(len(amplitudes) - 2) * np.nan)
 
-
+    print('amplitudes', len(amplitudes))
     measurement = device.sweeper.sweep(mean_sample,
                                        (amplitudes, set_amplitude, 'amplitude'),
                                        # (lengths, set_pulse_length, 'length'),
