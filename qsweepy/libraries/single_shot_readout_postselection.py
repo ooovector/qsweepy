@@ -261,7 +261,7 @@ class SingleShotReadoutPostSelection:
             dtypes.update(avg_samples)
 
         if self.dbg_storage_samples:
-            dtypes['x'] = np.complex64
+            dtypes['x'] = complex64
             dtypes['y'] = float
 
         if self.measure_features:

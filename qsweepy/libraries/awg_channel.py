@@ -37,11 +37,11 @@ class awg_channel_carrier:
 		self.status = status
 	def get_waveform(self):
 		#if not hasattr(self, 'waveform'):
-			#self.waveform = np.zeros(self.get_nop(), dtype=np.complex)
+			#self.waveform = np.zeros(self.get_nop(), dtype=complex)
 		if self.waveform is not None:
 			return self.waveform
 		else:
-			return np.zeros(self.get_nop(),dtype=np.complex)
+			return np.zeros(self.get_nop(),dtype=complex)
 	def set_waveform(self, waveform):
 		#self.waveform = waveform
 		#plt.figure(self.channel)
@@ -107,7 +107,7 @@ class awg_channel:
 		self.status = status
 	#def get_waveform(self):
 	#	#if not hasattr(self, 'waveform'):
-	#		#self.waveform = np.zeros(self.get_nop(), dtype=np.complex)
+	#		#self.waveform = np.zeros(self.get_nop(), dtype=complex)
 	#	return self.awg.get_waveform(channel=self.channel)
 	#def set_waveform(self, waveform):
 	#	#self.waveform = waveform

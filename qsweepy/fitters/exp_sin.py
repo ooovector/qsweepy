@@ -21,7 +21,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
     x = x[:first_nan]
     y = y[:, :first_nan]
     try:
-        if len(x) < 15:
+        if len(x) < 7:
             raise IndexError
 
         # defining model for fit
@@ -145,16 +145,17 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
                           'T': fitresults[0][2],
                           'inf': fitresults[0][3],
                           'A': fitresults[0][4:]}
-            hessian = fitresults_full[1]
-
-            if hessian is None:
-                hessian = np.nan*np.ones(len(fitresults[0]))
-            error_estimates = np.sqrt(np.diag(mse * hessian))
-            parameters.update({'phi_error': error_estimates[0],
-                               'f_error': error_estimates[1],
-                               'T_error': error_estimates[2],
-                               'inf_error': error_estimates[3],
-                               'A_error': error_estimates[4:]})
+            # if not np.iscomplexobj(y):
+            #     hessian = fitresults_full[1]
+            #
+            #     if hessian is None:
+            #         hessian = np.nan*np.ones(len(fitresults[0]))
+            #     error_estimates = np.sqrt(np.diag(mse * hessian))
+            #     parameters.update({'phi_error': error_estimates[0],
+            #                        'f_error': error_estimates[1],
+            #                        'T_error': error_estimates[2],
+            #                        'inf_error': error_estimates[3],
+            #                        'A_error': error_estimates[4:]})
         elif mode == 'unsync':
             A_inf = fitresults[0][3:]
             parameters = {'phi': fitresults[0][0],
@@ -162,24 +163,25 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
                           'T': fitresults[0][2],
                           'inf': A_inf[:len(A_inf)//2],
                           'A': A_inf[len(A_inf)//2:]}
-            hessian = fitresults_full[1]
-
-            if hessian is None:
-                hessian = np.nan*np.ones(len(fitresults[0]))
-            error_estimates = np.sqrt(np.diag(mse * hessian))
-
-            A_inf_errors = error_estimates[3:]
-            # TODO: check these two variants
-            # parameters.update({'phi_error': error_estimates[0],
-            #                    'f_error': error_estimates[1],
-            #                    'T_error': error_estimates[2],
-            #                    'inf_error': A_inf_errors[:len(A_inf) // 2],
-            #                    'A_error': A_inf_errors[len(A_inf) // 2:]})
-            parameters.update({'phi_error': error_estimates[0],
-                               'f_error': error_estimates[1],
-                               'T_error': error_estimates[2],
-                               'inf_error': error_estimates[3],
-                               'A_error': error_estimates[4:]})
+            # if not np.iscomplexobj(y):
+            #     hessian = fitresults_full[1]
+            #
+            #     if hessian is None:
+            #         hessian = np.nan*np.ones(len(fitresults[0]))
+            #     error_estimates = np.sqrt(np.diag(mse * hessian))
+            #
+            #     A_inf_errors = error_estimates[3:]
+            #     # TODO: check these two variants
+            #     # parameters.update({'phi_error': error_estimates[0],
+            #     #                    'f_error': error_estimates[1],
+            #     #                    'T_error': error_estimates[2],
+            #     #                    'inf_error': A_inf_errors[:len(A_inf) // 2],
+            #     #                    'A_error': A_inf_errors[len(A_inf) // 2:]})
+            #     parameters.update({'phi_error': error_estimates[0],
+            #                        'f_error': error_estimates[1],
+            #                        'T_error': error_estimates[2],
+            #                        'inf_error': error_estimates[3],
+            #                        'A_error': error_estimates[4:]})
 
         #sampling fitted curve
         fitted_curve = model(fit_dataset.resample_x_fit(x_full), parameters_flat(parameters))

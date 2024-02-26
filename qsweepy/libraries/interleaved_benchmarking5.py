@@ -72,7 +72,7 @@ class interleaved_benchmarking:
         self.sequence_length = self.seq_lengths[0]
 
         self.target_gate = []
-        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=np.complex)
+        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = None
@@ -121,12 +121,15 @@ const random_gate_num = {random_gate_num};
 setPRNGRange(0, random_gate_num-1);
 //const sequence_len = {sequence_len};'''.format(random_gate_num=random_gate_num, sequence_len=seq_len))
 
-        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
-                             "header": {"version": "0.2"},
-                             "table": []}
+        # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+        #                      "header": {"version": "0.2"},
+        #                      "table": []}
         # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
         #                     'header': {'version': '1.0.0'},
         #                     'table': []}
+        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                         "header": {"version": "1.2"},
+                         "table": []}
         assign_waveform_indexes = {}
 
         random_command_id = 0
@@ -231,11 +234,16 @@ setPRNGRange(0, random_gate_num-1);
         table_entry['phase1'] = {'value': phase1, 'increment': False}
         command_table['table'].append(table_entry)
         random_command_id += 1
+
         table_entry = {'index': random_command_id}
         # table_entry['amplitude0'] = {'value': 1}
         table_entry['phase0'] = {'value': 0, 'increment': True}
         # table_entry['amplitude1'] = {'value': 1}
         table_entry['phase1'] = {'value': 0, 'increment': True}
+        command_table['table'].append(table_entry)
+
+        table_entry = {'index': 100}
+        table_entry['waveform'] = {'length': 50, 'playZero': True}
         command_table['table'].append(table_entry)
 
         if self.two_qubit is not None:
@@ -250,16 +258,19 @@ setPRNGRange(0, random_gate_num-1);
         //repeat(1){{
         var rand_value1 = getPRNGValue();
         var rand_value2 = rand_value1+24;
-        executeTableEntry({random_gate_num2});
+        //executeTableEntry({random_gate_num2});
         executeTableEntry(rand_value1);
-        executeTableEntry({random_gate_num2});
+        //executeTableEntry({random_gate_num2});
         executeTableEntry(rand_value2);//}}
         //wait(1);
         repeat ({two_qubit_num}){{
             wait(5);
-            executeTableEntry({random_gate_num2});
+            //executeTableEntry({random_gate_num2});
             executeTableEntry({two_qubit_gate_index});
-            wait(5);
+            
+            executeTableEntry(100);
+            
+            wait(10);
 //'''.format(two_qubit_gate_index=two_qubit_gate_index, random_gate_num1 = random_command_id-1, random_gate_num2 = random_command_id,
                   two_qubit_num=self.two_qubit_num, sequence_len=seq_len))
             if self.two_qubit2 is not None:
@@ -395,7 +406,7 @@ setPRNGRange(0, random_gate_num-1);
         self.d = unitary.shape[0]
         self.initial_state_vector = np.zeros(self.d)
         self.initial_state_vector[0] = 1.
-        self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
+        self.target_gate_unitary = np.identity(self.d, dtype=complex)
         self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 
     def generate_interleaver_sequence_from_names(self, names):
@@ -471,7 +482,7 @@ setPRNGRange(0, random_gate_num-1);
         old_target_gate_unitary = self.target_gate_unitary
         old_target_gate_name = self.target_gate_name
         self.target_gate = []
-        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=np.complex)
+        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = self.measure()

@@ -36,7 +36,7 @@ class DummyAWG:
 	def get_waveform(self, channel):
 		return self.waveform[channel, :]
 	#	#if not hasattr(self, 'waveform'):
-	#		#self.waveform = np.zeros(self.get_nop(), dtype=np.complex)
+	#		#self.waveform = np.zeros(self.get_nop(), dtype=complex)
 	#	return self.awg.get_waveform(channel=self.channel)
 	def set_waveform(self, waveform, channel):
 		self.waveform[channel, :] = waveform

@@ -36,7 +36,7 @@ def CPhase_calibration(device, qubit_ids, gate, amplitude, length, transition='0
     #readout_pulse, measurer = calibrated_readout.get_calibrated_measurer(device, qubit_id)
     readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id)
 
-    #sequence difinition
+    #sequence difinition ))) atvichayou
 
     exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id).keys()][0]
     ex_channel = device.awg_channels[exitation_channel]
@@ -227,6 +227,13 @@ def CPhase_calibration(device, qubit_ids, gate, amplitude, length, transition='0
                 #for ex_seq in self.ex_sequencers:
                     #ex_seq.set_length(self.length)
 
+            if pulse_U == 'I':
+                self.prepare_seq.extend(self.pre_pulse1.get_pulse_sequence(0))
+            elif pulse_U == 'X':
+                self.prepare_seq.extend(self.pre_pulse2.get_pulse_sequence(0))
+                self.prepare_seq.extend(self.pre_pulse2.get_pulse_sequence(0))
+                self.prepare_seq.extend(self.pre_pulse1.get_pulse_sequence(0))
+
     references = {('frequency_controls', qubit_id_): device.get_frequency_control_measurement_id(qubit_id=qubit_id_) for qubit_id_ in qubit_id}
     references['channel_amplitudes'] = channel_amplitudes1_.id
     references['readout_pulse'] = readout_pulse.id
@@ -249,7 +256,9 @@ def CPhase_calibration(device, qubit_ids, gate, amplitude, length, transition='0
                 'tail_length': str(tail_length),
                 'readout_delay': str(readout_delay),
                 'repeats': str(repeats),
-                'transition':transition}
+                'transition':transition,
+                'U':pulse_U,
+                'control_type':'quasi binary'}
     metadata.update(additional_metadata)
 
     setter = ParameterSetter()

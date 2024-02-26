@@ -59,9 +59,12 @@ class multiqubit_tomography:
         random_gate_num = len(self.interleavers)
         definition_part = ''''''
 
-        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
-                             "header": {"version": "0.2"},
-                             "table": []}
+        # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+        #                      "header": {"version": "0.2"},
+        #                      "table": []}
+        command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+                         'header': {'version': '1.2'},
+                         'table': []}
         # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
         #                  'header': {'version': '1.0.0'},
         #                  'table': []}
@@ -225,7 +228,7 @@ resetOscPhase();'''.format(random_gate_num=random_gate_num))
         self.d = unitary.shape[0]
         self.initial_state_vector = np.zeros(self.d)
         self.initial_state_vector[0] = 1.
-        self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
+        self.target_gate_unitary = np.identity(self.d, dtype=complex)
         self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 
     def get_points(self):

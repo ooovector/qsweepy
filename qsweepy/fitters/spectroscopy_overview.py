@@ -16,7 +16,8 @@ class SingleToneSpectroscopyOverviewFitter:
         delay_total = np.fft.fftfreq(len(x), x[1]-x[0])[np.argmax(np.abs(np.fft.ifft(y.ravel())))]
 
         corrected_s21 = y * np.exp(1j * 2 * np.pi * delay_total * x)
-
+        phase = np.unwrap(np.angle(corrected_s21))
+        delay = np.gradient(np.angle(corrected_s21), axis=-1) / (2 * np.pi * (x[1] - x[0]))
         parameters = {'delay_total': delay_total}
 
         return x, corrected_s21, parameters

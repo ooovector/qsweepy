@@ -160,7 +160,8 @@ def sweep(measurer, *parameters, shuffle=False,
         if np.iscomplexobj(data):
             data.fill(np.nan+1j*np.nan)
         else:
-            data.fill(np.nan)
+            # data.fill(np.nan)
+            data = np.full(fill_value=np.nan, shape=data.shape)
         state.datasets[dataset_name] = MeasurementDataset(parameters = all_parameters, data = data)
 
     all_indeces = itertools.product(*([i for i in range(d)] for d in sweep_dimensions))

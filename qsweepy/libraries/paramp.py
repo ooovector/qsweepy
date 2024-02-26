@@ -131,7 +131,7 @@ class paramp:
 		return res
 
 	def get_dtype(self):
-		res =  {'S-parameter': np.complex,
+		res =  {'S-parameter': complex,
 				'SNR': float,
 				'Pump_power': float,
 				'Bias': float}

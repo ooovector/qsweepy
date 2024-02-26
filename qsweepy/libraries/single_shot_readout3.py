@@ -309,16 +309,16 @@ class SingleShotReadout:
 
         if self.dbg_storage_samples:
         # if self.adc.devtype == 'UHF' and self.return_scores:
-            dtypes['x'] = np.complex64
+            dtypes['x'] = complex
             dtypes['y'] = float
         # train_samples = {'avg_sample_train' + str(_class): self.adc.get_dtype()[self.adc_measurement_name] for _class in
         #                self.readout_classifier.class_list}
         # dtypes.update(train_samples)
         if self.measure_features:
-            dtypes['feature0'], dtypes['feature1'] = np.complex64, np.complex64
+            dtypes['feature0'], dtypes['feature1'] = complex64, complex64
 
         # if self.measure_projections:
-        #     states_projections = {'x' + str(_class): np.complex64 for _class in
+        #     states_projections = {'x' + str(_class): complex64 for _class in
         #                           self.readout_classifier.class_list}
         #     dtypes.update(states_projections)
         if self.measure_hists:
@@ -341,7 +341,7 @@ class SingleShotReadout:
             dtypes.update({'meas_0': float})
 
             if self.dbg_storage_samples:
-                dtypes['x_'] = np.complex64
+                dtypes['x_'] = complex
 
         return dtypes
 
@@ -590,16 +590,16 @@ class SingleShotReadout:
 #
 #         if self.dbg_storage_samples:
 #         # if self.adc.devtype == 'UHF' and self.return_scores:
-#             dtypes['x'] = np.complex64
+#             dtypes['x'] = complex64
 #             dtypes['y'] = float
 #         # train_samples = {'avg_sample_train' + str(_class): self.adc.get_dtype()[self.adc_measurement_name] for _class in
 #         #                self.readout_classifier.class_list}
 #         # dtypes.update(train_samples)
 #         if self.measure_features:
-#             dtypes['feature0'], dtypes['feature1'] = np.complex64, np.complex64
+#             dtypes['feature0'], dtypes['feature1'] = complex64, complex64
 #
 #         # if self.measure_projections:
-#         #     states_projections = {'x' + str(_class): np.complex64 for _class in
+#         #     states_projections = {'x' + str(_class): complex64 for _class in
 #         #                           self.readout_classifier.class_list}
 #         #     dtypes.update(states_projections)
 #

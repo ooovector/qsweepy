@@ -144,8 +144,11 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
             # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
             #                  'header': {'version': '0.2'},
             #                  'table': []}
+            # command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+            #                  'header': {'version': '1.0'},
+            #                  'table': []}
             command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
-                             'header': {'version': '1.0'},
+                             'header': {'version': '1.2'},
                              'table': []}
             #
             # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',

@@ -159,9 +159,9 @@ class modem_readout(data_reduce.data_reduce):
                                                                             references_that={
                                                                                 'delay_measurement': self.delay_measurement.id},
                                                                             metadata=metadata)
-                self.calibrations[ex_channel_name + '+'] = np.complex(
+                self.calibrations[ex_channel_name + '+'] = complex(
                     calibrations_measurement.metadata[ex_channel_name + '+'])
-                self.calibrations[ex_channel_name + '-'] = np.complex(
+                self.calibrations[ex_channel_name + '-'] = complex(
                     calibrations_measurement.metadata[ex_channel_name + '-'])
                 self.calibration_measurements[ex_channel_name] = calibrations_measurement
                 self.create_filters(ex_channel_name)

@@ -126,7 +126,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[])
-            #ex_seq.start(holder=1)
+            # ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
                                                awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
@@ -137,6 +137,7 @@ def Ramsey(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitu
         device.pre_pulses.set_seq_offsets(ex_seq)
         device.pre_pulses.set_seq_prepulses(ex_seq)
         if ex_seq.params['is_iq']:
+            # ex_seq.start(holder=1)
             ex_seq.start()
         else:
             ex_seq.start(holder=1)

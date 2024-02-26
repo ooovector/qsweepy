@@ -158,7 +158,7 @@ class ProcessTomography(multiqubit_tomography):
                 for _qubit_id, qubit_id in enumerate(qubit_ids):
                     #unitary = np.kron(unitary, cube_faces_unitaries[multi_initial[_qubit_id]])
                     unitary = np.kron(cube_faces_unitaries[multi_initial[_qubit_id]], unitary)
-                I = np.zeros((2**len(qubit_ids), 2**len(qubit_ids)), dtype=np.complex)
+                I = np.zeros((2**len(qubit_ids), 2**len(qubit_ids)), dtype=complex)
                 I[0, 0] = 1.0
                 initialization_operator = (unitary @ I @ np.conj(unitary.T))
 

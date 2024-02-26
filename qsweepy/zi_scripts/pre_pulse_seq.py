@@ -268,7 +268,7 @@ class SIMPLESequence:
                            pre_pulse_delay=pre_pulse_delay,
                            var_reg0=int(var_reg0), var_reg1=int(var_reg1), var_reg2=int(var_reg2),
                            var_reg3=int(var_reg3), var_reg4=int(var_reg4), var_reg5=int(var_reg5),
-                           var_reg15=int(15), var_reg14=int(14),
+                           var_reg15=int(15), var_reg14=int(14),var_reg13=int(13),
                            nco_id=sequencer_id * 4, nco_control_id=sequencer_id * 4 + 1,
                            frequency=frequency, control_frequency=control_frequency,
                            ic=2 * sequencer_id, qc=sequencer_id * 2 + 1)
@@ -325,7 +325,8 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
-var variable_register14;
+//var variable_register14;
+//var variable_register13;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -412,6 +413,7 @@ while (true) {{
     waitWave();
     '''.format(**self.params))
 
+
         else:
 #             play_fragment1 += textwrap.dedent('''
 # //
@@ -423,7 +425,7 @@ while (true) {{
 //    
     // Wait trigger and reset
     //
-    waitDigTrigger(2);
+    waitDigTrigger(1);
     '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
@@ -436,7 +438,8 @@ while (true) {{
     variable_register4 = getUserReg(var_reg4);
     variable_register5 = getUserReg(var_reg5);
     variable_register15 = getUserReg(15);
-    variable_register14 = getUserReg(14);
+    //variable_register14 = getUserReg(14);
+    //variable_register13 = getUserReg(13);
     setPRNGSeed(variable_register1);
         '''.format(**self.params))
 
@@ -483,32 +486,56 @@ while (true) {{
         # Then work sequence has done you need to send trigger for readout sequencer to start playWave.
         # There is initial delay between readout trigger and and readout waveform generation around 140 ns.
         if self.control:
+#             play_fragment2 += textwrap.dedent('''
+# //
+#     // Send trigger for readout_channel to start waveform generation
+#     waitWave();
+#     playZero(readout_delay);
+#
+#     // Send trigger back to readout
+#     //setTrigger(2);
+#     setDIO(8);
+#     wait(10);
+#     setDIO(0);
+#     //setTrigger(0);
+# }}
+# ''')
             play_fragment2 += textwrap.dedent('''
 //
     // Send trigger for readout_channel to start waveform generation
     waitWave();
     playZero(readout_delay);
-    
+
     // Send trigger back to readout
-    //setTrigger(2);
-    setDIO(8);
+    setTrigger(0b0100);
+    //setDIO(8);
     wait(10);
-    setDIO(0);
-    //setTrigger(0);
+    //setDIO(0);
+    setTrigger(0b0000);
+    waitWave();
 }}
 ''')
-
         else:
             play_fragment2 += textwrap.dedent('''
 //
     // Send trigger for readout_channel to start waveform generation
-    waitWave();
-    playZero(readout_delay);
+    //waitWave();
+    //playZero(readout_delay);
     //setDIO(8);
     //wait(10);
     //setDIO(0);
 }}
 ''')
+#             play_fragment2 += textwrap.dedent('''
+# //
+#     // Send trigger for readout_channel to start waveform generation
+#     waitWave();
+#     playZero(readout_delay);
+#     //setDIO(8);
+#     //wait(10);
+#     //setDIO(0);
+# }}
+# ''')
         # code = ''.join(definition_pre_pulses + definition_fragments + play_fragment1 + play_pre_pulses + play_fragment + play_fragment2)
         code = ''.join(
             definition_pre_pulses  + definition_fragments + definition_exc_pre_pulses + play_fragment1 + play_pre_pulses + play_exc_pre_pulses + play_fragment + play_fragment2)
@@ -564,7 +591,8 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
-var variable_register14;
+//var variable_register14;
+//var variable_register13;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -700,6 +728,9 @@ var variable_register14;
     def set_phase_(self, phase):
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg14'], phase)
 
+    def set_phase__(self, phase):
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg13'], phase)
+
     def set_phase_index(self, index):
         """
         Set phase variable register for command table
@@ -711,6 +742,12 @@ var variable_register14;
         Set phase variable register for command table
         """
         self.awg.set_register(self.params['sequencer_id'], self.params['var_reg14'], index)
+
+    def set_phase_index__(self, index):
+        """
+        Set phase variable register for command table
+        """
+        self.awg.set_register(self.params['sequencer_id'], self.params['var_reg13'], index)
 
     # def start(self, holder=0):
     #     #self.awg.start_seq(self.params['sequencer_id'])

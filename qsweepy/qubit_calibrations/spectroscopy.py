@@ -1,7 +1,16 @@
 from qsweepy.fitters import fit_dataset, resonator_tools, spectroscopy_overview
+from qsweepy.ponyfiles.data_structures import *
 import numpy as np
 import time
 
+def calculate_delay(measurement, _):
+    x = measurement.datasets['S-parameter'].parameters[-1].values
+    y = measurement.datasets['S-parameter'].data
+
+    delay_total = np.fft.fftfreq(len(x), x[1] - x[0])[np.argmax(np.abs(np.fft.ifft(y.ravel())))]
+    corrected_s21 = y * np.exp(1j * 2 * np.pi * delay_total * x)
+    delay = np.gradient(np.angle(corrected_s21), axis=-1) / (2 * np.pi * (x[1] - x[0]))
+    measurement.datasets['delay'].data[:] = delay
 
 def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
     try:
@@ -22,10 +31,17 @@ def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
         #device.hardware.pna.measure()
         #time.sleep(device.hardware.pna.get_sweep_time()*0.001)
         device.hardware.pna.measure()
+
+        def create_delay_dataset(measurement):
+            parameters = measurement.datasets['S-parameter'].parameters
+            measurement.datasets['delay'] = MeasurementDataset(parameters, np.zeros(tuple([len(p.values) for p in parameters])) * np.nan)
+
         result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='single_tone_spectroscopy_overview',
                                metadata={ 'vna_power': device.hardware.pna.get_power(),
-                                          'bandwidth': bandwidth})
+                                          'bandwidth': bandwidth},
+                               on_start=[(create_delay_dataset, tuple())],
+                               on_update=[(calculate_delay, tuple())])
 
         fitter = spectroscopy_overview.SingleToneSpectroscopyOverviewFitter()
 
@@ -42,7 +58,6 @@ def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):
 
     except:
         raise
-
 
 def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, span=None, power=None, nop=None, bandwidth=None, **kwargs):
     print ('fr_guess: ', fr_guess)
@@ -78,9 +93,16 @@ def single_tone_spectroscopy(device, qubit_id, fr_guess, *args, span=None, power
                     'vna_power': device.hardware.pna.get_power(),
                     'bandwidth': bandwidth}
         metadata.update(kwargs)
+
+        def create_delay_dataset(measurement):
+            parameters = measurement.datasets['S-parameter'].parameters
+            measurement.datasets['delay'] = MeasurementDataset(parameters, np.zeros(
+                tuple([len(p.values) for p in parameters])) * np.nan)
         result = device.sweeper.sweep(device.hardware.pna, *args,
                                measurement_type='resonator_frequency',
-                               metadata=metadata)
+                               metadata=metadata,
+                               on_start=[(create_delay_dataset, tuple())],
+                               on_update=[(calculate_delay, tuple())])
     except:
         raise
 

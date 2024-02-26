@@ -17,11 +17,11 @@ class READSequence:
 
         self.awg = awg
 
-        #self.awg.set_marker_out(2 * sequencer_id, 0)
-        #self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
-        self.awg.set_marker_out(2 * sequencer_id, 4)
-        #self.awg.set_marker_out(sequencer_id * 2 + 1, 7)
-        self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
+        # #self.awg.set_marker_out(2 * sequencer_id, 0)
+        # #self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
+        # self.awg.set_marker_out(2 * sequencer_id, 4)
+        # #self.awg.set_marker_out(sequencer_id * 2 + 1, 7)
+        # self.awg.set_marker_out(sequencer_id * 2 + 1, 1)
 
         self.control_frequency = 0
         self.clock = float(self.awg._clock)
@@ -79,12 +79,15 @@ const delay1 = {delay};'''.format(**self.params)
 # '''
         play_fragment1 = '''
 
-wave w_left=marker(delay1,0);
-wave w_center=marker(40,1);
-wave w_marker=join(w_left,w_center);
+//wave w_left=marker(delay1,0);
+//wave w_center=marker(40,1);
+//wave w_marker=join(w_left,w_center);
 
-wave ro_wave_i_marker = w_marker+ro_wave_i;
-wave ro_wave_q_marker = w_marker+ro_wave_q;
+//wave ro_wave_i_marker = w_marker+ro_wave_i;
+//wave ro_wave_q_marker = w_marker+ro_wave_q;
+
+wave ro_wave_i_marker = ro_wave_i;
+wave ro_wave_q_marker = ro_wave_q;
 '''
         if not self.post_selection_flag:
             play_fragment1 += '''
@@ -92,39 +95,75 @@ while (true) {{
 //repeat(8192){{
     // Wait DIO trigger from qubit control sequencer.
     setDIO(0);
-    wait(10);
+
     //wait(3000);
-    
+
     //From digitizer
     waitDigTrigger(1);
+    wait(10);
 
     //Send to excitation sequencers
-    setDIO(1);
-    //setTrigger(2);
+    setTrigger(0b0010);
     wait(10);
-    setDIO(0);
-    //setTrigger(0);
+    setTrigger(0b0000);
 
     //From excitation sequencers
-    waitDIOTrigger();
-    //waitDigTrigger(2);
+    waitDigTrigger(2);
 
     //From digitizer
     waitDigTrigger(1);
     //resetOscPhase();
     //waitSineOscPhase(1);
     //wait(10);'''
+#             play_fragment1 += '''
+# while (true) {{
+# //repeat(8192){{
+#     // Wait DIO trigger from qubit control sequencer.
+#     setDIO(0);
+#     wait(10);
+#     //wait(3000);
+#
+#     //From digitizer
+#     waitDigTrigger(1);
+#
+#     //Send to excitation sequencers
+#     setDIO(1);
+#     //setTrigger(2);
+#     wait(10);
+#     setDIO(0);
+#     //setTrigger(0);
+#
+#     //From excitation sequencers
+#     waitDIOTrigger();
+#     //waitDigTrigger(2);
+#
+#     //From digitizer
+#     waitDigTrigger(1);
+#     //resetOscPhase();
+#     //waitSineOscPhase(1);
+#     //wait(10);'''
 
             play_fragment2 = '''
 //
-    //wait(delay);
+    wait(delay);
     //waitWave();
-    //setTrigger(1);
-    //wait(10);
-    //setTrigger(0);
+    setTrigger(0b0001);
+    wait(10);
+    setTrigger(0b0000);
     //playWave(marker);
     waitWave();}}'''
             code = ''.join(definition_fragment + play_fragment1 + play_fragment + play_fragment2)
+
+#             play_fragment2 = '''
+# //
+#     //wait(delay);
+#     //waitWave();
+#     //setTrigger(1);
+#     //wait(10);
+#     //setTrigger(0);
+#     //playWave(marker);
+#     waitWave();}}'''
+#             code = ''.join(definition_fragment + play_fragment1 + play_fragment + play_fragment2)
 
         else:
             print('\x1b[1;30;44m' + 'READOUT PULSE FOR POST SELECTION!' + '\x1b[0m')

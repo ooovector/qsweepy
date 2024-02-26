@@ -88,7 +88,7 @@ class pulses:
 
     ## generate waveform of a rectangular pulse
     def rect(self, channel, length, amplitude):
-        return amplitude * np.ones(int(round(length * self.channels[channel].get_clock())), dtype=np.complex)
+        return amplitude * np.ones(int(round(length * self.channels[channel].get_clock())), dtype=complex)
 
     def pause(self, channel, length):
         return self.rect(channel, length, 0)

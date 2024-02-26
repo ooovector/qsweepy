@@ -74,7 +74,7 @@ pulsed_settings = {'lo1_power': 15,
                    'hdawg_ch5_amplitude': 0.8,
                    'hdawg_ch6_amplitude': 0.8,
                    'hdawg_ch7_amplitude': 0.8,
-                   'lo1_freq':  6.29e9, #6.35e9, #6.6e9, #6.45e9, для измерения 6-7 6.9e9,
+                   'lo1_freq':  6.1e9, #6.35e9, #6.6e9, #6.45e9, для измерения 6-7 6.9e9,
 
                    # 'pna_freq': 7.088455e9, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
                    # 'pna_freq': 7.219e9 - 20e6, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
@@ -201,7 +201,7 @@ class hardware_setup():
         # if self.device_settings['use_rf_switch']:
         #     self.rf_switch = instruments.nn_rf_switch('rf_switch', address=self.device_settings['rf_switch_address'])
         #
-        self.hdawg1 = instruments.ZIDevice(self.device_settings['hdawg1_address'], devtype='HDAWG', delay_int=0)
+        self.hdawg1 = instruments.ZIDevice(self.device_settings['hdawg2_address'], devtype='HDAWG', delay_int=0)
         # self.hdawg2 = instruments.ZIDevice(self.device_settings['hdawg2_address'], devtype='HDAWG', delay_int=0)
 
         for channel_id in range(8):
@@ -228,18 +228,17 @@ class hardware_setup():
         self.awg_tek.do_set_output(1, 3)
         self.awg_tek.do_set_output(1, 4)
 
-        self.c7z = awg_channel(self.hdawg1, 6)
-        self.c8z = awg_channel(self.hdawg1, 7)
+        self.c6z = awg_channel(self.hdawg1, 6)
+        self.c7z = awg_channel(self.hdawg1, 7)
 
-        self.q7z = awg_channel(self.awg_tek, 2)
-        self.q6z = awg_channel(self.awg_tek, 1)
-        self.q8z = awg_channel(self.awg_tek, 3)
-        self.q5z = awg_channel(self.awg_tek, 3)
+        self.q7z = awg_channel(self.awg_tek, 3)
+        self.q6z = awg_channel(self.awg_tek, 2)
+        self.q8z = awg_channel(self.awg_tek, 4)
+        self.q5z = awg_channel(self.awg_tek, 1)
 
-
-
+        self.c6z.set_offset(0)
         self.c7z.set_offset(0)
-        self.c8z.set_offset(0)
+        # self.c8z.set_offset(0)
         self.q7z.set_offset(0)
         self.q6z.set_offset(0)
         self.q8z.set_offset(0)
@@ -374,19 +373,35 @@ class hardware_setup():
         self.hdawg1.set_dig_trig1_source([0, 2, 2, 2])
         self.hdawg1.set_dig_trig1_slope([1, 1, 1, 1])  # 0 - Level sensitive trigger, 1 - Rising edge trigger,
         # 2 - Falling edge trigger, 3 - Rising or falling edge trigger
-        self.hdawg1.set_dig_trig2_source([1, 3, 3, 3])
+
+        # when dio
+        # self.hdawg1.set_dig_trig2_source([1, 3, 3, 3])
+        # when not dio
+        self.hdawg1.set_dig_trig2_source([1, 2, 2, 2])
+
+
         self.hdawg1.set_dig_trig2_slope([1, 1, 1, 1])
         self.hdawg1.set_trig_level(0.3)
         self.hdawg1.set_trig_level(1.0, channels=[0])
 
+
+        #when dio
+        # self.hdawg1.set_marker_out(0, 0)
+        # self.hdawg1.set_marker_out(1, 1)
+        # self.hdawg1.set_marker_out(2, 0)
+        # self.hdawg1.set_marker_out(3, 1)
+        # self.hdawg1.set_marker_out(4, 0)
+        # self.hdawg1.set_marker_out(5, 1)
+        # self.hdawg1.set_marker_out(6, 0)
+        # self.hdawg1.set_marker_out(7, 1)
+
+
+        #when not dio
         self.hdawg1.set_marker_out(0, 0)
         self.hdawg1.set_marker_out(1, 1)
-        self.hdawg1.set_marker_out(2, 0)
-        self.hdawg1.set_marker_out(3, 1)
-        self.hdawg1.set_marker_out(4, 0)
-        self.hdawg1.set_marker_out(5, 1)
-        self.hdawg1.set_marker_out(6, 0)
-        self.hdawg1.set_marker_out(7, 1)
+        self.hdawg1.set_marker_out(2, 2)
+
+
 
         #self.hdawg1.set_marker_out(0, 4)
         #self.hdawg1.set_marker_out(1, 7)
@@ -456,17 +471,17 @@ class hardware_setup():
         #     self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/enable' % ex_seq_id, 1)
 
         # for ex_seq_id in [0,2,3]: #6,7
-        # for ex_seq_id in [0, 1]:  # 6,7
-        #     self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/timeconstant' % ex_seq_id, 25e-9)
-        #     self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/timeconstant' % ex_seq_id, 400e-9)
-        #
-        #     self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/amplitude' % ex_seq_id,-0.030)
-        #     self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/amplitude' % ex_seq_id, -0.010)
-        #
-        #     self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/enable' % ex_seq_id, 1)
-        #     self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/enable' % ex_seq_id, 1)
-        #
-        #     self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/enable' % ex_seq_id, 1)
+        for ex_seq_id in [3]:  # 6,7
+            self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/timeconstant' % ex_seq_id, 25e-9)
+            self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/timeconstant' % ex_seq_id, 400e-9)
+
+            self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/amplitude' % ex_seq_id,-0.030)
+            self.hdawg1.daq.setDouble('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/amplitude' % ex_seq_id, -0.010)
+
+            self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/0/enable' % ex_seq_id, 1)
+            self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/exponentials/1/enable' % ex_seq_id, 1)
+
+            self.hdawg1.daq.setInt('/' + self.hdawg1.device + '/sigouts/%d/precompensation/enable' % ex_seq_id, 1)
 
         # For readout channels
         # For readout sequencer:
@@ -492,33 +507,36 @@ class hardware_setup():
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg2, sequencer_id=1,
                            #                                                      lo=self.lo1, exdir_db=exdir_db),
-                           # 'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
-                           #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           'iq_ex5': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                                                                                 lo=self.lo_q1, exdir_db=exdir_db),
+                           'iq_ex6': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
+                                                                                lo=self.lo_q2, exdir_db=exdir_db),
+                           # 'iq_ex7_12': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
+                           #                                                      lo=self.lo_q1, exdir_db=exdir_db),
+
                            # 'iq_ex4': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=1,
                            #                                                      lo=self.lo_q1, exdir_db=exdir_db),
-                           'iq_ex7': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
-                                                                                lo=self.lo_q2, exdir_db=exdir_db)
+                           # 'iq_ex7': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg1, sequencer_id=2,
+                           #                                                      lo=self.lo_q2, exdir_db=exdir_db)
                            }
 
         self.iq_devices['iq_ro'].name = 'ro'
         # self.iq_devices['iq_ex1'].name = 'ex1'
-        # self.iq_devices['iq_ex6'].name = 'ex6'
-        # self.iq_devices['iq_ex5'].name = 'ex5'
-        self.iq_devices['iq_ex7'].name = 'ex7'
-        self.iq_devices['iq_ex7_12'].name = 'ex7_12'
+        self.iq_devices['iq_ex6'].name = 'ex6'
+        self.iq_devices['iq_ex5'].name = 'ex5'
+        # self.iq_devices['iq_ex7'].name = 'ex7'
+        # self.iq_devices['iq_ex7_12'].name = 'ex7_12'
         # self.iq_devices['iq_ex4'].name = 'ex4'
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex6'].name = 'ex6'
         self.iq_devices['iq_ro'].sa = self.sa
         # self.iq_devices['iq_ex1'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
-        self.iq_devices['iq_ex7'].sa = self.sa
-        self.iq_devices['iq_ex7_12'].sa = self.sa
+        # self.iq_devices['iq_ex7'].sa = self.sa
+        # self.iq_devices['iq_ex7_12'].sa = self.sa
         # self.iq_devices['iq_ex6'].sa = self.sa
-        # self.iq_devices['iq_ex2'].sa = self.sa
-        # self.iq_devices['iq_ex4'].sa = self.sa
+        self.iq_devices['iq_ex6'].sa = self.sa
+        self.iq_devices['iq_ex5'].sa = self.sa
         # self.iq_devices['iq_ro'].calibration_switch_setter = lambda: self.set_switch_if_not_set(6, channel=1)
         # self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: self.set_switch_if_not_set(1, channel=1)
         # self.iq_devices['iq_ex2'].calibration_switch_setter = lambda: self.set_switch_if_not_set(2, channel=1)
@@ -532,9 +550,9 @@ class hardware_setup():
                               #'q3z':awg_channel(self.awg_tek, 3),
                               #'q4z': awg_channel(self.awg_tek, 4),
                               # 'c5z':awg_channel(self.hdawg1, 6),
-                              # 'c6z':awg_channel(self.hdawg1, 7),}
-                              'c7z':awg_channel(self.hdawg1, 6),
-                              'c8z':awg_channel(self.hdawg1, 7),
+                              'c6z':awg_channel(self.hdawg1, 6),
+                              'c7z':awg_channel(self.hdawg1, 7),
+                              # 'c8z':awg_channel(self.hdawg1, 7),
                               # 'c8z':awg_channel(self.hdawg1, 7),
         }
 

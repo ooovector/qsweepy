@@ -152,9 +152,13 @@ class XEBSequence:
 
     def set_commandtable(self):
         import json
-        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
-                         "header": { "version": "0.2" },
-                         "table": [] }
+        # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+        #                  "header": { "version": "0.2" },
+        #                  "table": [] }
+
+        command_table = {'$schema': 'http://docs.zhinst.com/hdawg/commandtable/v2/schema',
+                         'header': {'version': '1.2'},
+                         'table': []}
 
         for random_pulse_id, random_pulse in enumerate(self.random_pulses):
             table_entry = {'index': random_pulse_id}

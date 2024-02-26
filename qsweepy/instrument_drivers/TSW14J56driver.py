@@ -445,7 +445,7 @@ class TSW14J56_evm_reducer():
 # 			self.adc.set_threshold(thresh=threshold, ncov=feature_id)
 #
 # 		feature = feature[:self.adc.ram_size]/np.max(np.abs(feature[:self.adc.ram_size]))
-# 		feature_padded = np.zeros(self.adc.ram_size, dtype=np.complex)
+# 		feature_padded = np.zeros(self.adc.ram_size, dtype=complex)
 # 		feature_padded[:len(feature)] = feature
 # 		feature = np.asarray(2**13*feature_padded, dtype=complex)
 # 		feature_real_int = np.asarray(np.real(feature), dtype=np.int16)

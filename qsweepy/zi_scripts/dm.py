@@ -47,20 +47,42 @@ while (true) {{
    // Wait trigger from adc. The same trigger channel as for qubit control sequence.
    wait(3000);
    waitDigTrigger(1);
-   //resetOscPhase();
-   //wait(10);
-   //setSinePhase(0, 270);
    playWave(w_zeros, w_zeros);
    
+
    wait(delay);
-   //waitWave();
    setTrigger(1);
    wait(10);
    setTrigger(0);
-   //playWave(marker);
    waitWave();
 }}
 '''.format(**self.params)
+#         code = '''
+# setInt('sines/{ic}/oscselect', {nco_id});
+# setInt('sines/{qc}/oscselect', {nco_id});
+# const n_samp = {n_samples};
+# wave w_zeros = rect(n_samp, 1);
+# //wave marker = marker(50,1);
+# var delay = getUserReg({trig_delay_reg});
+#
+# while (true) {{
+#    // Wait trigger from adc. The same trigger channel as for qubit control sequence.
+#    wait(3000);
+#    waitDigTrigger(1);
+#    //resetOscPhase();
+#    //wait(10);
+#    //setSinePhase(0, 270);
+#    playWave(w_zeros, w_zeros);
+#
+#    wait(delay);
+#    //waitWave();
+#    setTrigger(1);
+#    wait(10);
+#    setTrigger(0);
+#    //playWave(marker);
+#    waitWave();
+# }}
+# '''.format(**self.params)
         return code
 
     def set_frequency(self, frequency):

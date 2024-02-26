@@ -34,12 +34,24 @@ while (true) {{
    setTrigger(1);
    wait(10);
    setTrigger(0);
-   //playWave(marker);
    waitWave();
-
-}}
-'''.format(**self.params)
+        }}
+        '''.format(**self.params)
         return code
+#         code = '''
+# //wave marker = marker(50,1);
+#
+# while (true) {{
+#    // Send trigger to adc. The same trigger channel as for qubit control sequence.
+#    setTrigger(1);
+#    wait(10);
+#    setTrigger(0);
+#    //playWave(marker);
+#    waitWave();
+#
+# }}
+# '''.format(**self.params)
+#         return code
 
 
     def start(self):

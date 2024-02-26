@@ -63,7 +63,7 @@ class interleaved_benchmarking:
         self.sequence_length = self.seq_lengths[0]
 
         self.target_gate = []
-        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=np.complex)
+        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = None
@@ -196,7 +196,7 @@ var rand_value;'''.format(random_gate_num=random_gate_num))
         self.d = unitary.shape[0]
         self.initial_state_vector = np.zeros(self.d)
         self.initial_state_vector[0] = 1.
-        self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
+        self.target_gate_unitary = np.identity(self.d, dtype=complex)
         self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 
     def generate_interleaver_sequence_from_names(self, names):
@@ -272,7 +272,7 @@ var rand_value;'''.format(random_gate_num=random_gate_num))
         old_target_gate_unitary = self.target_gate_unitary
         old_target_gate_name = self.target_gate_name
         self.target_gate = []
-        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=np.complex)
+        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = self.measure()
