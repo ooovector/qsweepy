@@ -5,8 +5,8 @@ from qsweepy.libraries.awg_digital2 import awg_digital
 import numpy as np
 from qsweepy import zi_scripts
 
-from qsweepy.instrument_drivers._QubitDAQ.reg_intf import *
-from qsweepy.instrument_drivers._QubitDAQ.usb_intf import *
+# from qsweepy.instrument_drivers._QubitDAQ.reg_intf import *
+# from qsweepy.instrument_drivers._QubitDAQ.usb_intf import *
 import qsweepy.instrument_drivers._QubitDAQ.driver as drv
 
 device_settings = {
@@ -14,7 +14,7 @@ device_settings = {
                    # 'rf_switch_address': '10.20.61.91',
                    'use_rf_switch': False,
 ### закоменчено из-за сломанного Цуриха
-                   'hdawg_address': 'hdawg-dev8250', #8250 8108
+                   'hdawg_address': 'hdawg-dev8108', #8250 8108
 ###
                    'sa_ro_address': 'TCPIP0::10.1.0.72::inst0::INSTR',
                    'sa_address': 'TCPIP0::10.20.61.37::inst0::INSTR',
@@ -42,8 +42,8 @@ pulsed_settings = {'lo1_power': 14,
                    'hdawg_ch7_amplitude': 0.8,
                    ###
                    # 'lo1_freq': 3.2e9, #1.5e9,
-                   'lo1_freq': 5.15e9, #5.15e9,#4.5e9, #1.5e9,5.15e9
-                   'pna_freq': 7.05e9, #6.7e9, #,7.9e9, 6.5e9, 7.25e9
+                   'lo1_freq': 4.7e9, #4.6e9,5.15e9,#4.5e9, #1.5e9,5.15e9,  5.4e9, 4.5e9, 5.6e9
+                   'pna_freq': 7.2e9, #6.7e9, #,7.9e9, 6.5e9, 7.25e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,
@@ -105,7 +105,7 @@ class hardware_setup():
         # self.lo_pump = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
         # self.lo1 = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
         self.lo1 = prokladka(self.lo_ro, name='lo2', channel=2)
-
+        self.lo2 = prokladka(self.lo_ro, name='lo4', channel=4)
 
         # self.lo1 = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
@@ -201,6 +201,10 @@ class hardware_setup():
         self.lo_ro.set_status(0)
 
         self.lo1.set_status(0)
+        try:
+            self.lo2.set_status(0)
+        except:
+            pass
         ###
         self.pna.do_set_status(1)
 ### закоменчено из-за сломанного Цуриха
@@ -230,6 +234,14 @@ class hardware_setup():
         self.lo1.set_status(1)  # turn on lo1 output
         self.lo1.set_power(self.pulsed_settings['lo1_power'])
         self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
+
+        try:
+            self.lo2.set_status(1)  # turn on lo1 output
+            self.lo2.set_power(self.pulsed_settings['lo1_power'])
+            self.lo2.set_frequency(self.pulsed_settings['lo1_freq'])
+        except:
+            pass
+
         self.pna.do_set_status(1)
         self.pna.set_power(self.pulsed_settings['vna_power'])
 
@@ -344,8 +356,8 @@ class hardware_setup():
                                                                                    lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=2,
                            #                                                         lo=self.lo1, exdir_db=exdir_db),
-                           # 'iq_ex3': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=3,
-                           #                                                        lo=self.lo1, exdir_db=exdir_db),
+                           'iq_ex1_2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=3,
+                                                                                  lo=self.lo2, exdir_db=exdir_db),
                            }
 
         self.iq_devices['iq_ro'].name = 'ro'
@@ -357,6 +369,10 @@ class hardware_setup():
         self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: None
         self.iq_devices['iq_ex1'].sa = self.sa_ro
 
+        self.iq_devices['iq_ex1_2'].name = 'ex1_2'
+        self.iq_devices['iq_ex1_2'].calibration_switch_setter = lambda: None
+        self.iq_devices['iq_ex1_2'].sa = self.sa_ro
+
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex2'].calibration_switch_setter = lambda: None
         # self.iq_devices['iq_ex2'].sa = self.sa_ro
@@ -367,7 +383,7 @@ class hardware_setup():
 
         self.fast_controls = {
         #                       # 'q3z': awg_channel(self.hdawg, 6),
-                              'q2z': awg_channel(self.hdawg, 4),
+        #                       'q2z': awg_channel(self.hdawg, 4),
         #                       'q1z': awg_channel(self.hdawg, 2),
                               }  # coil control
 

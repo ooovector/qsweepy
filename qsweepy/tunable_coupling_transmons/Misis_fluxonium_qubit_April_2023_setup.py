@@ -5,15 +5,16 @@ from qsweepy.libraries.awg_digital2 import awg_digital
 import numpy as np
 from qsweepy import zi_scripts
 
-from qsweepy.instrument_drivers._QubitDAQ.reg_intf import *
-from qsweepy.instrument_drivers._QubitDAQ.usb_intf import *
+# from qsweepy.instrument_drivers._QubitDAQ.reg_intf import *
+# from qsweepy.instrument_drivers._QubitDAQ.usb_intf import *
 import qsweepy.instrument_drivers._QubitDAQ.driver as drv
 
 device_settings = {
                    'vna_address': 'TCPIP0::ZVB20-23-100170::inst0::INSTR',#'TCPIP0::10.20.61.66::inst0::INSTR', # TCPIP0::10.20.61.94::inst0::INSTR  TCPIP0::10.20.61.68::inst0::INSTR
                    # 'rf_switch_address': '10.20.61.91',
                    'use_rf_switch': False,
-                   'hdawg_address': 'hdawg-dev8250', #8250 8108
+                   # 'hdawg_address': 'hdawg-dev8250', #8250 8108
+                   'hdawg_address': 'hdawg-dev8108',
                    'sa_ro_address': 'TCPIP0::10.1.0.72::inst0::INSTR',
                    'sa_address': 'TCPIP0::10.20.61.37::inst0::INSTR',
                    'lo1_address': 'TCPIP0::10.1.0.54::inst0::INSTR',
@@ -39,7 +40,7 @@ pulsed_settings = {'lo1_power': 14,
                    'hdawg_ch7_amplitude': 0.8,
                    # 'lo1_freq': 3.2e9, #1.5e9,
                    'lo1_freq': 2.8e9, #4.5e9, #1.5e9,
-                   'pna_freq': 6.77e9, #6.75e9,6.96e9, #6.66e9
+                   'pna_freq': 6.75e9, #6.75e9,6.96e9, #6.66e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_length': 200e-9,
@@ -102,7 +103,7 @@ class hardware_setup():
 
         # self.lo1 = instruments.Agilent_E8257D('lo1', address=self.device_settings['lo1_address'])
 
-        # self.bias = instruments.Yokogawa_GS210(address='GPIB0::2::INSTR')
+        self.bias = instruments.Yokogawa_GS210(address='GPIB0::2::INSTR')
         #self.lo1._visainstrument.timeout = self.device_settings['lo1_timeout']
         #self.lo1 = instruments.SignalCore_5502a()
         #self.lo1.search()
@@ -133,8 +134,8 @@ class hardware_setup():
         self.coil_device = self.hdawg
 
         # Qubit lines should be connected with even channels
-        self.q1z = awg_channel(self.hdawg, 2)  # coil control
-        self.q2z = awg_channel(self.hdawg, 4)  # coil control
+        self.q1z = awg_channel(self.hdawg, 4)  # coil control
+        self.q2z = awg_channel(self.hdawg, 2)  # coil control
         # self.q3z = awg_channel(self.hdawg, 6)  # coil control
 
 
@@ -355,8 +356,8 @@ class hardware_setup():
 
         self.fast_controls = {
                               # 'q3z': awg_channel(self.hdawg, 6),
-                              'q2z': awg_channel(self.hdawg, 4),
-                              'q1z': awg_channel(self.hdawg, 2),
+                              'q2z': awg_channel(self.hdawg, 2),
+                              'q1z': awg_channel(self.hdawg, 4),
                               }  # coil control
 
     def get_modem_dc_calibration_amplitude(self):
