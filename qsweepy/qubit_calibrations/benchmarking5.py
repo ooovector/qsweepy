@@ -11,6 +11,7 @@ from qsweepy.ponyfiles.data_structures import *
 from qsweepy.fitters import exp
 import numpy as np
 from qsweepy.libraries.pulses import *
+from qsweepy.qubit_calibrations.readout_pulse2 import get_uncalibrated_measurer as get_uncalibrated_measurer
 
 
 def create_gates_dataset(device, gates):
@@ -52,7 +53,7 @@ def create_flat_dataset(measurement, dataset_name):
 def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qubit_gate=None, max_pulses=None,
                            pause_length=0, random_sequence_num=1, seq_lengths_num=400, two_qubit_num=0,
                            random_gate_num=1, seeds = None, shuffle=False, min_pulses=0, seq_lengths=None, additional_metadata=None,
-                           preferred_excitation_length = None):
+                           preferred_excitation_length = None,  post_selection_flag=False, X_gate = False):
     channel_amplitudes_ = {}
     pi2_pulses = {}
     pi_pulses = {}
@@ -112,7 +113,18 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
             U = np.kron(U, np.identity(2) if i != qubit_id else unitary)
         return U
     #TODO
-    qubit_readout_pulse, readout_device = calibrated_readout.get_calibrated_measurer(device, qubit_ids)
+
+    if post_selection_flag:
+        readouts_per_repetition = 3 # 2
+    else:
+        readouts_per_repetition = 1
+
+    if len(qubit_ids)==1 and post_selection_flag:
+        qubit_readout_pulse, readout_device = get_uncalibrated_measurer(device, qubit_ids[0],
+                                                                        dot_products=post_selection_flag,
+                                                            readouts_per_repetition=readouts_per_repetition)
+    else:
+        qubit_readout_pulse, readout_device = calibrated_readout.get_calibrated_measurer(device, qubit_ids,readouts_per_repetition=readouts_per_repetition)
 
     generators = {}
     for qubit_id in qubit_ids:
@@ -191,11 +203,11 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
             # ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
             # print('control_sequence=',control_sequence)
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
@@ -211,7 +223,7 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
 
     #TODO readout sequence
     #ro_seq = [device.pg.pmulti(pause_length)]+device.trigger_readout_seq+qubit_readout_pulse.get_pulse_sequence()
-    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, qubit_readout_pulse, post_selection_flag=post_selection_flag)
     # Readout sequence
 
     pi2_bench = interleaved_benchmarking.interleaved_benchmarking(device, readout_device, ex_sequencers, seeds, seq_lengths,
@@ -220,7 +232,8 @@ def benchmarking_pi2_multi(device, qubit_ids, *params, interleaver=None, two_qub
                                                                   two_qubit_num=two_qubit_num,
                                                                   random_gate_num=random_gate_num,
                                                                   readout_sequencer = readout_sequencer,
-                                                                  two_qubit=two_qubit_gate)
+                                                                  two_qubit=two_qubit_gate,
+                                                                  X_gate = X_gate)
     gates=[]
     for name, gate in HZ_group.items():
         print(name)

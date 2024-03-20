@@ -216,19 +216,19 @@ class single_shot_readout:
                         self.readout_classifier.class_list}
             dtypes.update(avg_samples)
             dtypes.update(features)
-            #dtypes['sigma0'] = np.complex
-            #dtypes['sigma1'] = np.complex
+            #dtypes['sigma0'] = complex
+            #dtypes['sigma1'] = complex
         # if self.measure_hists:
         #    dtypes['hists'] = float
         #    dtypes['proba_points'] = float
         dtypes['fidelities'] = float
         dtypes['thresholds'] = float
         if self.measure_feature_w_threshold:
-            dtypes['feature'] = np.complex
+            dtypes['feature'] = complex
             dtypes['threshold'] = float
 
         if self.adc.devtype == 'UHF' and self.return_scores:
-            dtypes['x'] = np.complex
+            dtypes['x'] = complex
             dtypes['y'] = float
 
         return dtypes

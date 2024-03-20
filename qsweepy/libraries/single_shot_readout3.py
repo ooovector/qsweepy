@@ -1,5 +1,6 @@
 from qsweepy.libraries import data_reduce
 import numpy as np
+from numpy import complex64
 from qsweepy.qubit_calibrations import sequence_control
 # from qsweepy.libraries import logistic_regression_classifier
 from qsweepy.libraries import logistic_regression_classifier2 as logistic_regression_classifier
@@ -25,7 +26,7 @@ class SingleShotReadout:
 
         self.ro_delay_seq = ro_delay_seq
         self.control_seq = control_seq
-        self.repeat_samples = 2 #5
+        self.repeat_samples = 3 #5
         self.save_last_samples = False
         # self.train_test_split = 0.8 # 0.8
 
@@ -71,7 +72,8 @@ class SingleShotReadout:
         X = []
         y = []
 
-        print(self.adc.adc.nsegm)
+        self.adc.set_adc_nums(int(self.device.get_sample_global('calibrated_readout_nums')))
+        print('Number of adc segments ', self.adc.adc.nsegm)
 
         if not self.post_selection_flag:
             for i in range(self.repeat_samples):
@@ -308,16 +310,16 @@ class SingleShotReadout:
 
         if self.dbg_storage_samples:
         # if self.adc.devtype == 'UHF' and self.return_scores:
-            dtypes['x'] = np.complex64
+            dtypes['x'] = complex
             dtypes['y'] = float
         # train_samples = {'avg_sample_train' + str(_class): self.adc.get_dtype()[self.adc_measurement_name] for _class in
         #                self.readout_classifier.class_list}
         # dtypes.update(train_samples)
         if self.measure_features:
-            dtypes['feature0'], dtypes['feature1'] = np.complex64, np.complex64
+            dtypes['feature0'], dtypes['feature1'] = complex64, complex64
 
         # if self.measure_projections:
-        #     states_projections = {'x' + str(_class): np.complex64 for _class in
+        #     states_projections = {'x' + str(_class): complex64 for _class in
         #                           self.readout_classifier.class_list}
         #     dtypes.update(states_projections)
         if self.measure_hists:
@@ -340,7 +342,7 @@ class SingleShotReadout:
             dtypes.update({'meas_0': float})
 
             if self.dbg_storage_samples:
-                dtypes['x_'] = np.complex64
+                dtypes['x_'] = complex
 
         return dtypes
 
@@ -589,16 +591,16 @@ class SingleShotReadout:
 #
 #         if self.dbg_storage_samples:
 #         # if self.adc.devtype == 'UHF' and self.return_scores:
-#             dtypes['x'] = np.complex64
+#             dtypes['x'] = complex64
 #             dtypes['y'] = float
 #         # train_samples = {'avg_sample_train' + str(_class): self.adc.get_dtype()[self.adc_measurement_name] for _class in
 #         #                self.readout_classifier.class_list}
 #         # dtypes.update(train_samples)
 #         if self.measure_features:
-#             dtypes['feature0'], dtypes['feature1'] = np.complex64, np.complex64
+#             dtypes['feature0'], dtypes['feature1'] = complex64, complex64
 #
 #         # if self.measure_projections:
-#         #     states_projections = {'x' + str(_class): np.complex64 for _class in
+#         #     states_projections = {'x' + str(_class): complex64 for _class in
 #         #                           self.readout_classifier.class_list}
 #         #     dtypes.update(states_projections)
 #

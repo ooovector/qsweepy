@@ -27,7 +27,7 @@ class HDAWG_PRNG:
 class interleaved_benchmarking:
     # def __init__(self, measurer, set_seq, interleavers=None, random_sequence_num=8):
     def __init__(self, device, measurer, ex_sequencers, seeds, seq_lengths, interleavers=None, random_sequence_num=8,
-                 two_qubit_num=1, random_gate_num=1, readout_sequencer=None, two_qubit = None):
+                 two_qubit_num=1, random_gate_num=1, readout_sequencer=None, two_qubit = None, X_gate = False):
 
         self.seeds = seeds
         self.seq_lengths = np.asarray(seq_lengths)
@@ -50,6 +50,11 @@ class interleaved_benchmarking:
         self.interleavers = {}
         self.instructions = []
 
+        if X_gate:
+            self.X_gate = 1
+        else:
+            self.X_gate = 0
+
         if interleavers is not None:
             for name, gate in interleavers.items():
                 self.add_interleaver(name, gate['pulses'], gate['unitary'])
@@ -69,7 +74,7 @@ class interleaved_benchmarking:
         self.sequence_length = self.seq_lengths[0]
 
         self.target_gate = []
-        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=np.complex)
+        # self.target_gate_unitary = np.asarray([[1,0],[0,1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = None
@@ -124,9 +129,12 @@ setPRNGRange(0, random_gate_num-1);
         # command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
         #                  "header": { "version": "0.2" },
         #                  "table": [] }
-        command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
-                         'header': {'version': '1.0.0'},
-                         'table': []}
+        # command_table = {'$schema': 'https://json-schema.org/draft-04/schema#',
+        #                  'header': {'version': '1.0.0'},
+        #                  'table': []}
+        command_table = {"$schema": "http://docs.zhinst.com/hdawg/commandtable/v2/schema",
+                         "header": {"version": "1.2"},
+                         "table": []}
         assign_waveform_indexes = {}
 
         random_command_id = 0
@@ -140,7 +148,8 @@ setPRNGRange(0, random_gate_num-1);
 
             gate = self.interleavers['X/2']
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                # for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8108'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         # table_entry, definition_part, random_command_id, waveform_id = self.command_table_entry_creation(part,
                         #                             definition_part, random_command_id, waveform_id, phase0=phase0, phase1=0)
@@ -163,7 +172,8 @@ setPRNGRange(0, random_gate_num-1);
             else:
                 gate = self.interleavers['X/2']
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                # for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8108'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
                                             definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=phase0, phase1=0)
@@ -176,7 +186,8 @@ setPRNGRange(0, random_gate_num-1);
         if self.two_qubit is not None:
             gate = [v for v in self.two_qubit.values()][0]
             for j in range(len(gate['pulses'])):
-                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                # for seq_id, part in gate['pulses'][j][0]['hdawg-dev8250'].items():
+                for seq_id, part in gate['pulses'][j][0]['hdawg-dev8108'].items():
                     if seq_id == ex_seq.params['sequencer_id']:
                         table_entry, definition_part, assign_waveform_indexes, random_command_id, waveform_id = self.command_table_entry_creation(part,
                                             definition_part, random_command_id, assign_waveform_indexes, waveform_id, phase0=0, phase1=0)
@@ -243,9 +254,15 @@ setPRNGRange(0, random_gate_num-1);
             wait(5);
             wait(5);
     }} 
+    repeat ({X_gate}) {{
+        // added X gate in the end
+        executeTableEntry({random_gate_num}+1);
+        executeTableEntry(16);
+        executeTableEntry(16+24);
+    }}
     executeTableEntry({random_gate_num});
     resetOscPhase();
-    '''.format(random_gate_num=random_command_id, sequence_len=seq_len))
+    '''.format(random_gate_num=random_command_id, sequence_len=seq_len, X_gate = self.X_gate))
         self.instructions.append(command_table)
         # print(command_table)
         return definition_part, play_part
@@ -342,7 +359,7 @@ setPRNGRange(0, random_gate_num-1);
         self.d = unitary.shape[0]
         self.initial_state_vector = np.zeros(self.d)
         self.initial_state_vector[0] = 1.
-        self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
+        self.target_gate_unitary = np.identity(self.d, dtype=complex)
         self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 
     def generate_interleaver_sequence_from_names(self, names):
@@ -418,7 +435,7 @@ setPRNGRange(0, random_gate_num-1);
         old_target_gate_unitary = self.target_gate_unitary
         old_target_gate_name = self.target_gate_name
         self.target_gate = []
-        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=np.complex)
+        self.target_gate_unitary = np.asarray([[1, 0], [0, 1]], dtype=complex)
         self.target_gate_name = 'Identity (benchmarking)'
 
         self.reference_benchmark_result = self.measure()

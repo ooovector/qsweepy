@@ -64,7 +64,7 @@ class Carrier:
         if self.waveform is not None:
             return self.waveform
         else:
-            return np.zeros(self.get_nop(), dtype=np.complex)
+            return np.zeros(self.get_nop(), dtype=complex)
 
     def set_if(self, _if):
         self._if = _if
@@ -225,8 +225,8 @@ class Awg_iq_multi:
     def assemble_waveform(self):
         """Takes waveforms on all carriers and sums them up."""
         t = np.linspace(0, self.get_nop()/self.get_clock(), self.get_nop(), endpoint=False)
-        waveform_I = np.zeros(len(t), dtype=np.complex)
-        waveform_Q = np.zeros(len(t), dtype=np.complex)
+        waveform_I = np.zeros(len(t), dtype=complex)
+        waveform_Q = np.zeros(len(t), dtype=complex)
         if not self.use_offset_I:
             waveform_I += np.real(self.calib_dc()['dc'])
         if not self.use_offset_Q:
@@ -713,5 +713,5 @@ class Awg_iq_multi:
             response_phase.append(np.mean(points_current))
         response_phase = np.asarray(response_phase)
 
-        self.response_function_I = np.asarray(response_function_I_abs, dtype=np.complex)
+        self.response_function_I = np.asarray(response_function_I_abs, dtype=complex)
         self.response_function_Q = response_function_Q_abs*np.exp(1j*response_phase)

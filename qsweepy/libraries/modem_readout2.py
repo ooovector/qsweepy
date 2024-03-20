@@ -164,9 +164,9 @@ class modem_readout(data_reduce.data_reduce):
                                                                             references_that={
                                                                                 'delay_measurement': self.delay_measurement.id},
                                                                             metadata=metadata)
-                self.calibrations[ex_channel_name + '+'] = np.complex(
+                self.calibrations[ex_channel_name + '+'] = complex(
                     calibrations_measurement.metadata[ex_channel_name + '+'])
-                self.calibrations[ex_channel_name + '-'] = np.complex(
+                self.calibrations[ex_channel_name + '-'] = complex(
                     calibrations_measurement.metadata[ex_channel_name + '-'])
                 self.calibration_measurements[ex_channel_name] = calibrations_measurement
                 self.create_filters(ex_channel_name)
@@ -219,7 +219,7 @@ class modem_readout(data_reduce.data_reduce):
         dac_sequence_Q, dac_sequence_adc_time_Q = self.random_alignment_sequence(ex_channel,
                                                                                  shot_noise_time=shot_noise_time)
 
-        dac_sequence = np.asarray(dac_sequence_I + 1j * dac_sequence_Q, dtype=np.complex) * amplitude
+        dac_sequence = np.asarray(dac_sequence_I + 1j * dac_sequence_Q, dtype=complex) * amplitude
         dac_sequence_adc_time = dac_sequence_adc_time_I + 1j * dac_sequence_adc_time_Q
         demodulation = self.demodulation(ex_channel, sign=True)
         # set sequence in sequencer with amplitude & phase

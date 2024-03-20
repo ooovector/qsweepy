@@ -69,8 +69,9 @@ class LogisticRegressionReadoutClassifier:
 
             self.class_num_train.update({class_id: len(x_class_id_train)})
             self.class_num_test.update({class_id: len(x_class_id_test)})
-            self.class_train_averages.update({class_id: np.mean(x_class_id_test, axis=0)})
 
+            self.class_train_averages.update({class_id: np.mean(x_class_id_test, axis=0)})
+            self.class_averages.update({class_id: np.mean(x_class_id, axis=0)})
         if self.states == 2:
             self.feature0, self.feature1 = self.get_features(self.class_train_averages[0], self.class_train_averages[1])
         elif self.states == 3:
@@ -93,10 +94,12 @@ class LogisticRegressionReadoutClassifier:
         elif self.states == 3:
             f_10 = avg_sample1.conj() - avg_sample0.conj()
             f_20 = avg_sample2.conj() - avg_sample0.conj()
+            # f_21 = avg_sample2.conj() - avg_sample1.conj()
 
             numerator = ((avg_sample2 - avg_sample0) @ f_10.reshape(self.nums_adc, 1)).ravel()[0]
             denominator = (f_10.conj() @ f_10.reshape(self.nums_adc, 1)).ravel()[0]
             return f_10, f_20 - numerator / denominator * f_10
+
         else:
             raise ValueError("Logistic Regression readout classifier supports only qubit and qutrit readout!")
 
@@ -106,6 +109,7 @@ class LogisticRegressionReadoutClassifier:
         """
         if w.any() and marker.any():
             self.w, self.marker = w, marker
+
         else:
             self.w, self.marker = self.get_w_and_markers()
 
@@ -182,17 +186,34 @@ class LogisticRegressionReadoutClassifier:
         self.marker = marker
         self.w = w
 
-    def get_confusion_matrix(self):
-        test_trajectories = np.concatenate([self.class_test[class_id] for class_id in self.class_list])
-        test_marker = np.asarray(
-            [[class_id] * list(self.class_num_test.values())[class_id] for class_id in self.class_list]).ravel()
+    def get_confusion_matrix(self, w_test=np.asarray([]), test_marker=np.asarray([]), plot=False):
+        if not (w_test.any() and test_marker.any()):
 
-        w_test = self.get_w_(test_trajectories)
+            test_trajectories = np.concatenate([self.class_test[class_id] for class_id in self.class_list])
+            test_marker = np.asarray(
+                [[class_id] * list(self.class_num_test.values())[class_id] for class_id in self.class_list]).ravel()
+
+            w_test = self.get_w_(test_trajectories)
+
         y_hat = self.clf.predict(w_test)
-
         num_shots_test = test_marker.shape[0] // self.states
         self.clf.score(w_test, test_marker)
         self.confusion_matrix = confusion_matrix(test_marker, y_hat) / num_shots_test
+
+
+        if plot:
+            import pandas as pd
+            import seaborn as sns
+            sns.set_theme(style="ticks")
+
+            # state_names = ['|0>', '|1>', '|2>']
+            state_names  = ['|' + str(i) + '>' for i in self.class_list]
+            df = pd.DataFrame(data=self.confusion_matrix, index=state_names, columns=state_names)
+
+            ax = sns.heatmap(df / np.sum(df.T), annot=True, cmap=sns.cubehelix_palette(as_cmap=True), fmt='g')
+            ax.set_xlabel('Prepared state')
+            ax.set_ylabel('Assigned state')
+
 
         # y_hat = self.clf.predict(self.w)
         # self.clf.score(self.w, self.marker)
@@ -218,4 +239,38 @@ class LogisticRegressionReadoutClassifier:
     #         grid_resolution=500)
     #     return disp
 
+    def get_w_and_markers_from_w_meas(self, w_meas, y):
+        """
+        Calculate confusion matrix from projections
+        :param w_meas: array of projections
+        :param y: array of markers
+        """
+        class_w = {}
+        class_w_test = {}
+        class_w_train = {}
 
+        markers = []
+        test_marker = []
+
+        for class_id in self.class_list:
+            ind_ = [i for i in range(len(y)) if y[i] == class_id]
+            class_w.update({class_id: w_meas[ind_, :]})
+            w_class_id_train, w_class_id_test = train_test_split(class_w[class_id], test_size=1 - self.train_size,
+                                                                 train_size=self.train_size, random_state=42)
+
+            # self.projections0.update({class_id: w_class_id_train[:, 0]})
+            # self.projections1.update({class_id: w_class_id_train[:, 1]})
+            class_w_train.update({class_id: w_class_id_train})
+            class_w_test.update({class_id: w_class_id_test})
+
+            markers.extend([class_id] * w_class_id_train.shape[0])
+            test_marker.extend([class_id] * w_class_id_test.shape[0])
+
+        w_test = class_w_test[0]
+        w_train = class_w_train[0]
+
+        for class_id in self.class_list[1:]:
+            w_train = np.vstack((w_train, class_w_train[class_id]))
+            w_test = np.vstack((w_test, class_w_test[class_id]))
+
+        return w_train, w_test, np.asarray(markers), np.asarray(test_marker)

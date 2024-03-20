@@ -20,7 +20,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
     from .calibrated_readout2 import get_calibrated_measurer
 
     if post_selection_flag:
-        readouts_per_repetition = 2
+        readouts_per_repetition = 3 #2
     else:
         readouts_per_repetition = 1
 
@@ -93,7 +93,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
                         ex_sequence.add_exc_pre_pulse(single_sequence[0], single_sequence[1])
             ex_sequence.awg.set_sequence(ex_sequence.params['sequencer_id'], ex_sequence)
 
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
     # redefine lengths as integer val

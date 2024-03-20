@@ -17,7 +17,7 @@ class single_shot_readout:
     Args:
         adc (Instrument): a device that measures a complex vector for each readout trigger (an ADC)
         prepare_seqs (list of pulses.sequence): a dict of sequences of control pulses. The keys are use for state identification.
-        ro_seq (pulses.sequence): a sequence of control pulses that is used to generate the reaout pulse of the DAC.
+        ro_seq (pulses.sequence): a sequence of control pulses that is used to generate the readout pulse of the DAC.
         pulse_generator (pulses.pulse_generator): pulse generator used to concatenate and set waveform sequences on the DAC.
         ro_delay_seq (pulses.sequence): Sequence used to align the DAC and ADC (readout delay compensation)
         adc_measurement_name (str): name of measurement on ADC
@@ -66,7 +66,8 @@ class single_shot_readout:
 
         self.post_selection_flag = post_selection_flag
         if self.post_selection_flag:
-            self.readouts_per_repetition = 2
+            self.readouts_per_repetition = 3
+            self.adc.dot_prods = True
         else:
             self.readouts_per_repetition = 1
 
@@ -157,15 +158,17 @@ class single_shot_readout:
                         # threshold = self.adc.adc.threshold
                         # states = np.asarray(dot_products > threshold, dtype=int)
 
-                        states_meas0.append(states[::2])
+                        states_meas0.append(states[0::3])
                         # states_meas1.append(states[1::2])
 
                         # print(self.adc.adc.threshold)
                         # print(states_meas0, states_meas1)
 
-                        X.append(measurement[self.adc_measurement_name][1::2, :])  # append samples only for meas1
-                        y.extend([class_id] * (len(self.adc.get_points()[self.adc_measurement_name][0][1]) // 2))
-
+                        X.append(measurement[self.adc_measurement_name][1::3, :])  # append samples only for meas1
+                        # Grisha comment this
+                        # y.extend([class_id] * (len(self.adc.get_points()[self.adc_measurement_name][0][1]) // 2))
+                        # Grisha add this
+                        y.extend((states[0::3]+class_id)%2)
                     elif self.adc.devtype == 'UHF':
                         # UHF scenario
                         nums = self.adc.get_nums()
@@ -182,13 +185,15 @@ class single_shot_readout:
         y = np.asarray(y)
         print(X.shape, y.shape)
 
-        if self.post_selection_flag:
-            print(np.asarray(states_meas0).shape)
-            states_meas0 = np.asarray(states_meas0).ravel()
-            print(states_meas0.shape)
-            self.states_meas0 = states_meas0
-            self.x = X
-            self.y = y
+        #Grisha comment this start
+        # if self.post_selection_flag:
+        #     print(np.asarray(states_meas0).shape)
+        #     states_meas0 = np.asarray(states_meas0).ravel()
+        #     print(states_meas0.shape)
+        #     self.states_meas0 = states_meas0
+        #     self.x = X
+        #     self.y = y
+        # Grisha comment this end
 
         if self.dbg_storage:
             print("Save projections!")
@@ -242,39 +247,64 @@ class single_shot_readout:
             self.adc.set_feature_iq(feature_id=0, feature=self.readout_classifier.feature)
             x = []
             y = []
-            for i in range(self.repeat_samples):
-                for class_id, prepare_seq in enumerate(self.prepare_seqs):
-                    '''Warning'''
-                    #self.ro_seq.awg.stop_seq(self.ro_seq.params['sequencer_id'])
-                    #self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
+            # Grisha add this start
+            if not self.post_selection_flag:
+            # Grisha add this end
+                for i in range(self.repeat_samples):
+                    for class_id, prepare_seq in enumerate(self.prepare_seqs):
+                        '''Warning'''
+                        #self.ro_seq.awg.stop_seq(self.ro_seq.params['sequencer_id'])
+                        #self.pulse_generator.set_seq(prepare_seq + self.ro_seq)
 
-                    #sequence_control.set_preparation_sequence(self.device, self.ex_seqs, prepare_seq, self.control_seq)
-                    self.control_seq.set_awg_amp(float(class_id))
-                    #for ex_seq in self.ex_seqs:
-                    #    if ex_seq.params['sequencer_id'] == self.control_seq.params['sequencer_id']:
-                    #        ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
-                    #        ex_seq.clear_pulse_sequence()
-                    #        for prep_seq in prepare_seq:
-                    #            for seq_id, single_sequence in prep_seq.items():
-                    #                if seq_id == ex_seq.params['sequencer_id']:
-                    #                    ex_seq.add_definition_fragment(single_sequence[0])
-                    #                    ex_seq.add_play_fragment(single_sequence[1])
-                    #        self.device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
-                    #        ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
+                        #sequence_control.set_preparation_sequence(self.device, self.ex_seqs, prepare_seq, self.control_seq)
+                        self.control_seq.set_awg_amp(float(class_id))
+                        #for ex_seq in self.ex_seqs:
+                        #    if ex_seq.params['sequencer_id'] == self.control_seq.params['sequencer_id']:
+                        #        ex_seq.awg.stop_seq(ex_seq.params['sequencer_id'])
+                        #        ex_seq.clear_pulse_sequence()
+                        #        for prep_seq in prepare_seq:
+                        #            for seq_id, single_sequence in prep_seq.items():
+                        #                if seq_id == ex_seq.params['sequencer_id']:
+                        #                    ex_seq.add_definition_fragment(single_sequence[0])
+                        #                    ex_seq.add_play_fragment(single_sequence[1])
+                        #        self.device.modem.awg.set_sequence(ex_seq.params['sequencer_id'], ex_seq)
+                        #        ex_seq.awg.start_seq(ex_seq.params['sequencer_id'])
 
-                    #self.ro_seq.awg.start_seq(self.ro_seq.params['sequencer_id'])
-                    #re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
-                    #re_sequence.start()
-                    # TODO do we need to calibrate for all discriminators?
-                    if self.adc.devtype == 'UHF':
-                        j = self.adc.measure()[self.adc.result_source + str(0)]
-                        x.extend((np.real(j) + np.imag(j)).tolist())
-                        y.extend([class_id] * len(j))
-                    else:
-                        j = self.adc.measure()['all_cov0']
-                        x.extend(j.tolist())
-                        y.extend([class_id] * len(j))
+                        #self.ro_seq.awg.start_seq(self.ro_seq.params['sequencer_id'])
+                        #re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
+                        #re_sequence.start()
+                        # TODO do we need to calibrate for all discriminators?
+                        if self.adc.devtype == 'UHF':
+                            j = self.adc.measure()[self.adc.result_source + str(0)]
+                            x.extend((np.real(j) + np.imag(j)).tolist())
+                            y.extend([class_id] * len(j))
+                        else:
+                            j = self.adc.measure()['all_cov0']
+                            x.extend(j.tolist())
+                            y.extend([class_id] * len(j))
+            # Grisha add this start
+            else:
+                states_meas0 = []
+                for i in range(self.repeat_samples):
+                    for class_id, prepare_seq in enumerate(self.prepare_seqs):
+                        '''Warning'''
+                        self.control_seq.set_awg_amp(float(class_id))
+                        # TODO do we need to calibrate for all discriminators?
+                        if self.adc.devtype == 'UHF':
+                            j = self.adc.measure()[self.adc.result_source + str(0)]
+                            x.extend((np.real(j) + np.imag(j)).tolist())
+                            y.extend([class_id] * len(j))
+                        else:
+                            measurement = self.adc.measure()
+                            dot_products = measurement['disc_ch0']
 
+                            # list of threshold for all discrimination channels, we use only disc_ch0
+                            threshold = self.adc.adc.threshold
+                            states = np.asarray(dot_products > threshold[0], dtype=int)
+                            states_meas0.append(states[::3])
+                            x.append(measurement[self.adc_measurement_name][1::3, :])  # append samples only for meas1
+                            y.extend((states[::3] + class_id) % 2)
+            # Grisha add this end
                     #x.extend((np.real(j)).tolist())
 
 
@@ -314,10 +344,10 @@ class single_shot_readout:
             opts['x'] = {'log': False}
             opts['y'] = {'log': False}
 
-        if self.post_selection_flag:
-            opts['meas0'] = {'log': False}
-            opts['y'] = {'log': False}
-            opts['w'] = {'log': False}
+        # if self.post_selection_flag:
+        #     opts['meas0'] = {'log': False}
+        #     opts['y'] = {'log': False}
+        #     opts['w'] = {'log': False}
         return opts
 
     def measure(self):
@@ -352,12 +382,12 @@ class single_shot_readout:
         if self.dbg_storage_samples:
             meas['x'], meas['y'] = self.x, self.y
 
-        if self.post_selection_flag:
-            meas['meas0'] = self.states_meas0
-            meas['y'] = self.y
-
-            w = self.calculate_projections2(self.x, self.y)
-            meas['w'] = w
+        # if self.post_selection_flag:
+        #     meas['meas0'] = self.states_meas0
+        #     meas['y'] = self.y
+        #
+        #     w = self.calculate_projections2(self.x, self.y)
+        #     meas['w'] = w
         return meas
 
     def get_points(self):
@@ -426,16 +456,16 @@ class single_shot_readout:
                            ('Time', np.arange(self.adc.get_adc_nop()) / self.adc.get_clock(), 's')]
             points['y'] = [('Segment', np.arange(num_shots), '')]
 
-        if self.post_selection_flag:
-            nums_ = self.nums // 2 * self.repeat_samples * len(self.prepare_seqs)
-            points['meas0'] = [('bin', np.arange(nums_), '')]
-
-            num_shots = len(self.adc.get_points()[self.adc_measurement_name][0][1]) * self.repeat_samples * len(
-                self.prepare_seqs) // self.readouts_per_repetition
-            points['y'] = [('Segment', np.arange(num_shots), '')]
-
-            points['w'] = [('Segment', np.arange(num_shots), ''),
-                           ('axe', np.arange(2), '')]
+        # if self.post_selection_flag:
+        #     nums_ = self.nums // 2 * self.repeat_samples * len(self.prepare_seqs)
+        #     points['meas0'] = [('bin', np.arange(nums_), '')]
+        #
+        #     num_shots = len(self.adc.get_points()[self.adc_measurement_name][0][1]) * self.repeat_samples * len(
+        #         self.prepare_seqs) // self.readouts_per_repetition
+        #     points['y'] = [('Segment', np.arange(num_shots), '')]
+        #
+        #     points['w'] = [('Segment', np.arange(num_shots), ''),
+        #                    ('axe', np.arange(2), '')]
 
         return points
 
@@ -451,8 +481,8 @@ class single_shot_readout:
                         self.readout_classifier.class_list}
             dtypes.update(avg_samples)
             dtypes.update(features)
-            #dtypes['sigma0'] = np.complex
-            #dtypes['sigma1'] = np.complex
+            #dtypes['sigma0'] = complex
+            #dtypes['sigma1'] = complex
         # if self.measure_hists:
         #    dtypes['hists'] = float
         #    dtypes['proba_points'] = float
@@ -475,10 +505,10 @@ class single_shot_readout:
             dtypes['x'] = np.complex64
             dtypes['y'] = float
 
-        if self.post_selection_flag:
-            dtypes['meas0'] = float
-            dtypes['y'] = float
-            dtypes['w'] = float
+        # if self.post_selection_flag:
+        #     dtypes['meas0'] = float
+        #     dtypes['y'] = float
+        #     dtypes['w'] = float
 
         return dtypes
 

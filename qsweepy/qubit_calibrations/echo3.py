@@ -11,14 +11,19 @@ import time
 
 def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitudes=None, lengths=None,
            target_freq_offset=None, readout_delay=None, pre_pulse_gate=None, measurement_type='echo',
-           additional_references={}, additional_metadata={}, gauss=True, sort='best'):
+           additional_references={}, additional_metadata={}, gauss=True, sort='best', dot_products = False, post_selection_flag=False):
     from .readout_pulse2 import get_uncalibrated_measurer
+    if post_selection_flag:
+        readouts_per_repetition = 3
+    else:
+        readouts_per_repetition = 1
+
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
 
     ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition,
                                                      channel_amplitudes_override=channel_amplitudes, gauss=gauss,
@@ -39,11 +44,11 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
             # ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
             control_qubit_sequence = ex_seq
@@ -54,7 +59,7 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
         else:
             ex_seq.start(holder=1)
         ex_sequencers.append(ex_seq)
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
     times = np.zeros(len(lengths))
@@ -297,14 +302,20 @@ def echo(device, qubit_id, transition='01', *extra_sweep_args, channel_amplitude
 
 def cpmg_echo(device, qubit_id, transition='01', *extra_sweep_args, num_pulses=1, channel_amplitudes=None, lengths=None,
               target_freq_offset=None, readout_delay=None, pre_pulse_gate=None, measurement_type='CPMG',
-              additional_references={}, additional_metadata={}, gauss=True, sort='best'):
+              additional_references={}, additional_metadata={}, gauss=True, sort='best', dot_products = False, post_selection_flag=False):
     from .readout_pulse2 import get_uncalibrated_measurer
+
+    if post_selection_flag:
+        readouts_per_repetition = 3
+    else:
+        readouts_per_repetition = 1
+
     if type(lengths) is type(None):
         lengths = np.arange(0,
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_length')),
                             float(device.get_qubit_constant(qubit_id=qubit_id, name='Ramsey_step')))
 
-    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition)
+    readout_pulse, measurer = get_uncalibrated_measurer(device, qubit_id, transition, dot_products=dot_products, readouts_per_repetition=readouts_per_repetition)
 
     ex_pulse = excitation_pulse.get_excitation_pulse(device, qubit_id, np.pi / 2., transition=transition,
                                                      channel_amplitudes_override=channel_amplitudes, gauss=gauss,
@@ -325,11 +336,11 @@ def cpmg_echo(device, qubit_id, transition='01', *extra_sweep_args, num_pulses=1
     for awg, seq_id in device.pre_pulses.seq_in_use:
         if [awg, seq_id] != [control_awg, control_seq_id]:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[])
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], post_selection_flag=post_selection_flag)
             # ex_seq.start(holder=1)
         else:
             ex_seq = zi_scripts.SIMPLESequence(device=device, sequencer_id=seq_id, awg=awg,
-                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True)
+                                               awg_amp=1, use_modulation=True, pre_pulses=[], control=True, post_selection_flag=post_selection_flag)
             control_sequence = ex_seq
         if [awg, seq_id] == [control_qubit_awg, control_qubit_seq_id]:
             control_qubit_sequence = ex_seq
@@ -340,7 +351,7 @@ def cpmg_echo(device, qubit_id, transition='01', *extra_sweep_args, num_pulses=1
         else:
             ex_seq.start(holder=1)
         ex_sequencers.append(ex_seq)
-    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse)
+    readout_sequencer = sequence_control.define_readout_control_seq(device, readout_pulse, post_selection_flag=post_selection_flag)
     readout_sequencer.start()
 
     times = np.zeros(len(lengths))

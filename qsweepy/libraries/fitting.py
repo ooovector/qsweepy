@@ -490,7 +490,7 @@ def dc_squid_fit_S21(data, noise_sigma=5, fit=True, method='min', plot=False):
 			res_freq_estimate_unreliable[cur_id] = True
 
 	res_freq_estimate[res_freq_estimate_unreliable] = np.nan
-	ft = lambda I,fp,I0,L,a,b: np.real(fp*(1+b)*(1/(1/np.sqrt((1-a)*np.abs(np.cos((I-I0)*L).astype(np.complex))+a)+b)))
+	ft = lambda I,fp,I0,L,a,b: np.real(fp*(1+b)*(1/(1/np.sqrt((1-a)*np.abs(np.cos((I-I0)*L).astype(complex))+a)+b)))
 	ft_x = lambda I,x: ft(I, x[0], x[1], x[2], x[3], x[4])
 	currents_freq_estimate = currents[np.isfinite(res_freq_estimate)]
 	if plot:

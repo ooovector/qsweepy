@@ -192,7 +192,7 @@ class multiqubit_tomography:
         self.d = unitary.shape[0]
         self.initial_state_vector = np.zeros(self.d)
         self.initial_state_vector[0] = 1.
-        self.target_gate_unitary = np.identity(self.d, dtype=np.complex)
+        self.target_gate_unitary = np.identity(self.d, dtype=complex)
         self.interleavers[name] = {'pulses': pulse_seq, 'unitary': unitary}
 
     def create_interleavers(self):

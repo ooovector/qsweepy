@@ -266,7 +266,7 @@ def get_uncalibrated_measurer(device, qubit_id, transition='01', samples = False
 
     try:
        assert transition == '01'
-       qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False, readouts_per_repetition=readouts_per_repetition)
+       # qubit_readout_pulse_, measurer = get_calibrated_measurer(device, [qubit_id], recalibrate=False, readouts_per_repetition=readouts_per_repetition)
        qubit_readout_pulse_, measurer, thresholds, features = get_calibrated_measurer(device, [qubit_id],
                                                                                       recalibrate=False,
                                                                                       readouts_per_repetition=readouts_per_repetition,

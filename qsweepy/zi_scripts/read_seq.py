@@ -154,7 +154,7 @@ while (true) {{
             play_fragment1 += '''
     // Wait DIO trigger from qubit control sequencer.
     setDIO(0);
-    //wait(3000);
+    //wait(30000);
     
     // Wait trigger from adc
     waitDigTrigger(1);

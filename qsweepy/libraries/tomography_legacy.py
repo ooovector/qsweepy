@@ -11,7 +11,7 @@ def ex_gauss_hd (amp_x, amp_y, length, sigma, awg_channels, delta):
 	gauss_der = np.gradient (gauss)*iq_ex.get_clock()
 	gauss -= gauss[0]
 	return {'ex': amp_x*gauss - 1j*amp_y*gauss_der/2/np.pi/delta,
-			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=np.complex),
+			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=complex),
 			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
 			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 def ex_gauss(amplitude, length, sigma, awg_channels):
@@ -21,8 +21,8 @@ def ex_gauss(amplitude, length, sigma, awg_channels):
 	osc_trg = awg_channels['osc_trg']
 	gauss = gaussian(int(round(length*iq_ex.get_clock())), sigma*iq_ex.get_clock())
 	gauss -= gauss[0]
-	return {'ex': amplitude*np.asarray(gauss).astype(np.complex),
-			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=np.complex),
+	return {'ex': amplitude*np.asarray(gauss).astype(complex),
+			'ro':np.zeros(int(round(length*iq_ro.get_clock())), dtype=complex),
 			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
 			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 
@@ -31,8 +31,8 @@ def ro_rect(amplitude, length, awg_channels):
 	iq_ro = awg_channels['iq_ro']
 	ro_trg = awg_channels['ro_trg']
 	osc_trg = awg_channels['osc_trg']
-	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': amplitude*np.ones(int(round(length*iq_ro.get_clock())), dtype=np.complex),
+	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=complex),
+			'ro': amplitude*np.ones(int(round(length*iq_ro.get_clock())), dtype=complex),
 			'ro_trg':np.hstack([[1, 1, 1, 1],np.zeros(int(round(length*ro_trg.get_clock()-4)), dtype=int)]),
 			'osc_trg':np.hstack([[1, 1, 1, 1],np.zeros(int(round(length*osc_trg.get_clock()-4)), dtype=int)]),}
 
@@ -41,8 +41,8 @@ def ex_rect(amplitude, length, awg_channels):
 	iq_ro = awg_channels['iq_ro']
 	ro_trg = awg_channels['ro_trg']
 	osc_trg = awg_channels['osc_trg']
-	return {'ex': amplitude*np.ones(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=np.complex),
+	return {'ex': amplitude*np.ones(int(round(length*iq_ex.get_clock())),dtype=complex),
+			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=complex),
 			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int),
 			'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 
@@ -51,8 +51,8 @@ def pause(length, awg_channels):
 	iq_ro = awg_channels['iq_ro_q1']
 	ro_trg = awg_channels['ro_trg']
 	#osc_trg = awg_channels['osc_trg']
-	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=np.complex),
-			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=np.complex),
+	return {'ex': np.zeros(int(round(length*iq_ex.get_clock())),dtype=complex),
+			'ro': np.zeros(int(round(length*iq_ro.get_clock())),dtype=complex),
 			'ro_trg':np.zeros(int(round(length*ro_trg.get_clock())), dtype=int)}#,
 			#'osc_trg':np.zeros(int(round(length*osc_trg.get_clock())), dtype=int)}
 
@@ -106,7 +106,7 @@ class sz_measurer:
 		
 #		diff_signal_fft = np.fft.fft(diff_signal)
 #		pmax = np.argmax(diff_signal_fft)
-#		diff_signal_filt_fft = np.zeros(diff_signal_fft.shape, dtype=np.complex)
+#		diff_signal_filt_fft = np.zeros(diff_signal_fft.shape, dtype=complex)
 #		diff_signal_filt_fft[pmax-8:pmax+8] = diff_signal_fft[pmax-8:pmax+8]
 #		diff_singal = np.fft.ifft(diff_signal_filt_fft)
 
@@ -170,7 +170,7 @@ class sz_measurer:
 			samples = np.fft.ifft(samples,axis=1)
 			
 			# create a correlation matrix
-			samples = np.hstack([samples, np.ones((samples.shape[0], 1), dtype=np.complex)])
+			samples = np.hstack([samples, np.ones((samples.shape[0], 1), dtype=complex)])
 			cov = np.einsum('ij,ik->jk', np.conj(samples), samples)/samples.shape[0]
 			self.calib_usl_cov = cov
 			W,V = np.linalg.eigh(cov)

@@ -443,7 +443,7 @@ var variable_register15;
     '''.format(**self.params))
 
         play_fragment1 += textwrap.dedent('''
-//setDIO(0); 
+setDIO(0); 
 while (true) {{
 //repeat(8192){{''')
         #if self.is_iq:
@@ -452,6 +452,7 @@ while (true) {{
 //
     // Wait trigger and reset
     //
+    //setDIO(0); 
     //waitDIOTrigger();
     waitDigTrigger(1);
     //setDIO(8);

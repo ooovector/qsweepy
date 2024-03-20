@@ -63,7 +63,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
             measurement_name = 'iq' + ro_channel
         qubit_id = [qubit_id]
         exp_sin_fitter_mode = 'unsync'
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0], transition=transition).keys()][0]
     else: # otherwise use calibrated measurer
         if ro_channel is None:
             readout_pulse, measurer = get_calibrated_measurer(device, qubit_id)
@@ -71,7 +71,7 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
             readout_pulse, measurer = get_calibrated_measurer(device, ro_channel)
         measurement_name = 'resultnumbers'
         exp_sin_fitter_mode = 'unsync'
-        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0]).keys()][0]
+        exitation_channel = [i for i in device.get_qubit_excitation_channel_list(qubit_id[0], transition=transition).keys()][0]
 
 
     ex_channel = device.awg_channels[exitation_channel]
@@ -206,15 +206,24 @@ def Rabi_rect(device, qubit_id, channel_amplitudes, transition='01', lengths=Non
 
     measurer.save_dot_prods = True
     # print('TYPE', measurer.source)
-
-    measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
-                                                            *extra_sweep_args,
-                                                            (lengths, set_ex_length, 'Excitation length', 's'),
-                                                            fitter_arguments=fitter_arguments,
-                                                            measurement_type=measurement_type,
-                                                            metadata=metadata,
-                                                            references=references,
-                                                            on_update_divider=5, shuffle=False, comment = comment)
+    if len(lengths)>3:
+        measurement = device.sweeper.sweep_fit_dataset_1d_onfly(measurer,
+                                                                *extra_sweep_args,
+                                                                (lengths, set_ex_length, 'Excitation length', 's'),
+                                                                fitter_arguments=fitter_arguments,
+                                                                measurement_type=measurement_type,
+                                                                metadata=metadata,
+                                                                references=references,
+                                                                on_update_divider=5, shuffle=False, comment = comment)
+    else:
+        print("WITHOUT FIT")
+        measurement = device.sweeper.sweep(measurer,
+                                                    *extra_sweep_args,
+                                                    (lengths, set_ex_length, 'Excitation length', 's'),
+                                                    measurement_type=measurement_type,
+                                                    metadata=metadata,
+                                                    references=references,
+                                                    on_update_divider=5, shuffle=False, comment = comment)
 
     return measurement
 

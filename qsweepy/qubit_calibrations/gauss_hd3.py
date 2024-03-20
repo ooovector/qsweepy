@@ -1364,7 +1364,7 @@ def gauss_hd_Rabi_amplitude_adaptive(device, qubit_id, inverse_rotation_cycles, 
     num_pulses = int(inverse_rotation_cycles)
     max_num_pulses = max_scan_length / pulse_length
 
-    amplitude_guess = float(rect_pulse.metadata['length']) / per_amplitude_angle_guess(pulse_length,
+    amplitude_guess = 1.4*float(rect_pulse.metadata['length']) / per_amplitude_angle_guess(pulse_length,
                                                                                        pulse_length / sigmas_in_gauss)
 
     print(per_amplitude_angle_guess(pulse_length, pulse_length / sigmas_in_gauss))
