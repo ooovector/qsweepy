@@ -2,14 +2,31 @@ from qsweepy.fitters import fit_dataset, resonator_tools, spectroscopy_overview
 from qsweepy.ponyfiles.data_structures import *
 import numpy as np
 import time
+import scipy.signal as ss
 
 def calculate_delay(measurement, _):
     x = measurement.datasets['S-parameter'].parameters[-1].values
     y = measurement.datasets['S-parameter'].data
 
-    delay_total = np.fft.fftfreq(len(x), x[1] - x[0])[np.argmax(np.abs(np.fft.ifft(y.ravel())))]
-    corrected_s21 = y * np.exp(1j * 2 * np.pi * delay_total * x)
-    delay = np.gradient(np.angle(corrected_s21), axis=-1) / (2 * np.pi * (x[1] - x[0]))
+    phase = np.angle(y)
+
+    def smooth(y, box_pts):
+        box = np.ones(box_pts) / box_pts
+        y_smooth = np.apply_along_axis(lambda m: np.convolve(m, box, mode='valid'), axis=-1, arr=y)
+        return y_smooth
+
+    phase_smooth = smooth(np.unwrap(phase), box_pts=21)
+    xp = np.linspace(x[0], x[-1], len(phase_smooth[-1]))
+
+    phase_smooth = np.apply_along_axis(lambda m: np.interp(x, xp, m), axis=-1, arr=phase_smooth)
+    delay = np.gradient(phase_smooth, axis=-1) / (2 * np.pi * (x[1] - x[0]))
+
+    # phase_filtered = ss.savgol_filter(np.unwrap(phase), window_length=51, polyorder=3)
+    # delay = np.gradient(phase_filtered, axis=-1) / (2 * np.pi * (x[1] - x[0]))
+
+    # delay_total = np.fft.fftfreq(len(x), x[1] - x[0])[np.argmax(np.abs(np.fft.ifft(y.ravel())))]
+    # corrected_s21 = y * np.exp(1j * 2 * np.pi * delay_total * x)
+    # delay = np.gradient(np.unwrap(np.angle(y)), axis=-1) / (2 * np.pi * (x[1] - x[0]))
     measurement.datasets['delay'].data[:] = delay
 
 def single_tone_spectroscopy_overview(device, fmin, fmax, nop, *args):

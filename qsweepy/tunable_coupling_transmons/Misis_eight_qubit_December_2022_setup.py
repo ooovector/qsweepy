@@ -78,7 +78,7 @@ pulsed_settings = {'lo1_power': 15,
 
                    # 'pna_freq': 7.088455e9, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
                    # 'pna_freq': 7.219e9 - 20e6, #7.1e9, #7.25e9,#   для измерения 6-7 7.4e9,#   для измерения 5-6 7.5e9,
-                   'pna_freq': 7.105e9 + 20e6, #7.5515e9 + 20e6, #7.4e9, #7.2338e9 + 20e6, #7.4e9,
+                   'pna_freq': 7.105e9 + 20e6,
                    # 'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
                    'trigger_readout_channel_name': 'ro_trg',
@@ -233,7 +233,7 @@ class hardware_setup():
 
         self.q7z = awg_channel(self.awg_tek, 3)
         self.q6z = awg_channel(self.awg_tek, 2)
-        self.q8z = awg_channel(self.awg_tek, 4)
+        self.c5z = awg_channel(self.awg_tek, 4)
         self.q5z = awg_channel(self.awg_tek, 1)
 
         self.c6z.set_offset(0)
@@ -241,7 +241,7 @@ class hardware_setup():
         # self.c8z.set_offset(0)
         self.q7z.set_offset(0)
         self.q6z.set_offset(0)
-        self.q8z.set_offset(0)
+        self.c5z.set_offset(0)
         self.q5z.set_offset(0)
 
 

@@ -6,6 +6,7 @@ import pickle as pkl
 from time import gmtime, strftime
 
 import datetime
+import time
 
 
 class single_shot_readout:
@@ -88,9 +89,9 @@ class single_shot_readout:
                     # sequence_control.set_preparation_sequence(self.device, self.ex_seqs, prepare_seq, self.control_seq)
                     if type(self.control_seq) == list:
                         for control_seq in self.control_seq:
-                            control_seq.set_awg_amp(float(class_id))
+                            control_seq.set_awg_amp(float(class_id ))
                     else:
-                        self.control_seq.set_awg_amp(float(class_id))
+                        self.control_seq.set_awg_amp(float(class_id ))
 
                     # for ex_seq in self.ex_seqs:
                     # if ex_seq.params['sequencer_id'] == self.control_seq.params['sequencer_id']:
@@ -107,7 +108,7 @@ class single_shot_readout:
                     # self.ro_seq.awg.start_seq(self.ro_seq.params['sequencer_id'])
                     # re_sequence = sequence_control.define_readout_control_seq(device, qubit_readout_pulse)
                     # re_sequence.start()
-
+                    # time.sleep(2)
                     if self.adc.devtype == 'SK':
                         measurement = self.adc.measure()
                         X.append(measurement[self.adc_measurement_name])
@@ -238,7 +239,7 @@ class single_shot_readout:
                         for control_seq in self.control_seq:
                             control_seq.set_awg_amp(float(class_id))
                     else:
-                        self.control_seq.set_awg_amp(float(class_id))
+                        self.control_seq.set_awg_amp(float(class_id ))
 
                     #for ex_seq in self.ex_seqs:
                     #    if ex_seq.params['sequencer_id'] == self.control_seq.params['sequencer_id']:

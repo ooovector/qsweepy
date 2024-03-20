@@ -38,13 +38,20 @@ def exp_fit(x, y):
 
     from scipy.optimize import leastsq
     try:
-        fitresults_full = leastsq(residuals, p0, full_output=True)
-        fitresults = fitresults_full[0]
-        mse = np.sum(cost(fitresults)) / (len(nonnan_x) - len(p0))
-        error_estimates = np.sqrt(np.diag(mse * fitresults_full[1]))
+        def errfit(hess_inv, res_variance):
+            return np.sqrt(np.diag(hess_inv * res_variance))
+
+        fitresults, hess_inv, infodict, errmsg, success = leastsq(residuals, p0, full_output=True)
+        error_estimates = errfit(hess_inv, (residuals(fitresults) ** 2).sum() / np.abs(len(nonnan_y) - len(p0)))
+        # fitresults_full = leastsq(residuals, p0, full_output=True)
+        # fitresults = fitresults_full[0]
+
+
+        # mse = np.sum(cost(fitresults)) / (len(nonnan_x) - len(p0))
+        # error_estimates = np.sqrt(np.diag(mse * fitresults_full[1]))
     except Exception as e:
         fitresults = p0
-        error_estimates = [np.nan for i in range(p0)]
+        error_estimates = [np.nan for i in p0]
 
     fitted_curve = model(fit_dataset.resample_x_fit(x), fitresults)
     MSE_rel = np.mean(cost(fitresults)) / np.mean(np.abs(nonnan_y - np.mean(nonnan_y)) ** 2)

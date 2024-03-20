@@ -87,7 +87,7 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
         residuals = lambda p: (model(x, p) - y).ravel()
         cost = lambda p: np.abs(residuals(p))**2
         fitresults = leastsq (cost_mod, p0, maxfev=200)
-        fitresults_full = leastsq(residuals, fitresults[0], full_output=True)
+        # fitresults_full = leastsq(residuals, fitresults[0], full_output=True)
         #print (np.std(model(x, p0))**2, axis=1)
         if mode == 'sync':
             parameters_new = {'phi':fitresults[0][0],
@@ -139,23 +139,32 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
 
         p0 = parameters_flat(parameters)
         fitresults = leastsq(cost, p0, maxfev=200)
+
+        def errfit(hess_inv, res_variance):
+            return np.sqrt(np.diag(hess_inv * res_variance))
+        fit, hess_inv, infodict, errmsg, success = leastsq(residuals, p0, full_output=True)
+        error_estimates = errfit(hess_inv, (residuals(fit) ** 2).sum() / np.abs(len(y) - len(p0)))
         if mode == 'sync':
             parameters = {'phi':fitresults[0][0],
                           'f':fitresults[0][1],
                           'T': fitresults[0][2],
                           'inf': fitresults[0][3],
                           'A': fitresults[0][4:]}
-            # if not np.iscomplexobj(y):
-            #     hessian = fitresults_full[1]
+            parameters.update({'phi_error': error_estimates[0],
+                               'f_error': error_estimates[1],
+                               'T_error': error_estimates[2],
+                               'inf_error': error_estimates[3],
+                               'A_error': error_estimates[4:]})
+            # hessian = fitresults_full[1]
             #
-            #     if hessian is None:
-            #         hessian = np.nan*np.ones(len(fitresults[0]))
-            #     error_estimates = np.sqrt(np.diag(mse * hessian))
-            #     parameters.update({'phi_error': error_estimates[0],
-            #                        'f_error': error_estimates[1],
-            #                        'T_error': error_estimates[2],
-            #                        'inf_error': error_estimates[3],
-            #                        'A_error': error_estimates[4:]})
+            # if hessian is None:
+            #     hessian = np.nan*np.ones(len(fitresults[0]))
+            # error_estimates = np.sqrt(np.diag(mse * hessian))
+            # parameters.update({'phi_error': error_estimates[0],
+            #                    'f_error': error_estimates[1],
+            #                    'T_error': error_estimates[2],
+            #                    'inf_error': error_estimates[3],
+            #                    'A_error': error_estimates[4:]})
         elif mode == 'unsync':
             A_inf = fitresults[0][3:]
             parameters = {'phi': fitresults[0][0],
@@ -163,25 +172,31 @@ def exp_sin_fit(x, y, parameters_old=None, mode='sync'):
                           'T': fitresults[0][2],
                           'inf': A_inf[:len(A_inf)//2],
                           'A': A_inf[len(A_inf)//2:]}
-            # if not np.iscomplexobj(y):
-            #     hessian = fitresults_full[1]
+            A_inf_errors = error_estimates[3:]
+            parameters.update({'phi_error': error_estimates[0],
+                               'f_error': error_estimates[1],
+                               'T_error': error_estimates[2],
+                               'inf_error': A_inf_errors[:len(A_inf) // 2],
+                               'A_error': A_inf_errors[len(A_inf) // 2:]})
+
+            # hessian = fitresults_full[1]
             #
-            #     if hessian is None:
-            #         hessian = np.nan*np.ones(len(fitresults[0]))
-            #     error_estimates = np.sqrt(np.diag(mse * hessian))
+            # if hessian is None:
+            #     hessian = np.nan*np.ones(len(fitresults[0]))
+            # error_estimates = np.sqrt(np.diag(mse * hessian))
             #
-            #     A_inf_errors = error_estimates[3:]
-            #     # TODO: check these two variants
-            #     # parameters.update({'phi_error': error_estimates[0],
-            #     #                    'f_error': error_estimates[1],
-            #     #                    'T_error': error_estimates[2],
-            #     #                    'inf_error': A_inf_errors[:len(A_inf) // 2],
-            #     #                    'A_error': A_inf_errors[len(A_inf) // 2:]})
-            #     parameters.update({'phi_error': error_estimates[0],
-            #                        'f_error': error_estimates[1],
-            #                        'T_error': error_estimates[2],
-            #                        'inf_error': error_estimates[3],
-            #                        'A_error': error_estimates[4:]})
+            # A_inf_errors = error_estimates[3:]
+            # # TODO: check these two variants
+            # # parameters.update({'phi_error': error_estimates[0],
+            # #                    'f_error': error_estimates[1],
+            # #                    'T_error': error_estimates[2],
+            # #                    'inf_error': A_inf_errors[:len(A_inf) // 2],
+            # #                    'A_error': A_inf_errors[len(A_inf) // 2:]})
+            # parameters.update({'phi_error': error_estimates[0],
+            #                    'f_error': error_estimates[1],
+            #                    'T_error': error_estimates[2],
+            #                    'inf_error': error_estimates[3],
+            #                    'A_error': error_estimates[4:]})
 
         #sampling fitted curve
         fitted_curve = model(fit_dataset.resample_x_fit(x_full), parameters_flat(parameters))

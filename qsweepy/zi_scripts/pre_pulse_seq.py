@@ -325,8 +325,8 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
-//var variable_register14;
-//var variable_register13;
+var variable_register14;
+var variable_register13;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -438,8 +438,8 @@ while (true) {{
     variable_register4 = getUserReg(var_reg4);
     variable_register5 = getUserReg(var_reg5);
     variable_register15 = getUserReg(15);
-    //variable_register14 = getUserReg(14);
-    //variable_register13 = getUserReg(13);
+    variable_register14 = getUserReg(14);
+    variable_register13 = getUserReg(13);
     setPRNGSeed(variable_register1);
         '''.format(**self.params))
 
@@ -591,8 +591,8 @@ var variable_register3 = getUserReg(var_reg3);
 var variable_register4 = getUserReg(var_reg4);
 var variable_register5 = getUserReg(var_reg5);
 var variable_register15;
-//var variable_register14;
-//var variable_register13;
+var variable_register14;
+var variable_register13;
 '''.format(**self.params))
         self.play_fragment = '''
     '''
@@ -655,12 +655,12 @@ var variable_register15;
 
     def set_awg_amp(self, awg_amp):
         if self.params['is_iq']:
-            self.awg.set_wave_amplitude(self.params['ic'], 0, 1)
-            self.awg.set_wave_amplitude(self.params['ic'], 1, 1)
-            self.awg.set_wave_amplitude(self.params['qc'], 0, 1)
-            self.awg.set_wave_amplitude(self.params['qc'], 1, 1)
-            self.awg.set_amplitude(self.params['ic'], np.real(awg_amp))
-            self.awg.set_amplitude(self.params['qc'], np.imag(awg_amp))
+            self.awg.set_wave_amplitude(self.params['ic'], 0, 1*np.abs(awg_amp))
+            self.awg.set_wave_amplitude(self.params['ic'], 1, 1*np.abs(awg_amp))
+            self.awg.set_wave_amplitude(self.params['qc'], 0, 1*np.abs(awg_amp))
+            self.awg.set_wave_amplitude(self.params['qc'], 1, 1*np.abs(awg_amp))
+            # self.awg.set_amplitude(self.params['ic'], np.real(awg_amp))
+            # self.awg.set_amplitude(self.params['qc'], np.imag(awg_amp))
 
         else:
             self.awg.set_wave_amplitude(self.params['ic'], 0, np.abs(awg_amp))
