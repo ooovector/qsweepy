@@ -42,7 +42,7 @@ pulsed_settings = {'lo1_power': 14,
                    'hdawg_ch7_amplitude': 0.8,
                    ###
                    # 'lo1_freq': 3.2e9, #1.5e9,
-                   'lo1_freq': 4.7e9, #4.6e9,5.15e9,#4.5e9, #1.5e9,5.15e9,  5.4e9, 4.5e9, 5.6e9
+                   'lo1_freq': 4.4e9, #4.6e9,5.15e9,#4.5e9, #1.5e9,5.15e9,  5.4e9, 4.5e9, 5.6e9
                    'pna_freq': 7.2e9, #6.7e9, #,7.9e9, 6.5e9, 7.25e9
                    #'calibrate_delay_nop': 65536,
                    'calibrate_delay_nums': 200,
@@ -201,10 +201,10 @@ class hardware_setup():
         self.lo_ro.set_status(0)
 
         self.lo1.set_status(0)
-        try:
-            self.lo2.set_status(0)
-        except:
-            pass
+        #try:
+            # self.lo2.set_status(0)
+        #except:
+            #pass
         ###
         self.pna.do_set_status(1)
 ### закоменчено из-за сломанного Цуриха
@@ -235,12 +235,12 @@ class hardware_setup():
         self.lo1.set_power(self.pulsed_settings['lo1_power'])
         self.lo1.set_frequency(self.pulsed_settings['lo1_freq'])
 
-        try:
-            self.lo2.set_status(1)  # turn on lo1 output
-            self.lo2.set_power(self.pulsed_settings['lo1_power'])
-            self.lo2.set_frequency(self.pulsed_settings['lo1_freq'])
-        except:
-            pass
+        #try:
+            # self.lo2.set_status(1)  # turn on lo1 output
+            # self.lo2.set_power(self.pulsed_settings['lo1_power'])
+            # self.lo2.set_frequency(self.pulsed_settings['lo1_freq'])
+        #except:
+            #pass
 
         self.pna.do_set_status(1)
         self.pna.set_power(self.pulsed_settings['vna_power'])
@@ -356,8 +356,8 @@ class hardware_setup():
                                                                                    lo=self.lo1, exdir_db=exdir_db),
                            # 'iq_ex2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=2,
                            #                                                         lo=self.lo1, exdir_db=exdir_db),
-                           'iq_ex1_2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=3,
-                                                                                  lo=self.lo2, exdir_db=exdir_db),
+                           # 'iq_ex1_2': qsweepy.libraries.awg_iq_multi2.AWGIQMulti(awg=self.hdawg, sequencer_id=3,
+                           #                                                        lo=self.lo2, exdir_db=exdir_db),
                            }
 
         self.iq_devices['iq_ro'].name = 'ro'
@@ -369,9 +369,9 @@ class hardware_setup():
         self.iq_devices['iq_ex1'].calibration_switch_setter = lambda: None
         self.iq_devices['iq_ex1'].sa = self.sa_ro
 
-        self.iq_devices['iq_ex1_2'].name = 'ex1_2'
-        self.iq_devices['iq_ex1_2'].calibration_switch_setter = lambda: None
-        self.iq_devices['iq_ex1_2'].sa = self.sa_ro
+        # self.iq_devices['iq_ex1_2'].name = 'ex1_2'
+        # self.iq_devices['iq_ex1_2'].calibration_switch_setter = lambda: None
+        # self.iq_devices['iq_ex1_2'].sa = self.sa_ro
 
         # self.iq_devices['iq_ex2'].name = 'ex2'
         # self.iq_devices['iq_ex2'].calibration_switch_setter = lambda: None
